@@ -28,7 +28,7 @@
         :class="{ active: selectedCategoryId === category.id }"
         @click="selectCategory(category.id)"
       >
-        <el-icon><component :is="category.icon" /></el-icon>
+        <el-icon><component :is="categoryIcons[category.name] || Monitor" /></el-icon>
         <span>{{ category.name }}</span>
       </div>
       <div class="category-item more-categories">
@@ -64,7 +64,7 @@ import {
   Fire,
   Clock,
   Timer,
-  Code,
+  Monitor,
   Brush,
   ShoppingBag,
   VideoCamera,
@@ -98,6 +98,18 @@ const navItems = [
   { key: 'latest', label: '最新项目', icon: Clock },
   { key: 'deadline', label: '即将截止', icon: Timer }
 ]
+
+// 分类图标映射
+const categoryIcons = {
+  '技术开发': Monitor,
+  '设计创意': Brush,
+  '产品/运营': ShoppingBag,
+  '内容创作': VideoCamera,
+  '硬件/物联网': Cpu,
+  '研究学习': Reading,
+  '开源专区': Share,
+  '公益/社会创新': Handbag
+}
 
 // 加载分类数据
 onMounted(async () => {

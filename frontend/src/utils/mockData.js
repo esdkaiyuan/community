@@ -1,6 +1,6 @@
 // 模拟数据 - 用于开发阶段测试
 export const mockCategories = [
-  { id: 1, name: '技术开发', icon: 'Code', count: 128 },
+  { id: 1, name: '技术开发', icon: 'Monitor', count: 128 },
   { id: 2, name: '设计创意', icon: 'Brush', count: 86 },
   { id: 3, name: '产品/运营', icon: 'ShoppingBag', count: 64 },
   { id: 4, name: '内容创作', icon: 'VideoCamera', count: 52 },
