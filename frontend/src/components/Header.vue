@@ -3,18 +3,30 @@
     <div class="header-container">
       <!-- Logo -->
       <div class="logo" @click="goHome">
-        <h1>共创社区</h1>
+        <div class="logo-icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="20" cy="20" r="18" fill="#5B6AF0" opacity="0.1"/>
+            <path d="M12 15C12 13.8954 12.8954 13 14 13H18C19.1046 13 20 13.8954 20 15V19C20 20.1046 19.1046 21 18 21H14C12.8954 21 12 20.1046 12 19V15Z" fill="#5B6AF0"/>
+            <path d="M20 15C20 13.8954 20.8954 13 22 13H26C27.1046 13 28 13.8954 28 15V19C28 20.1046 27.1046 21 26 21H22C20.8954 21 20 20.1046 20 19V15Z" fill="#FF8C42"/>
+            <path d="M12 23C12 21.8954 12.8954 21 14 21H18C19.1046 21 20 21.8954 20 23V27C20 28.1046 19.1046 29 18 29H14C12.8954 29 12 28.1046 12 27V23Z" fill="#36D1DC"/>
+            <path d="M20 23C20 21.8954 20.8954 21 22 21H26C27.1046 21 28 21.8954 28 23V27C28 28.1046 27.1046 29 26 29H22C20.8954 29 20 28.1046 20 27V23Z" fill="#5B6AF0"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <h1>共创社区</h1>
+          <p>一起想，一起做</p>
+        </div>
       </div>
 
       <!-- 搜索框 -->
       <div class="search-box">
         <el-input
           v-model="searchKeyword"
-          placeholder="搜索项目..."
+          placeholder="搜索项目、技术、标签或用户"
           clearable
           @keyup.enter="handleSearch"
         >
-          <template #prefix>
+          <template #suffix>
             <el-icon><Search /></el-icon>
           </template>
         </el-input>
@@ -23,8 +35,8 @@
       <!-- 用户操作区 -->
       <div class="user-actions">
         <template v-if="!isLoggedIn">
-          <el-button type="primary" @click="goLogin">登录</el-button>
-          <el-button @click="goRegister">注册</el-button>
+          <el-button plain @click="goLogin">登录</el-button>
+          <el-button type="primary" @click="goRegister">注册</el-button>
         </template>
         <template v-else>
           <el-dropdown @command="handleCommand">
@@ -97,7 +109,7 @@ const handleCommand = (command) => {
 <style lang="scss" scoped>
 .header {
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid #E4E7ED;
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -105,30 +117,59 @@ const handleCommand = (command) => {
   .header-container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 16px 24px;
-    display: flex;
+    padding: 12px 24px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    gap: 24px;
+    gap: 40px;
   }
 
   .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     cursor: pointer;
-    h1 {
-      font-size: 24px;
-      font-weight: 600;
-      color: #409eff;
-      margin: 0;
-      white-space: nowrap;
+    justify-self: start;
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+    }
+
+    .logo-text {
+      h1 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #303133;
+        margin: 0;
+        line-height: 1.2;
+      }
+
+      p {
+        font-size: 12px;
+        color: #909399;
+        margin: 0;
+        line-height: 1.2;
+      }
     }
   }
 
   .search-box {
-    flex: 1;
-    max-width: 500px;
+    justify-self: center;
+    width: 100%;
+    max-width: 600px;
 
     :deep(.el-input) {
       .el-input__wrapper {
         border-radius: 20px;
+        background-color: #F5F7FA;
+        box-shadow: none;
+        border: 1px solid #E4E7ED;
+        
+        &:hover,
+        &.is-focus {
+          box-shadow: 0 0 0 1px #5B6AF0 inset;
+        }
       }
     }
   }
@@ -137,6 +178,11 @@ const handleCommand = (command) => {
     display: flex;
     align-items: center;
     gap: 12px;
+    justify-self: end;
+
+    :deep(.el-button) {
+      border-radius: 6px;
+    }
 
     .user-info {
       display: flex;
@@ -144,11 +190,11 @@ const handleCommand = (command) => {
       gap: 8px;
       cursor: pointer;
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: 6px;
       transition: background-color 0.3s;
 
       &:hover {
-        background-color: #f5f7fa;
+        background-color: #F5F7FA;
       }
 
       .username {
@@ -164,11 +210,11 @@ const handleCommand = (command) => {
   .header {
     .header-container {
       padding: 12px 16px;
-      gap: 12px;
+      gap: 16px;
     }
 
-    .logo h1 {
-      font-size: 20px;
+    .logo-text {
+      display: none;
     }
 
     .search-box {
