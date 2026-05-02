@@ -27,10 +27,13 @@
                 prefix-icon="Key"
                 style="flex: 1;"
               />
-              <div class="captcha-image" @click="refreshCaptcha" title="点击刷新验证码">
-                <img v-if="captchaImage" :src="captchaImage" alt="验证码" />
-                <span v-else>加载中...</span>
-              </div>
+              <CaptchaImage 
+                ref="captchaRef"
+                v-model:code="captchaCode"
+                :width="120"
+                :height="40"
+                :length="4"
+              />
             </div>
           </el-form-item>
           
@@ -49,19 +52,19 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import { ElMessage } from 'element-plus'
-import svgCaptcha from 'svg-captcha'
 import Header from '@/components/Header.vue'
+import CaptchaImage from '@/components/CaptchaImage.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const formRef = ref(null)
+const captchaRef = ref(null)
 const loading = ref(false)
-const captchaImage = ref('')
 const captchaCode = ref('')
 
 const registerForm = reactive({
@@ -112,24 +115,11 @@ const rules = {
   ]
 }
 
-// 生成验证码
-const generateCaptcha = () => {
-  const captcha = svgCaptcha.create({
-    size: 4,
-    ignoreChars: '0oO1lIi',
-    noise: 3,
-    color: true,
-    background: '#f5f7fa',
-    width: 120,
-    height: 40
-  })
-  captchaImage.value = `data:image/svg+xml;base64,${Buffer.from(captcha.data).toString('base64')}`
-  captchaCode.value = captcha.text
-}
-
 // 刷新验证码
 const refreshCaptcha = () => {
-  generateCaptcha()
+  if (captchaRef.value) {
+    captchaRef.value.refreshCaptcha()
+  }
   registerForm.captcha = ''
 }
 
@@ -154,11 +144,6 @@ const handleRegister = async () => {
     }
   })
 }
-
-// 组件挂载时生成验证码
-onMounted(() => {
-  generateCaptcha()
-})
 </script>
 
 <style lang="scss" scoped>
@@ -203,35 +188,6 @@ onMounted(() => {
         display: flex;
         gap: 12px;
         align-items: center;
-
-        .captcha-image {
-          width: 120px;
-          height: 40px;
-          border: 1px solid #DCDFE6;
-          border-radius: 4px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #f5f7fa;
-          transition: all 0.3s;
-
-          &:hover {
-            border-color: #409eff;
-            box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
-          }
-
-          img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-          }
-
-          span {
-            font-size: 12px;
-            color: #909399;
-          }
-        }
       }
     }
   }
