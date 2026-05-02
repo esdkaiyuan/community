@@ -12,7 +12,7 @@
         <span>推荐</span>
       </div>
       <div v-else-if="project.isHot" class="badge hot">
-        <el-icon><Fire /></el-icon>
+        <el-icon><TrendCharts /></el-icon>
         <span>热门</span>
       </div>
     </div>
@@ -66,7 +66,7 @@ import { useRouter } from 'vue-router'
 import {
   Picture,
   Star,
-  Fire,
+  TrendCharts,
   UserFilled,
   StarFilled,
   ChatDotRound

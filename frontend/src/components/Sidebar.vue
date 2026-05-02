@@ -61,7 +61,7 @@ import { storeToRefs } from 'pinia'
 import {
   House,
   Compass,
-  Fire,
+  TrendCharts,
   Clock,
   Timer,
   Monitor,
@@ -94,7 +94,7 @@ const activeNav = ref('home')
 const navItems = [
   { key: 'home', label: '首页', icon: House },
   { key: 'discover', label: '发现项目', icon: Compass },
-  { key: 'hot', label: '热门项目', icon: Fire },
+  { key: 'hot', label: '热门项目', icon: TrendCharts },
   { key: 'latest', label: '最新项目', icon: Clock },
   { key: 'deadline', label: '即将截止', icon: Timer }
 ]
