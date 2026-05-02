@@ -93,7 +93,7 @@ watch(() => props.projects, () => {
 
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 20px;
   }
 
@@ -105,11 +105,28 @@ watch(() => props.projects, () => {
 }
 
 // 响应式适配
+@media (max-width: 1200px) {
+  .project-grid {
+    .grid-container {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  .project-grid {
+    .grid-container {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .project-grid {
     .grid-container {
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
     }
   }
 }
@@ -126,6 +143,17 @@ watch(() => props.projects, () => {
         .el-pagination__sizes,
         .el-pagination__jump {
           display: none;
+        }
+
+        .btn-prev,
+        .btn-next {
+          padding: 8px 12px;
+        }
+
+        .el-pager li {
+          min-width: 28px;
+          height: 28px;
+          line-height: 28px;
         }
       }
     }

@@ -267,6 +267,14 @@ const handleLike = () => {
 }
 
 // 响应式适配
+@media (max-width: 1024px) {
+  .project-card {
+    .card-cover {
+      height: 180px;
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .project-card {
     .card-cover {
@@ -278,6 +286,50 @@ const handleLike = () => {
 
       .card-title {
         font-size: 16px;
+      }
+
+      .card-description {
+        font-size: 13px;
+        -webkit-line-clamp: 2;
+      }
+
+      .card-footer {
+        .footer-left {
+          .participants {
+            font-size: 12px;
+          }
+        }
+
+        .footer-right {
+          span {
+            font-size: 12px;
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .project-card {
+    .card-cover {
+      height: 140px;
+    }
+
+    .card-content {
+      padding: 12px;
+
+      .card-title {
+        font-size: 15px;
+      }
+
+      .card-tags {
+        margin: 12px 0;
+
+        .el-tag {
+          font-size: 11px;
+          padding: 2px 6px;
+        }
       }
     }
   }

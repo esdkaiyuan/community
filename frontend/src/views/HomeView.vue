@@ -329,6 +329,38 @@ onMounted(() => {
 }
 
 // 响应式适配
+@media (max-width: 1200px) {
+  .home-view {
+    .main-content {
+      .content-container {
+        gap: 20px;
+      }
+    }
+  }
+}
+
+@media (max-width: 1024px) {
+  .home-view {
+    .main-content {
+      .content-container {
+        grid-template-columns: 180px 1fr;
+      }
+
+      .project-section {
+        .page-header {
+          .page-title {
+            font-size: 28px;
+          }
+
+          .page-subtitle {
+            font-size: 14px;
+          }
+        }
+      }
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .home-view {
     .main-content {
@@ -344,6 +376,10 @@ onMounted(() => {
           .page-title {
             font-size: 24px;
           }
+
+          .page-subtitle {
+            font-size: 13px;
+          }
         }
 
         .filter-bar {
@@ -353,6 +389,50 @@ onMounted(() => {
 
           .filter-tabs {
             flex-wrap: wrap;
+            width: 100%;
+          }
+
+          .filter-actions {
+            width: 100%;
+            justify-content: space-between;
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .home-view {
+    .main-content {
+      padding: 12px;
+
+      .project-section {
+        .page-header {
+          margin-bottom: 16px;
+
+          .page-title {
+            font-size: 20px;
+          }
+
+          .page-subtitle {
+            font-size: 12px;
+          }
+        }
+
+        .filter-bar {
+          .filter-tabs {
+            .filter-tab {
+              font-size: 13px;
+              padding: 6px 12px;
+            }
+          }
+
+          .filter-actions {
+            .el-button {
+              padding: 8px 12px;
+              font-size: 13px;
+            }
           }
         }
       }

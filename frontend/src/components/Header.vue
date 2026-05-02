@@ -206,11 +206,65 @@ const handleCommand = (command) => {
 }
 
 // 响应式适配
+@media (max-width: 1024px) {
+  .header {
+    .header-container {
+      gap: 20px;
+    }
+
+    .search-box {
+      max-width: 500px;
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .header {
     .header-container {
       padding: 12px 16px;
-      gap: 16px;
+      gap: 12px;
+      grid-template-columns: auto 1fr auto;
+    }
+
+    .logo-text {
+      p {
+        display: none;
+      }
+
+      h1 {
+        font-size: 16px;
+      }
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+    }
+
+    .search-box {
+      max-width: none;
+
+      :deep(.el-input__inner) {
+        font-size: 14px;
+      }
+    }
+
+    .user-actions {
+      gap: 8px;
+
+      :deep(.el-button) {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    .header-container {
+      padding: 8px 12px;
+      gap: 8px;
     }
 
     .logo-text {
@@ -218,7 +272,16 @@ const handleCommand = (command) => {
     }
 
     .search-box {
-      display: none;
+      :deep(.el-input__wrapper) {
+        padding: 0 12px;
+      }
+    }
+
+    .user-actions {
+      :deep(.el-button) {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
     }
   }
 }

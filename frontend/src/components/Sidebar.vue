@@ -311,11 +311,94 @@ const goPublish = () => {
 }
 
 // 响应式适配
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 180px;
+    padding: 16px;
+
+    .nav-item,
+    .category-item {
+      font-size: 13px;
+      padding: 10px 12px;
+    }
+
+    .publish-card {
+      padding: 12px;
+
+      .publish-content {
+        h3 {
+          font-size: 14px;
+        }
+
+        p {
+          font-size: 12px;
+        }
+      }
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .sidebar {
     position: static;
     width: 100%;
     margin-bottom: 16px;
+    max-height: none;
+    overflow-y: visible;
+
+    .nav-menu {
+      display: flex;
+      overflow-x: auto;
+      gap: 8px;
+      padding-bottom: 8px;
+
+      &::-webkit-scrollbar {
+        height: 4px;
+      }
+
+      .nav-item {
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+    }
+
+    .divider {
+      display: none;
+    }
+
+    .category-list {
+      display: flex;
+      overflow-x: auto;
+      gap: 8px;
+      padding-bottom: 8px;
+
+      &::-webkit-scrollbar {
+        height: 4px;
+      }
+
+      .category-item {
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+    }
+
+    .publish-card {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    .nav-item,
+    .category-item {
+      font-size: 12px;
+      padding: 8px 10px;
+
+      .el-icon {
+        font-size: 14px;
+      }
+    }
   }
 }
 </style>
