@@ -4,11 +4,17 @@
     <div class="card-cover">
       <img v-if="project.coverImage" :src="project.coverImage" :alt="project.title" />
       <div v-else class="default-cover">
-        <el-icon><Document /></el-icon>
+        <el-icon><Picture /></el-icon>
       </div>
-      <el-tag class="category-tag" size="small">
-        {{ project.categoryName || '未分类' }}
-      </el-tag>
+      <!-- 推荐/热门标签 -->
+      <div v-if="project.isRecommend" class="badge recommend">
+        <el-icon><Star /></el-icon>
+        <span>推荐</span>
+      </div>
+      <div v-else-if="project.isHot" class="badge hot">
+        <el-icon><Fire /></el-icon>
+        <span>热门</span>
+      </div>
     </div>
 
     <!-- 项目信息 -->
@@ -16,25 +22,40 @@
       <h3 class="card-title">{{ project.title }}</h3>
       <p class="card-description">{{ project.description }}</p>
 
-      <!-- 项目元信息 -->
-      <div class="card-meta">
-        <div class="meta-item">
-          <el-icon><User /></el-icon>
-          <span>{{ project.participantCount || 0 }} 人参与</span>
-        </div>
-        <div class="meta-item">
-          <el-icon @click.stop="handleLike"><Star /></el-icon>
-          <span>{{ project.likeCount || 0 }}</span>
-        </div>
+      <!-- 标签 -->
+      <div class="card-tags">
+        <el-tag
+          v-for="tag in project.tags"
+          :key="tag"
+          size="small"
+          type="info"
+          effect="plain"
+        >
+          # {{ tag }}
+        </el-tag>
       </div>
 
-      <!-- 项目创建者 -->
+      <!-- 底部信息 -->
       <div class="card-footer">
-        <el-avatar :size="24" :src="project.creator?.avatar">
-          {{ project.creator?.username?.charAt(0)?.toUpperCase() }}
-        </el-avatar>
-        <span class="creator-name">{{ project.creator?.username || '匿名用户' }}</span>
-        <span class="create-time">{{ formatTime(project.createdAt) }}</span>
+        <div class="footer-left">
+          <el-avatar :size="24" :src="project.creator?.avatar">
+            {{ project.creator?.username?.charAt(0)?.toUpperCase() }}
+          </el-avatar>
+          <span class="participants">
+            <el-icon><UserFilled /></el-icon>
+            {{ project.participantCount || 0 }} 人参与
+          </span>
+        </div>
+        <div class="footer-right">
+          <span class="like-count" @click.stop="handleLike">
+            <el-icon><StarFilled /></el-icon>
+            {{ project.likeCount || 0 }}
+          </span>
+          <span class="comment-count">
+            <el-icon><ChatDotRound /></el-icon>
+            {{ project.commentCount || 0 }}
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -42,7 +63,14 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { Document, User, Star } from '@element-plus/icons-vue'
+import {
+  Picture,
+  Star,
+  Fire,
+  UserFilled,
+  StarFilled,
+  ChatDotRound
+} from '@element-plus/icons-vue'
 
 const props = defineProps({
   project: {
@@ -64,66 +92,38 @@ const goToDetail = () => {
 const handleLike = () => {
   emit('like', props.project.id)
 }
-
-// 格式化时间
-const formatTime = (time) => {
-  if (!time) return ''
-  const date = new Date(time)
-  const now = new Date()
-  const diff = now - date
-  
-  // 小于1分钟
-  if (diff < 60000) {
-    return '刚刚'
-  }
-  // 小于1小时
-  if (diff < 3600000) {
-    return `${Math.floor(diff / 60000)}分钟前`
-  }
-  // 小于1天
-  if (diff < 86400000) {
-    return `${Math.floor(diff / 3600000)}小时前`
-  }
-  // 小于7天
-  if (diff < 604800000) {
-    return `${Math.floor(diff / 86400000)}天前`
-  }
-  
-  // 超过7天显示具体日期
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
 </script>
 
 <style lang="scss" scoped>
 .project-card {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-6px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+    .card-cover img {
+      transform: scale(1.08);
+    }
   }
 
   .card-cover {
     position: relative;
     width: 100%;
-    height: 180px;
+    height: 200px;
     overflow: hidden;
-    background: #f5f7fa;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.3s;
-    }
-
-    &:hover img {
-      transform: scale(1.05);
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .default-cover {
@@ -132,93 +132,152 @@ const formatTime = (time) => {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 48px;
-      color: #c0c4cc;
+      font-size: 64px;
+      color: rgba(255, 255, 255, 0.6);
     }
 
-    .category-tag {
+    .badge {
       position: absolute;
       top: 12px;
       left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #fff;
+      backdrop-filter: blur(10px);
+
+      &.recommend {
+        background: rgba(102, 126, 234, 0.9);
+      }
+
+      &.hot {
+        background: rgba(255, 140, 66, 0.9);
+      }
+
+      .el-icon {
+        font-size: 14px;
+      }
     }
   }
 
   .card-content {
-    padding: 16px;
+    padding: 20px;
 
     .card-title {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 600;
       color: #303133;
-      margin: 0 0 8px 0;
+      margin: 0 0 12px 0;
+      line-height: 1.4;
       overflow: hidden;
       text-overflow: ellipsis;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
-      line-height: 1.5;
-      height: 48px;
     }
 
     .card-description {
       font-size: 14px;
       color: #909399;
-      margin: 0 0 12px 0;
+      margin: 0 0 16px 0;
+      line-height: 1.6;
       overflow: hidden;
       text-overflow: ellipsis;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
-      line-height: 1.6;
-      height: 45px;
+      min-height: 45px;
     }
 
-    .card-meta {
+    .card-tags {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #f0f0f0;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
 
-      .meta-item {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 13px;
-        color: #909399;
-
-        .el-icon {
-          font-size: 16px;
-        }
-
-        &:last-child {
-          .el-icon {
-            cursor: pointer;
-            transition: color 0.3s;
-
-            &:hover {
-              color: #e6a23c;
-            }
-          }
-        }
+      .el-tag {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        background: #f5f7fa;
+        color: #606266;
+        border: none;
       }
     }
 
     .card-footer {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: #c0c4cc;
+      padding-top: 16px;
+      border-top: 1px solid #f0f0f0;
 
-      .creator-name {
-        flex: 1;
-        color: #606266;
+      .footer-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .participants {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 13px;
+          color: #909399;
+
+          .el-icon {
+            font-size: 16px;
+          }
+        }
       }
 
-      .create-time {
-        white-space: nowrap;
+      .footer-right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+
+        .like-count,
+        .comment-count {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 13px;
+          color: #909399;
+          cursor: pointer;
+          transition: color 0.3s;
+
+          &:hover {
+            color: #667eea;
+          }
+
+          .el-icon {
+            font-size: 16px;
+          }
+        }
+
+        .like-count:hover {
+          color: #ff8c42;
+        }
+      }
+    }
+  }
+}
+
+// 响应式适配
+@media (max-width: 768px) {
+  .project-card {
+    .card-cover {
+      height: 160px;
+    }
+
+    .card-content {
+      padding: 16px;
+
+      .card-title {
+        font-size: 16px;
       }
     }
   }
