@@ -157,7 +157,7 @@ const handleCommand = (command) => {
   .search-box {
     justify-self: center;
     width: 100%;
-    max-width: 600px;
+    max-width: 800px;
 
     :deep(.el-input) {
       .el-input__wrapper {
