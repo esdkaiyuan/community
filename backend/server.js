@@ -1,6 +1,7 @@
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
+const routes = require('./src/routes')
 
 const app = express()
 
@@ -10,6 +11,8 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 // 路由
+app.use('/api', routes)
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' })
 })
