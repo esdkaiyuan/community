@@ -14,8 +14,11 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # 检查是否在正确的项目目录
-if [ ! -f "package.json" ]; then
+if [ ! -d "backend" ] || [ ! -d "frontend" ]; then
     echo -e "${RED}错误: 请在项目根目录运行此脚本${NC}"
+    echo -e "${YELLOW}提示: 当前目录应该包含 backend/ 和 frontend/ 文件夹${NC}"
+    echo -e "${YELLOW}当前目录: $(pwd)${NC}"
+    echo -e "${YELLOW}目录内容:$(ls -la | head -10)${NC}"
     exit 1
 fi
 
