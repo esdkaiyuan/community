@@ -5,6 +5,7 @@ const routes = [
     path: '/',
     name: 'Home',
     component: () => import('@/views/HomeView.vue')
+    // component: () => import('@/views/TestView.vue')
   },
   {
     path: '/login',
@@ -32,6 +33,11 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// 路由错误处理
+router.onError((error) => {
+  console.error('Router error:', error)
 })
 
 // 路由守卫
