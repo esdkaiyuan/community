@@ -38,3 +38,19 @@ Thumbs.db
 # 数据库
 *.sql
 !database/*.sql
+
+# 部署包（本地生成，不提交）
+*.zip
+!community-deploy-*.zip
+
+# 截图文件
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+
+# 临时文档
+DEPLOY_GUIDE.md
+LOCAL_DEV_SETUP.md
+MYSQL_SETUP.md
