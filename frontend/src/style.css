@@ -11,6 +11,12 @@
     @apply bg-paper text-ink font-sans;
   }
 
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight;
+  }
+
   ::selection {
     @apply bg-pine/20 text-pine-deep;
   }
@@ -53,9 +59,9 @@
     @apply w-full rounded-xl border border-line bg-cream px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 placeholder:text-ink-dim focus:border-pine focus:ring-2 focus:ring-pine/15;
   }
 
-  /* 卡片容器 */
+  /* 卡片容器（apple.com 风格：无边框白卡 + 柔和阴影） */
   .card {
-    @apply rounded-xl2 border border-line bg-cream shadow-card;
+    @apply rounded-xl2 bg-cream shadow-card;
   }
 
   /* 标签 chip */

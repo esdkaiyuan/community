@@ -1,7 +1,7 @@
 <template>
   <router-link
     :to="`/project/${project.id}`"
-    class="card group block overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-line-strong hover:shadow-card-hover"
+    class="card group block overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover"
   >
     <!-- 封面 -->
     <div class="relative aspect-[16/9] overflow-hidden">
@@ -26,8 +26,8 @@
 
       <!-- 徽标 -->
       <div class="absolute left-3 top-3 flex gap-1.5">
-        <span v-if="project.isRecommend" class="rounded-full bg-amber-warm px-2 py-0.5 text-xs font-medium text-white shadow">推荐</span>
-        <span v-if="project.isHot" class="rounded-full bg-clay px-2 py-0.5 text-xs font-medium text-white shadow">热门</span>
+        <span v-if="project.isRecommend" class="rounded-full bg-amber-warm px-2.5 py-0.5 text-[11px] font-medium text-white shadow-sm">推荐</span>
+        <span v-if="project.isHot" class="rounded-full bg-clay px-2.5 py-0.5 text-[11px] font-medium text-white shadow-sm">热门</span>
       </div>
       <span
         v-if="project.categoryName"
@@ -38,8 +38,8 @@
     </div>
 
     <!-- 内容 -->
-    <div class="p-4">
-      <h3 class="truncate text-base font-semibold text-ink transition-colors group-hover:text-pine">
+    <div class="p-5">
+      <h3 class="truncate text-[17px] font-semibold text-ink transition-colors group-hover:text-pine">
         {{ project.title }}
       </h3>
       <p class="mt-1.5 line-clamp-2 min-h-[2.5rem] text-sm leading-relaxed text-ink-mid">
@@ -50,7 +50,7 @@
         <span v-for="tag in project.tags.slice(0, 3)" :key="tag" class="chip"># {{ tag }}</span>
       </div>
 
-      <div class="mt-3.5 flex items-center justify-between border-t border-line pt-3">
+      <div class="mt-4 flex items-center justify-between border-t border-line pt-3.5">
         <!-- 创建者 -->
         <div class="flex min-w-0 items-center gap-2">
           <span class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-[10px] font-bold text-pine-deep">

@@ -4,30 +4,38 @@
     <section v-if="!isFiltering" class="relative overflow-hidden border-b border-line bg-cream">
       <!-- 装饰：柔和光晕（克制） -->
       <div class="pointer-events-none absolute inset-0" aria-hidden="true">
-        <div class="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-pine-soft opacity-60 blur-3xl"></div>
+        <div class="absolute left-1/2 top-0 h-80 w-[36rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-pine-soft opacity-50 blur-3xl"></div>
       </div>
 
-      <div class="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
-        <div class="max-w-2xl animate-fade-up">
-          <span class="inline-flex items-center gap-2 rounded-full border border-line bg-white/80 px-4 py-1.5 text-sm text-ink-mid backdrop-blur">
-            <AppIcon name="sprout" class="h-4 w-4 text-pine" />
+      <div class="relative mx-auto max-w-4xl px-4 py-20 text-center sm:px-6 sm:py-28">
+        <div class="animate-fade-up">
+          <p class="inline-flex items-center gap-1.5 text-sm font-medium text-pine">
+            <AppIcon name="sprout" class="h-4 w-4" />
             已有 {{ total }} 个项目正在共创
-          </span>
-          <h1 class="mt-5 font-display text-4xl font-bold leading-tight text-ink sm:text-5xl">
+          </p>
+          <h1 class="mt-4 text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-6xl">
             一起想，一起做<br />
             <span class="text-pine">让好创意落地生根</span>
           </h1>
-          <p class="mt-5 max-w-xl text-base leading-relaxed text-ink-mid">
+          <p class="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-ink-mid">
             在这里发布你的项目构想，找到志同道合的伙伴；或者加入别人的项目，贡献你的一份力量。
           </p>
-          <div class="mt-8 flex flex-wrap gap-3">
-            <router-link to="/publish" class="btn-primary !px-6 !py-3">
+          <div class="mt-9 flex flex-wrap items-center justify-center gap-5">
+            <router-link to="/publish" class="btn-primary !px-7 !py-3 text-base">
               发布我的项目
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
                 <path d="M5 12h14m-6-6 6 6-6 6" />
               </svg>
             </router-link>
-            <a href="#projects" class="btn-secondary !px-6 !py-3">浏览项目广场</a>
+            <a
+              href="#projects"
+              class="inline-flex items-center gap-0.5 text-base font-medium text-pine transition-colors hover:text-pine-deep hover:underline"
+            >
+              浏览项目广场
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m9 6 6 6-6 6" />
+              </svg>
+            </a>
           </div>
         </div>
       </div>

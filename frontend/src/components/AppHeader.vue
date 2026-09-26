@@ -1,19 +1,16 @@
 <template>
-  <header class="sticky top-0 z-50 border-b border-line bg-paper/90 backdrop-blur">
-    <div class="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
+  <header class="sticky top-0 z-50 border-b border-line bg-white/72 backdrop-blur-xl backdrop-saturate-150">
+    <div class="mx-auto flex h-12 max-w-7xl items-center gap-4 px-4 sm:px-6">
       <!-- Logo -->
-      <router-link to="/" class="flex shrink-0 items-center gap-2.5">
-        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-pine">
-          <svg viewBox="0 0 64 64" class="h-5 w-5" aria-hidden="true">
+      <router-link to="/" class="flex shrink-0 items-center gap-2">
+        <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-pine">
+          <svg viewBox="0 0 64 64" class="h-4 w-4" aria-hidden="true">
             <path d="M32 46c0-9 0-14 0-19" stroke="white" stroke-width="4" stroke-linecap="round" fill="none" />
             <path d="M32 30c0-7 5-11.5 11.5-11.5C43.5 25.5 38.5 30 32 30z" fill="rgba(255,255,255,0.7)" />
             <path d="M32 36c0-5.6-4.2-9.5-9.5-9.5 0 5.6 4.2 9.5 9.5 9.5z" fill="white" />
           </svg>
         </span>
-        <span class="flex flex-col leading-none">
-          <span class="font-display text-lg font-bold tracking-wide text-ink">共创社区</span>
-          <span class="mt-0.5 hidden text-[10px] tracking-[0.2em] text-ink-dim sm:block">一起想 · 一起做</span>
-        </span>
+        <span class="text-base font-semibold tracking-tight text-ink">共创社区</span>
       </router-link>
 
       <!-- 搜索框 -->
@@ -30,7 +27,7 @@
             v-model="keyword"
             type="search"
             placeholder="搜索感兴趣的项目…"
-            class="input rounded-full py-2 pl-10 pr-4"
+            class="input rounded-full border-transparent bg-sand py-1.5 text-sm focus:border-pine focus:bg-cream"
           />
         </div>
       </form>
