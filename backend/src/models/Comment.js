@@ -20,6 +20,11 @@ const Comment = sequelize.define(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false
     },
+    parent_id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      comment: '根评论ID（回复功能）；仅两级：回复一律展平挂到根评论'
+    },
     content: {
       type: DataTypes.TEXT,
       allowNull: false

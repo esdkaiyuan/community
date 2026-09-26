@@ -61,35 +61,93 @@
       </div>
     </div>
 
-    <!-- 评论列表：发丝线分隔 -->
+    <!-- 评论列表：发丝线分隔，根评论 + 两级回复 -->
     <ul v-else-if="comments.length" class="mt-2">
       <li
         v-for="(c, i) in comments"
         :key="c.id"
         v-reveal="i < 4 ? i * 60 : 0"
-        class="flex gap-3.5 border-b border-line py-6 last:border-b-0"
+        class="border-b border-line py-6 last:border-b-0"
       >
-        <span
-          class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-sm font-bold text-pine-deep"
-        >
-          <img v-if="c.user?.avatar" :src="c.user.avatar" alt="" class="h-full w-full object-cover" />
-          <template v-else>{{ (c.user?.username || '友').slice(0, 1).toUpperCase() }}</template>
-        </span>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2">
-            <span class="truncate text-[15px] font-medium text-ink">{{ c.user?.username || '匿名共创者' }}</span>
-            <span class="shrink-0 text-xs text-ink-dim">{{ relativeTime(c.createdAt) }}</span>
-            <button
-              v-if="c.canDelete"
-              class="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-ink-dim transition-colors hover:bg-[#FBE9EB] hover:text-clay"
-              :disabled="removing === c.id"
-              @click="handleDelete(c)"
-            >
-              <AppIcon name="trash-2" class="h-3.5 w-3.5" />
-              删除
-            </button>
+        <!-- 根评论 -->
+        <div class="flex gap-3.5">
+          <Avatar :user="c.user" size="md" />
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="truncate text-[15px] font-medium text-ink">{{ c.user?.username || '匿名共创者' }}</span>
+              <span class="shrink-0 text-xs text-ink-dim">{{ relativeTime(c.createdAt) }}</span>
+              <div class="ml-auto flex shrink-0 items-center gap-1">
+                <button
+                  v-if="userStore.isLoggedIn"
+                  class="rounded-full px-2 py-1 text-xs text-ink-dim transition-colors hover:bg-pine-soft hover:text-pine-deep"
+                  @click="toggleReply(c)"
+                >
+                  回复
+                </button>
+                <button
+                  v-if="c.canDelete"
+                  class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-ink-dim transition-colors hover:bg-[#FBE9EB] hover:text-clay"
+                  :disabled="removing === c.id"
+                  @click="handleDelete(c, null)"
+                >
+                  <AppIcon name="trash-2" class="h-3.5 w-3.5" />
+                  删除
+                </button>
+              </div>
+            </div>
+            <p class="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed text-ink-mid">{{ c.content }}</p>
           </div>
-          <p class="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed text-ink-mid">{{ c.content }}</p>
+        </div>
+
+        <!-- 回复列表（缩进，小一号） -->
+        <div v-if="c.replies?.length" class="ml-[26px] mt-4 space-y-4 border-l border-line pl-6 sm:ml-[38px] sm:pl-7">
+          <div v-for="r in c.replies" :key="r.id" class="flex gap-3">
+            <Avatar :user="r.user" size="sm" />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="truncate text-sm font-medium text-ink">{{ r.user?.username || '匿名共创者' }}</span>
+                <span class="shrink-0 text-xs text-ink-dim">{{ relativeTime(r.createdAt) }}</span>
+                <button
+                  v-if="r.canDelete"
+                  class="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs text-ink-dim transition-colors hover:bg-[#FBE9EB] hover:text-clay"
+                  :disabled="removing === r.id"
+                  @click="handleDelete(r, c)"
+                >
+                  <AppIcon name="trash-2" class="h-3 w-3" />
+                  删除
+                </button>
+              </div>
+              <p class="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink-mid">{{ r.content }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 回复输入（内联展开） -->
+        <div v-if="replyingTo === c.id" class="ml-[26px] mt-4 sm:ml-[38px]">
+          <div class="flex gap-3 rounded-xl bg-cream p-3.5">
+            <div class="min-w-0 flex-1">
+              <textarea
+                v-model.trim="replyDraft"
+                rows="2"
+                maxlength="500"
+                :placeholder="`回复 @${c.user?.username || '匿名共创者'}…`"
+                class="w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-ink placeholder:text-ink-dim/70 focus:outline-none"
+              ></textarea>
+              <div class="mt-2 flex items-center justify-between border-t border-line pt-2">
+                <span class="text-xs tabular-nums text-ink-dim">{{ replyDraft.length }}/500</span>
+                <div class="flex items-center gap-1">
+                  <button class="btn-ghost !px-3 !py-1 text-xs" @click="cancelReply">取消</button>
+                  <button
+                    class="btn-primary !px-4 !py-1 text-xs"
+                    :disabled="!replyDraft || submitting"
+                    @click="submitReply(c)"
+                  >
+                    {{ submitting ? '发布中…' : '回复' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </li>
     </ul>
@@ -111,13 +169,26 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, h, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import * as commentApi from '@/api/comment'
 import { useUserStore } from '@/store/user'
 import { hasEmoji, stripEmoji } from '@/utils/text'
 import { toast } from '@/composables/useToast'
 import AppIcon from '@/components/AppIcon.vue'
+
+// 头像：与全站一致的字母回退（函数式组件，避免嵌套列表重复模板）
+const Avatar = (props) => {
+  const size = props.size === 'sm' ? 'h-8 w-8 text-xs' : 'h-10 w-10 text-sm'
+  return h(
+    'span',
+    { class: `flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft font-bold text-pine-deep ${size}` },
+    props.user?.avatar
+      ? [h('img', { src: props.user.avatar, alt: '', class: 'h-full w-full object-cover' })]
+      : [(props.user?.username || '友').slice(0, 1).toUpperCase()]
+  )
+}
+Avatar.props = { user: { type: Object, default: null }, size: { type: String, default: 'md' } }
 
 const props = defineProps({
   projectId: { type: [Number, String], required: true }
@@ -136,6 +207,10 @@ const submitting = ref(false)
 const removing = ref(null)
 const draft = ref('')
 
+// 回复状态：replyingTo 为根评论 id，replyDraft 为回复内容
+const replyingTo = ref(null)
+const replyDraft = ref('')
+
 const hasMore = computed(() => comments.value.length < total.value)
 
 const relativeTime = (str) => {
@@ -148,6 +223,13 @@ const relativeTime = (str) => {
   if (diff < 30 * 24 * 60 * min) return `${Math.floor(diff / (24 * 60 * min))} 天前`
   const d = new Date(str)
   return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`
+}
+
+// 提交前净化：与后端同一套规则，全站仅允许矢量图标
+const sanitize = (text) => {
+  if (!hasEmoji(text)) return { content: text, hadEmoji: false }
+  const cleaned = stripEmoji(text)
+  return { content: cleaned, hadEmoji: true }
 }
 
 const applyRes = (res) => {
@@ -179,15 +261,10 @@ const loadMore = async () => {
 
 const handleSubmit = async () => {
   if (!draft.value || submitting.value) return
-
-  // 与后端同一套规则：移除 emoji（全站仅允许矢量图标）
-  let content = draft.value
-  if (hasEmoji(content)) {
-    content = stripEmoji(content)
-    if (!content) {
-      toast('评论不能只有表情符号', 'info')
-      return
-    }
+  const { content, hadEmoji } = sanitize(draft.value)
+  if (!content) {
+    toast('评论不能只有表情符号', 'info')
+    return
   }
 
   submitting.value = true
@@ -196,7 +273,7 @@ const handleSubmit = async () => {
     comments.value.unshift(res.data.comment)
     total.value = res.data.commentCount
     draft.value = ''
-    toast(res.data.hadEmoji ? '评论已发布，表情符号已自动移除' : '评论已发布')
+    toast(hadEmoji ? '评论已发布，表情符号已自动移除' : '评论已发布')
   } catch (e) {
     toast(e.response?.data?.message || '发布失败，请稍后再试', 'error')
   } finally {
@@ -204,12 +281,59 @@ const handleSubmit = async () => {
   }
 }
 
-const handleDelete = async (c) => {
-  if (!window.confirm('确定删除这条评论吗？')) return
+const toggleReply = (c) => {
+  if (replyingTo.value === c.id) {
+    cancelReply()
+    return
+  }
+  replyingTo.value = c.id
+  replyDraft.value = ''
+  nextTick(() => {
+    const inputs = document.querySelectorAll('textarea')
+    inputs[inputs.length - 1]?.focus()
+  })
+}
+
+const cancelReply = () => {
+  replyingTo.value = null
+  replyDraft.value = ''
+}
+
+const submitReply = async (root) => {
+  if (!replyDraft.value || submitting.value) return
+  const { content, hadEmoji } = sanitize(replyDraft.value)
+  if (!content) {
+    toast('回复不能只有表情符号', 'info')
+    return
+  }
+
+  submitting.value = true
+  try {
+    const res = await commentApi.createComment(props.projectId, { content, parentId: root.id })
+    root.replies.push(res.data.comment)
+    root.replyCount += 1
+    total.value = res.data.commentCount
+    cancelReply()
+    toast(hadEmoji ? '回复已发布，表情符号已自动移除' : '回复已发布')
+  } catch (e) {
+    toast(e.response?.data?.message || '发布失败，请稍后再试', 'error')
+  } finally {
+    submitting.value = false
+  }
+}
+
+const handleDelete = async (c, root) => {
+  const tip = c.parentId === null && c.replyCount > 0 ? `删除这条评论将同时删除其下 ${c.replyCount} 条回复。` : '确定删除这条评论吗？'
+  if (!window.confirm(`${tip}\n此操作不可恢复。`)) return
   removing.value = c.id
   try {
     const res = await commentApi.deleteComment(props.projectId, c.id)
-    comments.value = comments.value.filter((item) => item.id !== c.id)
+    if (root) {
+      root.replies = root.replies.filter((item) => item.id !== c.id)
+      root.replyCount = Math.max(0, root.replyCount - 1)
+    } else {
+      comments.value = comments.value.filter((item) => item.id !== c.id)
+    }
     total.value = res.data.commentCount
     toast('评论已删除', 'info')
   } catch (e) {

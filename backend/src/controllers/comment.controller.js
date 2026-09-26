@@ -16,6 +16,7 @@ exports.createComment = asyncHandler(async (req, res) => {
   const data = await commentService.createComment({
     projectId: req.params.id,
     content: req.body.content,
+    parentId: req.body.parentId,
     userId: req.user.userId
   })
   created(res, data, data.hadEmoji ? '评论发布成功（表情符号已自动移除）' : '评论发布成功')
