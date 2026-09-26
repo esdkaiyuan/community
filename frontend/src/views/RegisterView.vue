@@ -2,11 +2,7 @@
   <div class="mx-auto flex max-w-5xl items-center px-4 py-12 sm:px-6 sm:py-16">
     <div class="card grid w-full overflow-hidden md:grid-cols-2">
       <!-- 品牌面板 -->
-      <div class="relative hidden flex-col justify-between overflow-hidden bg-pine p-10 text-white md:flex">
-        <div
-          class="pointer-events-none absolute inset-0 opacity-20"
-          style="background-image: radial-gradient(rgba(255,255,255,0.35) 1px, transparent 1px); background-size: 22px 22px;"
-        ></div>
+      <div class="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-b from-pine to-pine-deep p-10 text-white md:flex">
         <div class="relative">
           <span class="text-xs tracking-[0.3em] opacity-70">CO-CREATION COMMUNITY</span>
           <h2 class="mt-4 font-display text-3xl font-bold leading-snug">
@@ -14,9 +10,9 @@
           </h2>
         </div>
         <ul class="relative space-y-3 text-sm opacity-85">
-          <li class="flex items-center gap-2.5"><span class="text-base">💡</span> 发布项目，寻找志同道合的伙伴</li>
-          <li class="flex items-center gap-2.5"><span class="text-base">🤝</span> 参与感兴趣的项目，贡献力量</li>
-          <li class="flex items-center gap-2.5"><span class="text-base">🌱</span> 见证创意从萌芽到落地</li>
+          <li class="flex items-center gap-2.5"><AppIcon name="lightbulb" class="h-4 w-4 shrink-0" />发布项目，寻找志同道合的伙伴</li>
+          <li class="flex items-center gap-2.5"><AppIcon name="users" class="h-4 w-4 shrink-0" />参与感兴趣的项目，贡献力量</li>
+          <li class="flex items-center gap-2.5"><AppIcon name="sprout" class="h-4 w-4 shrink-0" />见证创意从萌芽到落地</li>
         </ul>
       </div>
 
@@ -112,6 +108,7 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { toast } from '@/composables/useToast'
+import AppIcon from '@/components/AppIcon.vue'
 
 const router = useRouter()
 const userStore = useUserStore()

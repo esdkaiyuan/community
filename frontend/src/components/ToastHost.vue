@@ -5,10 +5,9 @@
         <div
           v-for="t in toasts"
           :key="t.id"
-          class="pointer-events-auto flex items-center gap-2 rounded-full border px-4 py-2 text-sm shadow-pop animate-toast-in"
-          :class="styleMap[t.type] || styleMap.info"
+          class="pointer-events-auto flex items-center gap-2.5 rounded-2xl border border-line bg-white/95 px-4 py-2.5 text-sm text-ink shadow-pop backdrop-blur animate-toast-in"
         >
-          <span class="text-base leading-none">{{ iconMap[t.type] || iconMap.info }}</span>
+          <AppIcon :name="iconMap[t.type] || iconMap.info" class="h-4.5 w-4.5 shrink-0" :class="colorMap[t.type] || colorMap.info" />
           <span>{{ t.message }}</span>
         </div>
       </TransitionGroup>
@@ -18,17 +17,19 @@
 
 <script setup>
 import { toasts } from '@/composables/useToast'
-
-const styleMap = {
-  success: 'border-pine/30 bg-pine-tint text-pine-deep',
-  error: 'border-clay/30 bg-[#FBEBE7] text-clay',
-  info: 'border-line-strong bg-cream text-ink'
-}
+import AppIcon from '@/components/AppIcon.vue'
 
 const iconMap = {
-  success: '✓',
-  error: '✕',
-  info: 'ℹ'
+  success: 'check-circle',
+  error: 'x-circle',
+  info: 'info'
+}
+
+// Apple 系统色：绿 #34C759 / 红 #E30000 / 蓝 #0071E3
+const colorMap = {
+  success: 'text-[#34C759]',
+  error: 'text-[#E30000]',
+  info: 'text-pine'
 }
 </script>
 

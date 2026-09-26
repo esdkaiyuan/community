@@ -91,14 +91,14 @@ const props = defineProps({
 
 const imgFailed = ref(false)
 
-// 无封面时按 id 从暖色系中取一组稳定配色
+// 无封面时按 id 从 Apple 中性色系取一组稳定配色
 const PALETTES = [
-  { bg: 'linear-gradient(135deg, #DCEBDD 0%, #B9D8BE 100%)', fg: '#2E6B4F' },
-  { bg: 'linear-gradient(135deg, #F5E6CE 0%, #EBD1A6 100%)', fg: '#9A6A22' },
-  { bg: 'linear-gradient(135deg, #E2E8F2 0%, #C3CFE4 100%)', fg: '#44598B' },
-  { bg: 'linear-gradient(135deg, #F3E0DA 0%, #E7C3B6 100%)', fg: '#A05540' },
-  { bg: 'linear-gradient(135deg, #E9E4F4 0%, #D2C8EA 100%)', fg: '#63549B' },
-  { bg: 'linear-gradient(135deg, #E0EFEE 0%, #BCDEDC 100%)', fg: '#2F6E6A' }
+  { bg: 'linear-gradient(135deg, #E8E8ED 0%, #D2D2D7 100%)', fg: '#6E6E73' },
+  { bg: 'linear-gradient(135deg, #E8F1FD 0%, #C5DFFF 100%)', fg: '#0066CC' },
+  { bg: 'linear-gradient(135deg, #FDF0E4 0%, #FFDDB8 100%)', fg: '#C93400' },
+  { bg: 'linear-gradient(135deg, #FCE8E9 0%, #FFD1D4 100%)', fg: '#D70015' },
+  { bg: 'linear-gradient(135deg, #F0F0F3 0%, #D8DAE5 100%)', fg: '#3A3A3C' },
+  { bg: 'linear-gradient(135deg, #E8F5F4 0%, #C2E8E5 100%)', fg: '#00796B' }
 ]
 
 const placeholder = computed(() => PALETTES[(Number(props.project.id) || 0) % PALETTES.length])

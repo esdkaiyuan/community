@@ -2,19 +2,17 @@
   <div>
     <!-- ============ Hero ============ -->
     <section v-if="!isFiltering" class="relative overflow-hidden border-b border-line bg-cream">
-      <!-- 装饰：网格纹理 + 光斑 -->
+      <!-- 装饰：柔和光晕（克制） -->
       <div class="pointer-events-none absolute inset-0" aria-hidden="true">
-        <div
-          class="absolute inset-0 opacity-[0.5]"
-          style="background-image: linear-gradient(#e8e3d5 1px, transparent 1px), linear-gradient(90deg, #e8e3d5 1px, transparent 1px); background-size: 44px 44px;"
-        ></div>
-        <div class="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-pine-soft blur-3xl"></div>
-        <div class="absolute -right-16 bottom-0 h-64 w-64 rounded-full bg-amber-soft blur-3xl"></div>
+        <div class="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-pine-soft opacity-60 blur-3xl"></div>
       </div>
 
       <div class="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
         <div class="max-w-2xl animate-fade-up">
-          <span class="chip !bg-pine !px-3 !py-1 !text-white">🌱 已有 {{ total }} 个项目正在共创</span>
+          <span class="inline-flex items-center gap-2 rounded-full border border-line bg-white/80 px-4 py-1.5 text-sm text-ink-mid backdrop-blur">
+            <AppIcon name="sprout" class="h-4 w-4 text-pine" />
+            已有 {{ total }} 个项目正在共创
+          </span>
           <h1 class="mt-5 font-display text-4xl font-bold leading-tight text-ink sm:text-5xl">
             一起想，一起做<br />
             <span class="text-pine">让好创意落地生根</span>
@@ -60,7 +58,7 @@
           :class="{ 'is-active': query.categoryId === String(cat.id) }"
           @click="setCategory(cat.id)"
         >
-          <span v-if="cat.icon">{{ categoryIcon(cat.icon) }}</span>
+          <AppIcon v-if="cat.icon" :name="categoryIcon(cat.icon)" class="h-3.5 w-3.5" />
           {{ cat.name }}
           <span class="text-xs opacity-60">{{ cat.count }}</span>
         </button>
@@ -72,10 +70,11 @@
           <button
             v-for="f in FILTERS"
             :key="f.value"
-            class="rounded-full px-3.5 py-1.5 text-sm transition-colors"
+            class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-colors"
             :class="query.filter === f.value ? 'bg-amber-soft font-medium text-amber-warm' : 'text-ink-mid hover:bg-sand'"
             @click="toggleFilter(f.value)"
           >
+            <AppIcon :name="f.icon" class="h-3.5 w-3.5" />
             {{ f.label }}
           </button>
         </div>
@@ -102,7 +101,7 @@
       <!-- 加载失败 -->
       <EmptyState
         v-else-if="loadError"
-        icon="🔌"
+        icon="triangle-alert"
         title="加载失败了"
         description="可能是网络或服务暂时不可用，请稍后重试。"
       >
@@ -112,7 +111,7 @@
       <!-- 空结果 -->
       <EmptyState
         v-else-if="!projects.length"
-        icon="🌱"
+        icon="sprout"
         :title="query.search ? '没有找到相关项目' : '这里还很安静'"
         :description="query.search ? '换个关键词试试，或者浏览全部项目。' : '成为第一个发布项目的人，让创意在这里发芽。'"
       >
@@ -145,6 +144,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getProjects } from '@/api/project'
 import { getCategories } from '@/api/category'
 import { categoryIcon } from '@/utils/categoryIcon'
+import AppIcon from '@/components/AppIcon.vue'
 import ProjectCard from '@/components/ProjectCard.vue'
 import ProjectCardSkeleton from '@/components/ProjectCardSkeleton.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -152,8 +152,8 @@ import Pagination from '@/components/Pagination.vue'
 
 const PAGE_SIZE = 12
 const FILTERS = [
-  { label: '⭐ 编辑推荐', value: 'recommend' },
-  { label: '🔥 热门', value: 'hot' }
+  { label: '编辑推荐', value: 'recommend', icon: 'star' },
+  { label: '热门', value: 'hot', icon: 'flame' }
 ]
 const SORTS = [
   { label: '最新', value: 'latest' },

@@ -1,42 +1,62 @@
 /** @type {import('tailwindcss').Config} */
+// Apple HIG 风格设计令牌
+// 页面底 #F5F5F7 / 卡片纯白 / 主文字 #1D1D1F / 强调蓝 #0071E3 / 分隔线 #D2D2D7
+// token 名称保持不变（paper/ink/pine...），仅重映射取值，全站用法自动切换
 export default {
   content: ['./index.html', './src/**/*.{vue,js}'],
   theme: {
     extend: {
       colors: {
-        paper: '#F7F4EC',
-        cream: '#FDFBF6',
-        sand: '#EFEADF',
+        paper: '#F5F5F7',
+        cream: '#FFFFFF',
+        sand: '#E8E8ED',
         ink: {
-          DEFAULT: '#1F2A24',
-          mid: '#5A665F',
-          dim: '#98A29B'
+          DEFAULT: '#1D1D1F',
+          mid: '#6E6E73',
+          dim: '#AEAEB2'
         },
         pine: {
-          DEFAULT: '#2E6B4F',
-          deep: '#1F4D38',
-          soft: '#E3EFE8',
-          tint: '#F0F7F2'
+          DEFAULT: '#0071E3',
+          deep: '#0066CC',
+          soft: '#E8F1FD',
+          tint: '#F5F9FF'
         },
         amber: {
-          warm: '#D9862A',
-          soft: '#FBEEDD'
+          warm: '#C93400',
+          soft: '#FDF0E4'
         },
-        clay: '#C4553B',
-        line: '#E4DFD2',
-        'line-strong': '#D3CCBA'
+        clay: '#D70015',
+        line: '#D2D2D7',
+        'line-strong': '#A1A1A6'
       },
       fontFamily: {
-        sans: ['"PingFang SC"', '"Microsoft YaHei"', '"Noto Sans SC"', '-apple-system', 'system-ui', 'sans-serif'],
-        display: ['"Noto Serif SC"', '"Songti SC"', 'SimSun', 'serif']
+        sans: [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"SF Pro Text"',
+          '"Helvetica Neue"',
+          '"PingFang SC"',
+          '"Hiragino Sans GB"',
+          '"Microsoft YaHei"',
+          'sans-serif'
+        ],
+        // Apple 不使用衬线展示字体，display 统一走系统栈
+        display: [
+          '"SF Pro Display"',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"PingFang SC"',
+          '"Microsoft YaHei"',
+          'sans-serif'
+        ]
       },
       boxShadow: {
-        card: '0 1px 2px rgba(31, 42, 36, 0.04), 0 6px 20px rgba(31, 42, 36, 0.06)',
-        'card-hover': '0 2px 4px rgba(31, 42, 36, 0.06), 0 14px 36px rgba(31, 42, 36, 0.12)',
-        pop: '0 10px 40px rgba(31, 42, 36, 0.16)'
+        card: '0 2px 8px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06)',
+        'card-hover': '0 4px 12px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.12)',
+        pop: '0 12px 40px rgba(0, 0, 0, 0.18)'
       },
       borderRadius: {
-        xl2: '1.25rem'
+        xl2: '1.125rem'
       },
       keyframes: {
         'fade-up': {

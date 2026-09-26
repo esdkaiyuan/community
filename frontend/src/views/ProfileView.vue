@@ -39,7 +39,7 @@
 
       <EmptyState
         v-else-if="!myProjects.length"
-        icon="💡"
+        icon="lightbulb"
         title="你还没有发布过项目"
         description="有什么想法在脑子里转了很久？写下来，让它见见光。"
       >

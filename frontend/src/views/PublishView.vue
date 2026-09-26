@@ -37,7 +37,7 @@
             :class="{ 'is-active': form.categoryId === cat.id }"
             @click="form.categoryId = form.categoryId === cat.id ? null : cat.id"
           >
-            <span v-if="cat.icon">{{ categoryIcon(cat.icon) }}</span>
+            <AppIcon v-if="cat.icon" :name="categoryIcon(cat.icon)" class="h-3.5 w-3.5" />
             {{ cat.name }}
           </button>
         </div>
@@ -71,7 +71,9 @@
             class="chip !py-1"
           >
             # {{ tag }}
-            <button type="button" class="ml-1 text-pine-deep/60 hover:text-clay" aria-label="移除标签" @click="form.tags.splice(i, 1)">✕</button>
+            <button type="button" class="ml-1 text-pine-deep/60 hover:text-clay" aria-label="移除标签" @click="form.tags.splice(i, 1)">
+              <AppIcon name="x" class="h-3 w-3" />
+            </button>
           </span>
           <input
             id="tag"
@@ -118,7 +120,8 @@
             <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" class="opacity-25" />
             <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
           </svg>
-          {{ submitting ? '发布中…' : '🌱 发布项目' }}
+          <AppIcon v-if="!submitting" name="sprout" class="h-4 w-4" />
+          {{ submitting ? '发布中…' : '发布项目' }}
         </button>
       </div>
     </form>
@@ -131,6 +134,7 @@ import { useRouter } from 'vue-router'
 import { createProject } from '@/api/project'
 import { getCategories } from '@/api/category'
 import { categoryIcon } from '@/utils/categoryIcon'
+import AppIcon from '@/components/AppIcon.vue'
 import { toast } from '@/composables/useToast'
 
 const router = useRouter()

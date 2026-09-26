@@ -2,11 +2,7 @@
   <div class="mx-auto flex max-w-5xl items-center px-4 py-12 sm:px-6 sm:py-16">
     <div class="card grid w-full overflow-hidden md:grid-cols-2">
       <!-- 品牌面板 -->
-      <div class="relative hidden flex-col justify-between overflow-hidden bg-pine p-10 text-white md:flex">
-        <div
-          class="pointer-events-none absolute inset-0 opacity-20"
-          style="background-image: radial-gradient(rgba(255,255,255,0.35) 1px, transparent 1px); background-size: 22px 22px;"
-        ></div>
+      <div class="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-b from-pine to-pine-deep p-10 text-white md:flex">
         <div class="relative">
           <span class="text-xs tracking-[0.3em] opacity-70">CO-CREATION COMMUNITY</span>
           <h2 class="mt-4 font-display text-3xl font-bold leading-snug">

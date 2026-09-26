@@ -12,7 +12,7 @@
     <!-- 不存在 -->
     <EmptyState
       v-else-if="notFound"
-      icon="🔍"
+      icon="search"
       title="项目不存在或已被删除"
       description="它可能已经完成使命，去看看其他项目吧。"
     >
@@ -50,8 +50,8 @@
           </span>
         </div>
         <div class="absolute left-4 top-4 flex gap-2">
-          <span v-if="project.isRecommend" class="rounded-full bg-amber-warm px-2.5 py-1 text-xs font-medium text-white shadow">⭐ 编辑推荐</span>
-          <span v-if="project.isHot" class="rounded-full bg-clay px-2.5 py-1 text-xs font-medium text-white shadow">🔥 热门</span>
+          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-amber-warm px-2.5 py-1 text-xs font-medium text-white shadow"><AppIcon name="star" class="h-3 w-3" />编辑推荐</span>
+          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-clay px-2.5 py-1 text-xs font-medium text-white shadow"><AppIcon name="flame" class="h-3 w-3" />热门</span>
         </div>
       </div>
 
@@ -101,7 +101,8 @@
                 :disabled="acting"
                 @click="handleParticipate"
               >
-                {{ participated ? '✓ 已参与 · 点击退出' : '🤝 参与共创' }}
+                <span v-if="participated" class="inline-flex items-center gap-1.5"><AppIcon name="check" class="h-4 w-4" />已参与 · 点击退出</span>
+                <span v-else class="inline-flex items-center gap-1.5"><AppIcon name="users" class="h-4 w-4" />参与共创</span>
               </button>
               <button
                 class="w-full !py-3"
@@ -119,7 +120,7 @@
             <!-- 创建者操作 -->
             <div v-if="isOwner" class="mt-4 border-t border-line pt-4">
               <p class="mb-2 text-xs text-ink-dim">你是该项目的创建者</p>
-              <button class="btn-ghost w-full !text-clay hover:!bg-[#FBEBE7]" :disabled="acting" @click="handleDelete">
+              <button class="btn-ghost w-full !text-clay hover:!bg-[#FBE9EB]" :disabled="acting" @click="handleDelete">
                 删除项目
               </button>
             </div>
@@ -153,6 +154,7 @@ import { useUserStore } from '@/store/user'
 import { getUserFlag, setUserFlag } from '@/utils/storage'
 import { toast } from '@/composables/useToast'
 import EmptyState from '@/components/EmptyState.vue'
+import AppIcon from '@/components/AppIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -180,12 +182,12 @@ const isOwner = computed(
 )
 
 const PALETTES = [
-  { bg: 'linear-gradient(135deg, #DCEBDD 0%, #B9D8BE 100%)', fg: '#2E6B4F' },
-  { bg: 'linear-gradient(135deg, #F5E6CE 0%, #EBD1A6 100%)', fg: '#9A6A22' },
-  { bg: 'linear-gradient(135deg, #E2E8F2 0%, #C3CFE4 100%)', fg: '#44598B' },
-  { bg: 'linear-gradient(135deg, #F3E0DA 0%, #E7C3B6 100%)', fg: '#A05540' },
-  { bg: 'linear-gradient(135deg, #E9E4F4 0%, #D2C8EA 100%)', fg: '#63549B' },
-  { bg: 'linear-gradient(135deg, #E0EFEE 0%, #BCDEDC 100%)', fg: '#2F6E6A' }
+  { bg: 'linear-gradient(135deg, #E8E8ED 0%, #D2D2D7 100%)', fg: '#6E6E73' },
+  { bg: 'linear-gradient(135deg, #E8F1FD 0%, #C5DFFF 100%)', fg: '#0066CC' },
+  { bg: 'linear-gradient(135deg, #FDF0E4 0%, #FFDDB8 100%)', fg: '#C93400' },
+  { bg: 'linear-gradient(135deg, #FCE8E9 0%, #FFD1D4 100%)', fg: '#D70015' },
+  { bg: 'linear-gradient(135deg, #F0F0F3 0%, #D8DAE5 100%)', fg: '#3A3A3C' },
+  { bg: 'linear-gradient(135deg, #E8F5F4 0%, #C2E8E5 100%)', fg: '#00796B' }
 ]
 const placeholder = computed(() => PALETTES[(Number(project.value?.id) || 0) % PALETTES.length])
 

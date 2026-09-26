@@ -35,3 +35,6 @@ Thumbs.db
 
 # ESLint flat config 加载缓存
 *.timestamp-*.mjs
+
+# WorkBuddy 项目记忆
+.workbuddy/

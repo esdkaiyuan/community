@@ -17,14 +17,14 @@
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: #d3ccba transparent;
+    scrollbar-color: #c7c7cc transparent;
   }
   *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
   *::-webkit-scrollbar-thumb {
-    background: #d3ccba;
+    background: #c7c7cc;
     border-radius: 999px;
   }
   *::-webkit-scrollbar-track {

@@ -6,9 +6,9 @@
           <div class="flex items-center gap-2.5">
             <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-pine">
               <svg viewBox="0 0 64 64" class="h-4.5 w-4.5" aria-hidden="true">
-                <path d="M32 46c0-9 0-14 0-19" stroke="#F7F4EC" stroke-width="4" stroke-linecap="round" fill="none" />
-                <path d="M32 30c0-7 5-11.5 11.5-11.5C43.5 25.5 38.5 30 32 30z" fill="#A8CF8E" />
-                <path d="M32 36c0-5.6-4.2-9.5-9.5-9.5 0 5.6 4.2 9.5 9.5 9.5z" fill="#F7F4EC" />
+                <path d="M32 46c0-9 0-14 0-19" stroke="white" stroke-width="4" stroke-linecap="round" fill="none" />
+                <path d="M32 30c0-7 5-11.5 11.5-11.5C43.5 25.5 38.5 30 32 30z" fill="rgba(255,255,255,0.7)" />
+                <path d="M32 36c0-5.6-4.2-9.5-9.5-9.5 0 5.6 4.2 9.5 9.5 9.5z" fill="white" />
               </svg>
             </span>
             <span class="font-display text-base font-bold text-ink">共创社区</span>
