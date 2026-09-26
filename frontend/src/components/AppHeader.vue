@@ -105,6 +105,14 @@
                   <p class="text-xs text-ink-dim">有人评论或点赞你的项目时会在这里提醒你。</p>
                 </div>
               </div>
+
+              <router-link
+                to="/notifications"
+                class="block border-t border-line px-4 py-2.5 text-center text-xs font-medium text-pine transition-colors hover:bg-sand"
+                @click="notifOpen = false"
+              >
+                查看全部通知
+              </router-link>
             </div>
           </transition>
         </div>

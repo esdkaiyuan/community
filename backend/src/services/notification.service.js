@@ -12,13 +12,16 @@ exports.notify = ({ userId, type, actorId, projectId, commentId = null }) => {
   )
 }
 
-exports.list = async ({ userId, page = 1, pageSize = 15 }) => {
+exports.list = async ({ userId, page = 1, pageSize = 15, unreadOnly = false }) => {
   page = Math.max(1, parseInt(page, 10) || 1)
   const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 15))
   const offset = (page - 1) * limit
 
+  const where = { user_id: userId }
+  if (unreadOnly) where.is_read = 0
+
   const { count, rows } = await Notification.findAndCountAll({
-    where: { user_id: userId },
+    where,
     include: [
       { model: User, as: 'actor', attributes: ACTOR_ATTRS },
       { model: Project, as: 'project', attributes: PROJECT_ATTRS },
@@ -48,7 +51,8 @@ exports.list = async ({ userId, page = 1, pageSize = 15 }) => {
     total: count,
     unread,
     page,
-    pageSize: limit
+    pageSize: limit,
+    filter: unreadOnly ? 'unread' : 'all'
   }
 }
 

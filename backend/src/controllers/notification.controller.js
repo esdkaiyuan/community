@@ -6,7 +6,8 @@ exports.getNotifications = asyncHandler(async (req, res) => {
   const data = await notificationService.list({
     userId: req.user.userId,
     page: req.query.page,
-    pageSize: req.query.pageSize
+    pageSize: req.query.pageSize,
+    unreadOnly: req.query.filter === 'unread'
   })
   ok(res, data, '获取通知列表成功')
 })
