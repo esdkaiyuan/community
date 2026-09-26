@@ -91,3 +91,20 @@ CREATE TABLE IF NOT EXISTS project_likes (
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- 项目评论表（复用线上遗留表结构：parent_id/like_count/status 暂未启用，按平铺列表展示）
+CREATE TABLE IF NOT EXISTS project_comments (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    project_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    parent_id INT UNSIGNED DEFAULT NULL COMMENT '父评论ID（回复功能预留）',
+    content TEXT NOT NULL,
+    like_count INT DEFAULT 0,
+    status TINYINT DEFAULT 1 COMMENT '1-正常, 0-隐藏',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_project (project_id),
+    INDEX idx_user (user_id),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

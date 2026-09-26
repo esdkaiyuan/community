@@ -1,0 +1,223 @@
+<template>
+  <section class="mt-14">
+    <!-- 分区标题：App Store「评分与评论」式大标题 + 发丝线分隔 -->
+    <div class="flex items-end justify-between gap-4">
+      <h2 class="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">评论</h2>
+      <span class="pb-1 text-sm tabular-nums text-ink-dim">{{ total ? `${total} 条` : '' }}</span>
+    </div>
+    <div class="mt-4 h-px bg-line"></div>
+
+    <!-- 输入区（已登录） -->
+    <div v-if="userStore.isLoggedIn" class="card mt-6 p-5 sm:p-6">
+      <div class="flex gap-3.5">
+        <span
+          class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-sm font-bold text-pine-deep"
+        >
+          <img v-if="userStore.avatar" :src="userStore.avatar" alt="" class="h-full w-full object-cover" />
+          <template v-else>{{ (userStore.username || '友').slice(0, 1).toUpperCase() }}</template>
+        </span>
+        <div class="min-w-0 flex-1">
+          <textarea
+            v-model.trim="draft"
+            rows="3"
+            maxlength="500"
+            placeholder="分享你的想法与建议…"
+            class="w-full resize-none rounded-lg border-0 bg-transparent p-0 text-[15px] leading-relaxed text-ink placeholder:text-ink-dim/70 focus:outline-none"
+          ></textarea>
+          <div class="mt-3 flex items-center justify-between border-t border-line pt-3">
+            <span class="text-xs tabular-nums text-ink-dim">{{ draft.length }}/500</span>
+            <button
+              class="btn-primary !px-5 !py-1.5 text-sm"
+              :disabled="!draft || submitting"
+              @click="handleSubmit"
+            >
+              {{ submitting ? '发布中…' : '发布' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 输入区（未登录）：玻璃提示条 -->
+    <div
+      v-else
+      class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl2 border border-[color:var(--glass-border)] bg-[color:var(--glass-card)] px-5 py-4 backdrop-blur-xl backdrop-saturate-150"
+    >
+      <p class="text-sm text-ink-mid">登录后即可参与讨论</p>
+      <router-link :to="{ name: 'Login', query: { redirect: route.fullPath } }" class="btn-secondary !py-1.5 text-sm">
+        登录
+      </router-link>
+    </div>
+
+    <!-- 加载骨架 -->
+    <div v-if="loading" class="mt-8 space-y-6">
+      <div v-for="i in 3" :key="i" class="flex gap-3.5">
+        <div class="skeleton h-10 w-10 shrink-0 !rounded-full"></div>
+        <div class="flex-1 space-y-2 pt-1">
+          <div class="skeleton h-3.5 w-28"></div>
+          <div class="skeleton h-3.5 w-full"></div>
+          <div class="skeleton h-3.5 w-2/3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 评论列表：发丝线分隔 -->
+    <ul v-else-if="comments.length" class="mt-2">
+      <li
+        v-for="(c, i) in comments"
+        :key="c.id"
+        v-reveal="i < 4 ? i * 60 : 0"
+        class="flex gap-3.5 border-b border-line py-6 last:border-b-0"
+      >
+        <span
+          class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-sm font-bold text-pine-deep"
+        >
+          <img v-if="c.user?.avatar" :src="c.user.avatar" alt="" class="h-full w-full object-cover" />
+          <template v-else>{{ (c.user?.username || '友').slice(0, 1).toUpperCase() }}</template>
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <span class="truncate text-[15px] font-medium text-ink">{{ c.user?.username || '匿名共创者' }}</span>
+            <span class="shrink-0 text-xs text-ink-dim">{{ relativeTime(c.createdAt) }}</span>
+            <button
+              v-if="c.canDelete"
+              class="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-ink-dim transition-colors hover:bg-[#FBE9EB] hover:text-clay"
+              :disabled="removing === c.id"
+              @click="handleDelete(c)"
+            >
+              <AppIcon name="trash-2" class="h-3.5 w-3.5" />
+              删除
+            </button>
+          </div>
+          <p class="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed text-ink-mid">{{ c.content }}</p>
+        </div>
+      </li>
+    </ul>
+
+    <!-- 空状态 -->
+    <div v-else class="mt-10 flex flex-col items-center gap-2 pb-4 text-center">
+      <AppIcon name="message-circle" class="h-8 w-8 text-ink-dim/50" :stroke-width="1.5" />
+      <p class="text-[15px] text-ink-mid">还没有评论</p>
+      <p class="text-sm text-ink-dim">来写下第一条想法，与共创者交流。</p>
+    </div>
+
+    <!-- 加载更多 -->
+    <div v-if="!loading && hasMore" class="mt-2 flex justify-center">
+      <button class="btn-ghost text-sm text-pine" :disabled="loadingMore" @click="loadMore">
+        {{ loadingMore ? '加载中…' : '显示更多评论' }}
+      </button>
+    </div>
+  </section>
+</template>
+
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import * as commentApi from '@/api/comment'
+import { useUserStore } from '@/store/user'
+import { hasEmoji, stripEmoji } from '@/utils/text'
+import { toast } from '@/composables/useToast'
+import AppIcon from '@/components/AppIcon.vue'
+
+const props = defineProps({
+  projectId: { type: [Number, String], required: true }
+})
+
+const route = useRoute()
+const userStore = useUserStore()
+
+const comments = ref([])
+const total = ref(0)
+const page = ref(1)
+const PAGE_SIZE = 10
+const loading = ref(true)
+const loadingMore = ref(false)
+const submitting = ref(false)
+const removing = ref(null)
+const draft = ref('')
+
+const hasMore = computed(() => comments.value.length < total.value)
+
+const relativeTime = (str) => {
+  if (!str) return ''
+  const diff = Date.now() - new Date(str).getTime()
+  const min = 60_000
+  if (diff < min) return '刚刚'
+  if (diff < 60 * min) return `${Math.floor(diff / min)} 分钟前`
+  if (diff < 24 * 60 * min) return `${Math.floor(diff / (60 * min))} 小时前`
+  if (diff < 30 * 24 * 60 * min) return `${Math.floor(diff / (24 * 60 * min))} 天前`
+  const d = new Date(str)
+  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`
+}
+
+const applyRes = (res) => {
+  comments.value.push(...res.data.comments)
+  total.value = res.data.total
+}
+
+const fetchFirst = async () => {
+  loading.value = true
+  try {
+    const res = await commentApi.getComments(props.projectId, { page: 1, pageSize: PAGE_SIZE })
+    comments.value = []
+    page.value = 1
+    applyRes(res)
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadMore = async () => {
+  loadingMore.value = true
+  try {
+    page.value += 1
+    applyRes(await commentApi.getComments(props.projectId, { page: page.value, pageSize: PAGE_SIZE }))
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+const handleSubmit = async () => {
+  if (!draft.value || submitting.value) return
+
+  // 与后端同一套规则：移除 emoji（全站仅允许矢量图标）
+  let content = draft.value
+  if (hasEmoji(content)) {
+    content = stripEmoji(content)
+    if (!content) {
+      toast('评论不能只有表情符号', 'info')
+      return
+    }
+  }
+
+  submitting.value = true
+  try {
+    const res = await commentApi.createComment(props.projectId, { content })
+    comments.value.unshift(res.data.comment)
+    total.value = res.data.commentCount
+    draft.value = ''
+    toast(res.data.hadEmoji ? '评论已发布，表情符号已自动移除' : '评论已发布')
+  } catch (e) {
+    toast(e.response?.data?.message || '发布失败，请稍后再试', 'error')
+  } finally {
+    submitting.value = false
+  }
+}
+
+const handleDelete = async (c) => {
+  if (!window.confirm('确定删除这条评论吗？')) return
+  removing.value = c.id
+  try {
+    const res = await commentApi.deleteComment(props.projectId, c.id)
+    comments.value = comments.value.filter((item) => item.id !== c.id)
+    total.value = res.data.commentCount
+    toast('评论已删除', 'info')
+  } catch (e) {
+    toast(e.response?.data?.message || '删除失败，请稍后再试', 'error')
+  } finally {
+    removing.value = null
+  }
+}
+
+onMounted(fetchFirst)
+</script>

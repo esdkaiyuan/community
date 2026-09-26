@@ -1,6 +1,7 @@
 const { Op } = require('sequelize')
 const { Project, Category, User, ProjectParticipant, ProjectLike } = require('../models')
 const ApiError = require('../utils/ApiError')
+const { stripEmoji } = require('../utils/textSanitize')
 const { toClientUser } = require('./user.service')
 
 // 数据库行 -> 前端数据形状（camelCase）
@@ -110,7 +111,7 @@ exports.createProject = async ({ title, description, coverImage, categoryId, tag
 
   const project = await Project.create({
     title: String(title).trim(),
-    description,
+    description: stripEmoji(description) || description,
     cover_image: coverImage || null,
     category_id: categoryId || null,
     creator_id: creatorId,
@@ -131,7 +132,7 @@ exports.updateProject = async (id, userId, { title, description, coverImage, cat
   }
   if (description !== undefined) {
     if (String(description).trim().length < 20) throw ApiError.badRequest('项目介绍至少 20 个字符')
-    project.description = description
+    project.description = stripEmoji(description) || description
   }
   if (coverImage !== undefined) project.cover_image = coverImage || null
   if (categoryId !== undefined) project.category_id = categoryId || null

@@ -191,6 +191,9 @@
           </div>
         </aside>
       </div>
+
+      <!-- 评论区（App Store 评价风） -->
+      <CommentSection :project-id="project.id" />
     </template>
   </div>
 </template>
@@ -204,6 +207,7 @@ import { getUserFlag, setUserFlag } from '@/utils/storage'
 import { toast } from '@/composables/useToast'
 import EmptyState from '@/components/EmptyState.vue'
 import AppIcon from '@/components/AppIcon.vue'
+import CommentSection from '@/components/CommentSection.vue'
 
 const route = useRoute()
 const router = useRouter()

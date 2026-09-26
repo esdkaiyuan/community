@@ -134,6 +134,7 @@ import { useRouter } from 'vue-router'
 import { createProject } from '@/api/project'
 import { getCategories } from '@/api/category'
 import { categoryIcon } from '@/utils/categoryIcon'
+import { stripEmoji } from '@/utils/text'
 import AppIcon from '@/components/AppIcon.vue'
 import { toast } from '@/composables/useToast'
 
@@ -178,6 +179,17 @@ const validate = () => {
 const handleSubmit = async () => {
   addTag() // 提交前收纳未回车的标签
   if (!validate() || submitting.value) return
+
+  // 全站仅允许矢量图标：提交前移除标题与介绍中的 emoji
+  const cleanedTitle = stripEmoji(form.title)
+  const cleanedDescription = stripEmoji(form.description)
+  const hadEmoji = cleanedTitle !== form.title.trim() || cleanedDescription !== form.description.trim()
+  if (hadEmoji) {
+    form.title = cleanedTitle
+    form.description = cleanedDescription
+    if (!validate()) return
+  }
+
   submitting.value = true
   try {
     const res = await createProject({
@@ -187,7 +199,7 @@ const handleSubmit = async () => {
       tags: form.tags,
       coverImage: coverBroken.value ? '' : form.coverImage
     })
-    toast('项目发布成功！')
+    toast(hadEmoji ? '项目发布成功（表情符号已自动移除）' : '项目发布成功！')
     router.push(`/project/${res.data.id}`)
   } catch {
     // 错误已由拦截器 toast
