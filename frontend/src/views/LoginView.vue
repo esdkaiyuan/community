@@ -1,117 +1,128 @@
 <template>
-  <div class="login-view">
-    <Header />
-    <div class="login-container">
-      <el-card class="login-card">
-        <h2>用户登录</h2>
-        <el-form :model="loginForm" :rules="rules" ref="formRef">
-          <el-form-item prop="email">
-            <el-input v-model="loginForm.email" placeholder="邮箱" prefix-icon="Message" />
-          </el-form-item>
-          <el-form-item prop="password">
-            <el-input v-model="loginForm.password" type="password" placeholder="密码" prefix-icon="Lock" show-password />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="handleLogin" :loading="loading" style="width: 100%">
-              登录
-            </el-button>
-          </el-form-item>
-          <div class="register-link">
-            还没有账号？<router-link to="/register">立即注册</router-link>
+  <div class="mx-auto flex max-w-5xl items-center px-4 py-12 sm:px-6 sm:py-16">
+    <div class="card grid w-full overflow-hidden md:grid-cols-2">
+      <!-- 品牌面板 -->
+      <div class="relative hidden flex-col justify-between overflow-hidden bg-pine p-10 text-white md:flex">
+        <div
+          class="pointer-events-none absolute inset-0 opacity-20"
+          style="background-image: radial-gradient(rgba(255,255,255,0.35) 1px, transparent 1px); background-size: 22px 22px;"
+        ></div>
+        <div class="relative">
+          <span class="text-xs tracking-[0.3em] opacity-70">CO-CREATION COMMUNITY</span>
+          <h2 class="mt-4 font-display text-3xl font-bold leading-snug">
+            欢迎回来，<br />继续你的共创之旅
+          </h2>
+        </div>
+        <p class="relative text-sm leading-relaxed opacity-80">
+          "好的想法从不孤单。<br />在这里，总有人愿意和你一起把它做出来。"
+        </p>
+      </div>
+
+      <!-- 表单 -->
+      <div class="p-8 sm:p-10">
+        <h1 class="font-display text-2xl font-bold text-ink">登录</h1>
+        <p class="mt-1.5 text-sm text-ink-mid">
+          还没有账号？
+          <router-link to="/register" class="font-medium text-pine hover:underline">立即注册</router-link>
+        </p>
+
+        <form class="mt-8 space-y-5" @submit.prevent="handleSubmit">
+          <div>
+            <label class="form-label" for="email">邮箱</label>
+            <input
+              id="email"
+              v-model.trim="form.email"
+              type="email"
+              class="input"
+              placeholder="you@example.com"
+              autocomplete="email"
+            />
+            <p v-if="errors.email" class="form-error">{{ errors.email }}</p>
           </div>
-        </el-form>
-      </el-card>
+
+          <div>
+            <label class="form-label" for="password">密码</label>
+            <div class="relative">
+              <input
+                id="password"
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                class="input pr-11"
+                placeholder="请输入密码"
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-dim transition-colors hover:text-ink"
+                :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+                @click="showPassword = !showPassword"
+              >
+                <svg v-if="showPassword" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <svg v-else class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M3 3l18 18M10.6 5.1A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17.5 17.5 0 0 1-2.5 3.4M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.6 0 3-.4 4.3-1" />
+                </svg>
+              </button>
+            </div>
+            <p v-if="errors.password" class="form-error">{{ errors.password }}</p>
+          </div>
+
+          <button type="submit" class="btn-primary w-full !py-3" :disabled="submitting">
+            <svg v-if="submitting" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" class="opacity-25" />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+            </svg>
+            {{ submitting ? '登录中…' : '登 录' }}
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUserStore } from '@/store/modules/user'
-import { ElMessage } from 'element-plus'
-import Header from '@/components/Header.vue'
+import { reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useUserStore } from '@/store/user'
+import { toast } from '@/composables/useToast'
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const formRef = ref(null)
-const loading = ref(false)
+const form = reactive({ email: '', password: '' })
+const errors = reactive({ email: '', password: '' })
+const submitting = ref(false)
+const showPassword = ref(false)
 
-const loginForm = reactive({
-  email: '',
-  password: ''
-})
-
-const rules = {
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
-  ]
+const validate = () => {
+  errors.email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '' : '请输入有效的邮箱地址'
+  errors.password = form.password.length >= 6 ? '' : '密码至少 6 位'
+  return !errors.email && !errors.password
 }
 
-const handleLogin = async () => {
-  if (!formRef.value) return
-  
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true
-      try {
-        await userStore.login(loginForm)
-        ElMessage.success('登录成功')
-        router.push('/')
-      } catch (error) {
-        console.error('登录失败:', error)
-      } finally {
-        loading.value = false
-      }
-    }
-  })
+const handleSubmit = async () => {
+  if (!validate() || submitting.value) return
+  submitting.value = true
+  try {
+    await userStore.login({ email: form.email, password: form.password })
+    toast(`欢迎回来，${userStore.username}！`)
+    router.push(route.query.redirect || '/')
+  } catch {
+    // 具体错误已由拦截器 toast
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
-<style lang="scss" scoped>
-.login-view {
-  min-height: 100vh;
-  background-color: #f5f7fa;
-
-  .login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px 20px;
-    min-height: calc(100vh - 80px);
-
-    .login-card {
-      width: 100%;
-      max-width: 400px;
-      padding: 20px;
-
-      h2 {
-        text-align: center;
-        margin-bottom: 30px;
-        color: #303133;
-      }
-
-      .register-link {
-        text-align: center;
-        font-size: 14px;
-        color: #909399;
-
-        a {
-          color: #409eff;
-          text-decoration: none;
-
-          &:hover {
-            text-decoration: underline;
-          }
-        }
-      }
-    }
-  }
+<style scoped>
+.form-label {
+  @apply mb-1.5 block text-sm font-medium text-ink;
+}
+.form-error {
+  @apply mt-1.5 text-xs text-clay;
 }
 </style>

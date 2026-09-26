@@ -1,16 +1,13 @@
 import request from './request'
 
-// 用户注册
-export function register(data) {
-  return request.post('/users/register', data)
-}
+// 注册
+export const register = (data) => request.post('/users/register', data)
 
-// 用户登录
-export function login(data) {
-  return request.post('/users/login', data)
-}
+// 登录
+export const login = (data) => request.post('/users/login', data)
 
 // 获取当前用户信息
-export function getCurrentUser() {
-  return request.get('/users/me')
-}
+export const getMe = () => request.get('/users/me')
+
+// 更新个人资料
+export const updateProfile = (data) => request.put('/users/profile', data)

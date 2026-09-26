@@ -8,6 +8,7 @@ router.post('/register', userController.register)
 router.post('/login', userController.login)
 
 // 需要认证的路由
+router.get('/me', auth, userController.getProfile)
 router.get('/profile', auth, userController.getProfile)
 router.put('/profile', auth, userController.updateProfile)
 

@@ -30,18 +30,47 @@ const Project = sequelize.define('Project', {
     allowNull: false
   },
   status: {
-    type: DataTypes.ENUM('draft', 'published', 'completed', 'archived'),
-    defaultValue: 'published'
+    type: DataTypes.TINYINT,
+    defaultValue: 0
   },
-  likes_count: {
+  tags: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    get() {
+      const raw = this.getDataValue('tags')
+      if (!raw) return []
+      if (Array.isArray(raw)) return raw
+      try {
+        return JSON.parse(raw)
+      } catch (e) {
+        return []
+      }
+    },
+    set(val) {
+      this.setDataValue('tags', typeof val === 'string' ? val : JSON.stringify(val || []))
+    }
+  },
+  is_recommend: {
+    type: DataTypes.TINYINT,
+    defaultValue: 0
+  },
+  is_hot: {
+    type: DataTypes.TINYINT,
+    defaultValue: 0
+  },
+  like_count: {
     type: DataTypes.INTEGER,
     defaultValue: 0
   },
-  comments_count: {
+  comment_count: {
     type: DataTypes.INTEGER,
     defaultValue: 0
   },
-  participants_count: {
+  participant_count: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  view_count: {
     type: DataTypes.INTEGER,
     defaultValue: 0
   }
@@ -49,7 +78,9 @@ const Project = sequelize.define('Project', {
   tableName: 'projects',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  deletedAt: 'deleted_at',
+  paranoid: true
 })
 
 // 定义关联关系

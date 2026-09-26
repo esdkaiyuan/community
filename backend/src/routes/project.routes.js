@@ -12,6 +12,8 @@ router.post('/', auth, projectController.createProject)
 router.put('/:id', auth, projectController.updateProject)
 router.delete('/:id', auth, projectController.deleteProject)
 router.post('/:id/like', auth, projectController.likeProject)
+router.delete('/:id/like', auth, projectController.unlikeProject)
 router.post('/:id/participate', auth, projectController.participateProject)
+router.delete('/:id/participate', auth, projectController.cancelParticipate)
 
 module.exports = router

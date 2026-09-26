@@ -19,7 +19,8 @@ const User = sequelize.define('User', {
   },
   password_hash: {
     type: DataTypes.STRING(255),
-    allowNull: false
+    allowNull: false,
+    field: 'password' // 实际数据库列名为 password
   },
   avatar: {
     type: DataTypes.STRING(255),

@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs')
+const { Op } = require('sequelize')
 const { User } = require('../models')
 const { generateToken } = require('../utils/jwt')
 
@@ -6,20 +7,20 @@ const { generateToken } = require('../utils/jwt')
 exports.register = async (req, res) => {
   try {
     const { username, email, password } = req.body
-    
+
     // 验证必填字段
     if (!username || !email || !password) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '用户名、邮箱和密码为必填项' 
+      return res.status(400).json({
+        success: false,
+        message: '用户名、邮箱和密码为必填项'
       })
     }
-    
+
     // 检查用户名和邮箱是否已存在
-    const existingUser = await User.findOne({ 
-      where: { 
-        $or: [{ username }, { email }] 
-      } 
+    const existingUser = await User.findOne({
+      where: {
+        [Op.or]: [{ username }, { email }]
+      }
     })
     
     if (existingUser) {
@@ -43,6 +44,7 @@ exports.register = async (req, res) => {
     const token = generateToken(user.id)
     
     res.status(201).json({
+      code: 200,
       success: true,
       message: '注册成功',
       data: {
@@ -99,6 +101,7 @@ exports.login = async (req, res) => {
     const token = generateToken(user.id)
     
     res.json({
+      code: 200,
       success: true,
       message: '登录成功',
       data: {
@@ -135,8 +138,9 @@ exports.getProfile = async (req, res) => {
     }
     
     res.json({
+      code: 200,
       success: true,
-      data: { user }
+      data: user
     })
   } catch (error) {
     console.error('获取用户信息错误:', error)
@@ -170,6 +174,7 @@ exports.updateProfile = async (req, res) => {
     await user.save()
     
     res.json({
+      code: 200,
       success: true,
       message: '更新成功',
       data: {

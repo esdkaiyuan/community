@@ -1,235 +1,171 @@
 <template>
-  <div class="register-view">
-    <Header />
-    <div class="register-container">
-      <el-card class="register-card">
-        <h2>用户注册</h2>
-        <el-form :model="registerForm" :rules="rules" ref="formRef">
-          <el-form-item prop="username">
-            <el-input v-model="registerForm.username" placeholder="用户名" prefix-icon="User" />
-          </el-form-item>
-          <el-form-item prop="email">
-            <el-input v-model="registerForm.email" placeholder="邮箱" prefix-icon="Message" />
-          </el-form-item>
-          <el-form-item prop="password">
-            <el-input v-model="registerForm.password" type="password" placeholder="密码" prefix-icon="Lock" show-password />
-          </el-form-item>
-          <el-form-item prop="confirmPassword">
-            <el-input v-model="registerForm.confirmPassword" type="password" placeholder="确认密码" prefix-icon="Lock" show-password />
-          </el-form-item>
-          
-          <!-- 图形验证码 -->
-          <el-form-item prop="captcha">
-            <div class="captcha-wrapper">
-              <el-input 
-                v-model="registerForm.captcha" 
-                placeholder="请输入验证码" 
-                prefix-icon="Key"
-                style="flex: 1;"
-              />
-              <CaptchaImage 
-                ref="captchaRef"
-                v-model:code="captchaCode"
-                :width="120"
-                :height="40"
-                :length="4"
-              />
-            </div>
-          </el-form-item>
-          
-          <el-form-item>
-            <el-button type="primary" @click="handleRegister" :loading="loading" style="width: 100%">
-              注册
-            </el-button>
-          </el-form-item>
-          <div class="login-link">
-            已有账号？<router-link to="/login">立即登录</router-link>
+  <div class="mx-auto flex max-w-5xl items-center px-4 py-12 sm:px-6 sm:py-16">
+    <div class="card grid w-full overflow-hidden md:grid-cols-2">
+      <!-- 品牌面板 -->
+      <div class="relative hidden flex-col justify-between overflow-hidden bg-pine p-10 text-white md:flex">
+        <div
+          class="pointer-events-none absolute inset-0 opacity-20"
+          style="background-image: radial-gradient(rgba(255,255,255,0.35) 1px, transparent 1px); background-size: 22px 22px;"
+        ></div>
+        <div class="relative">
+          <span class="text-xs tracking-[0.3em] opacity-70">CO-CREATION COMMUNITY</span>
+          <h2 class="mt-4 font-display text-3xl font-bold leading-snug">
+            加入共创社区，<br />让想法遇见同行者
+          </h2>
+        </div>
+        <ul class="relative space-y-3 text-sm opacity-85">
+          <li class="flex items-center gap-2.5"><span class="text-base">💡</span> 发布项目，寻找志同道合的伙伴</li>
+          <li class="flex items-center gap-2.5"><span class="text-base">🤝</span> 参与感兴趣的项目，贡献力量</li>
+          <li class="flex items-center gap-2.5"><span class="text-base">🌱</span> 见证创意从萌芽到落地</li>
+        </ul>
+      </div>
+
+      <!-- 表单 -->
+      <div class="p-8 sm:p-10">
+        <h1 class="font-display text-2xl font-bold text-ink">创建账号</h1>
+        <p class="mt-1.5 text-sm text-ink-mid">
+          已有账号？
+          <router-link to="/login" class="font-medium text-pine hover:underline">直接登录</router-link>
+        </p>
+
+        <form class="mt-8 space-y-5" @submit.prevent="handleSubmit">
+          <div>
+            <label class="form-label" for="username">用户名</label>
+            <input
+              id="username"
+              v-model.trim="form.username"
+              type="text"
+              class="input"
+              placeholder="2-20 个字符"
+              autocomplete="username"
+              maxlength="20"
+            />
+            <p v-if="errors.username" class="form-error">{{ errors.username }}</p>
           </div>
-        </el-form>
-      </el-card>
+
+          <div>
+            <label class="form-label" for="email">邮箱</label>
+            <input
+              id="email"
+              v-model.trim="form.email"
+              type="email"
+              class="input"
+              placeholder="you@example.com"
+              autocomplete="email"
+            />
+            <p v-if="errors.email" class="form-error">{{ errors.email }}</p>
+          </div>
+
+          <div>
+            <label class="form-label" for="password">密码</label>
+            <input
+              id="password"
+              v-model="form.password"
+              type="password"
+              class="input"
+              placeholder="至少 6 位"
+              autocomplete="new-password"
+            />
+            <!-- 密码强度 -->
+            <div v-if="form.password" class="mt-2 flex items-center gap-2">
+              <div class="flex flex-1 gap-1">
+                <span
+                  v-for="i in 3"
+                  :key="i"
+                  class="h-1 flex-1 rounded-full transition-colors"
+                  :class="i <= strength.level ? strength.color : 'bg-sand'"
+                ></span>
+              </div>
+              <span class="text-xs" :class="strength.textColor">{{ strength.label }}</span>
+            </div>
+            <p v-if="errors.password" class="form-error">{{ errors.password }}</p>
+          </div>
+
+          <div>
+            <label class="form-label" for="confirm">确认密码</label>
+            <input
+              id="confirm"
+              v-model="form.confirm"
+              type="password"
+              class="input"
+              placeholder="再次输入密码"
+              autocomplete="new-password"
+            />
+            <p v-if="errors.confirm" class="form-error">{{ errors.confirm }}</p>
+          </div>
+
+          <button type="submit" class="btn-primary w-full !py-3" :disabled="submitting">
+            <svg v-if="submitting" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" class="opacity-25" />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+            </svg>
+            {{ submitting ? '注册中…' : '注册并加入' }}
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/store/modules/user'
-import { ElMessage } from 'element-plus'
-import Header from '@/components/Header.vue'
-import CaptchaImage from '@/components/CaptchaImage.vue'
+import { useUserStore } from '@/store/user'
+import { toast } from '@/composables/useToast'
 
 const router = useRouter()
 const userStore = useUserStore()
 
-const formRef = ref(null)
-const captchaRef = ref(null)
-const loading = ref(false)
-const captchaCode = ref('')
+const form = reactive({ username: '', email: '', password: '', confirm: '' })
+const errors = reactive({ username: '', email: '', password: '', confirm: '' })
+const submitting = ref(false)
 
-const registerForm = reactive({
-  username: '',
-  email: '',
-  password: '',
-  confirmPassword: '',
-  captcha: ''
+// 密码强度：长度 + 字符种类
+const strength = computed(() => {
+  const p = form.password
+  let score = 0
+  if (p.length >= 6) score++
+  if (p.length >= 10) score++
+  if (/[a-zA-Z]/.test(p) && /\d/.test(p)) score++
+  if (/[^a-zA-Z0-9]/.test(p)) score++
+
+  if (score <= 1) return { level: 1, label: '较弱', color: 'bg-clay', textColor: 'text-clay' }
+  if (score <= 2) return { level: 2, label: '中等', color: 'bg-amber-warm', textColor: 'text-amber-warm' }
+  return { level: 3, label: '强', color: 'bg-pine', textColor: 'text-pine' }
 })
 
-const validateConfirmPassword = (rule, value, callback) => {
-  if (value !== registerForm.password) {
-    callback(new Error('两次输入的密码不一致'))
-  } else {
-    callback()
+const validate = () => {
+  errors.username = form.username.length >= 2 && form.username.length <= 20 ? '' : '用户名需 2-20 个字符'
+  errors.email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '' : '请输入有效的邮箱地址'
+  errors.password = form.password.length >= 6 ? '' : '密码至少 6 位'
+  errors.confirm = form.confirm === form.password ? '' : '两次输入的密码不一致'
+  return !errors.username && !errors.email && !errors.password && !errors.confirm
+}
+
+const handleSubmit = async () => {
+  if (!validate() || submitting.value) return
+  submitting.value = true
+  try {
+    await userStore.register({
+      username: form.username,
+      email: form.email,
+      password: form.password
+    })
+    toast(`欢迎加入共创社区，${userStore.username}！`)
+    router.push('/')
+  } catch {
+    // 具体错误已由拦截器 toast
+  } finally {
+    submitting.value = false
   }
-}
-
-const validateCaptcha = (rule, value, callback) => {
-  if (!value) {
-    callback(new Error('请输入验证码'))
-  } else if (value.toLowerCase() !== captchaCode.value.toLowerCase()) {
-    callback(new Error('验证码错误'))
-  } else {
-    callback()
-  }
-}
-
-const rules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 2, max: 20, message: '用户名长度在2-20个字符之间', trigger: 'blur' }
-  ],
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
-  ],
-  confirmPassword: [
-    { required: true, message: '请确认密码', trigger: 'blur' },
-    { validator: validateConfirmPassword, trigger: 'blur' }
-  ],
-  captcha: [
-    { required: true, validator: validateCaptcha, trigger: 'blur' }
-  ]
-}
-
-// 刷新验证码
-const refreshCaptcha = () => {
-  if (captchaRef.value) {
-    captchaRef.value.refreshCaptcha()
-  }
-  registerForm.captcha = ''
-}
-
-const handleRegister = async () => {
-  if (!formRef.value) return
-  
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true
-      try {
-        const { confirmPassword, captcha, ...data } = registerForm
-        await userStore.register(data)
-        ElMessage.success('注册成功，请登录')
-        router.push('/login')
-      } catch (error) {
-        console.error('注册失败:', error)
-        // 注册失败后刷新验证码
-        refreshCaptcha()
-      } finally {
-        loading.value = false
-      }
-    }
-  })
 }
 </script>
 
-<style lang="scss" scoped>
-.register-view {
-  min-height: 100vh;
-  background-color: #f5f7fa;
-
-  .register-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px 20px;
-    min-height: calc(100vh - 80px);
-
-    .register-card {
-      width: 100%;
-      max-width: 400px;
-      padding: 20px;
-
-      h2 {
-        text-align: center;
-        margin-bottom: 30px;
-        color: #303133;
-      }
-
-      .login-link {
-        text-align: center;
-        font-size: 14px;
-        color: #909399;
-
-        a {
-          color: #409eff;
-          text-decoration: none;
-
-          &:hover {
-            text-decoration: underline;
-          }
-        }
-      }
-
-      .captcha-wrapper {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-      }
-    }
-  }
+<style scoped>
+.form-label {
+  @apply mb-1.5 block text-sm font-medium text-ink;
 }
-
-// 响应式适配
-@media (max-width: 768px) {
-  .register-view {
-    .register-container {
-      padding: 20px 16px;
-
-      .register-card {
-        .captcha-wrapper {
-          .captcha-image {
-            width: 100px;
-            height: 36px;
-          }
-        }
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .register-view {
-    .register-container {
-      .register-card {
-        .captcha-wrapper {
-          flex-direction: column;
-          gap: 8px;
-
-          .el-input {
-            width: 100%;
-          }
-
-          .captcha-image {
-            width: 100%;
-            height: 40px;
-          }
-        }
-      }
-    }
-  }
+.form-error {
+  @apply mt-1.5 text-xs text-clay;
 }
 </style>

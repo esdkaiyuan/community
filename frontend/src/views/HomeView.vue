@@ -1,442 +1,279 @@
 <template>
-  <div class="home-view">
-    <!-- 顶部导航栏 -->
-    <Header />
+  <div>
+    <!-- ============ Hero ============ -->
+    <section v-if="!isFiltering" class="relative overflow-hidden border-b border-line bg-cream">
+      <!-- 装饰：网格纹理 + 光斑 -->
+      <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+        <div
+          class="absolute inset-0 opacity-[0.5]"
+          style="background-image: linear-gradient(#e8e3d5 1px, transparent 1px), linear-gradient(90deg, #e8e3d5 1px, transparent 1px); background-size: 44px 44px;"
+        ></div>
+        <div class="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-pine-soft blur-3xl"></div>
+        <div class="absolute -right-16 bottom-0 h-64 w-64 rounded-full bg-amber-soft blur-3xl"></div>
+      </div>
 
-    <!-- 主内容区 -->
-    <main class="main-content">
-      <div class="content-container">
-        <!-- 左侧边栏 -->
-        <Sidebar :selected-category-id="selectedCategoryId" @category-change="handleCategoryChange" />
-
-        <!-- 右侧项目列表 -->
-        <div class="project-section">
-          <!-- 页面标题 -->
-          <div class="page-header">
-            <h1 class="page-title">
-              一起构想，一起创造
-              <el-icon class="sparkle-icon"><Star /></el-icon>
-            </h1>
-            <p class="page-subtitle">在共创社区，连接想法与能力，让创意变成现实</p>
+      <div class="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
+        <div class="max-w-2xl animate-fade-up">
+          <span class="chip !bg-pine !px-3 !py-1 !text-white">🌱 已有 {{ total }} 个项目正在共创</span>
+          <h1 class="mt-5 font-display text-4xl font-bold leading-tight text-ink sm:text-5xl">
+            一起想，一起做<br />
+            <span class="text-pine">让好创意落地生根</span>
+          </h1>
+          <p class="mt-5 max-w-xl text-base leading-relaxed text-ink-mid">
+            在这里发布你的项目构想，找到志同道合的伙伴；或者加入别人的项目，贡献你的一份力量。
+          </p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <router-link to="/publish" class="btn-primary !px-6 !py-3">
+              发布我的项目
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <path d="M5 12h14m-6-6 6 6-6 6" />
+              </svg>
+            </router-link>
+            <a href="#projects" class="btn-secondary !px-6 !py-3">浏览项目广场</a>
           </div>
-
-          <!-- 筛选栏 -->
-          <div class="filter-bar">
-            <div class="filter-tabs">
-              <div
-                v-for="tab in filterTabs"
-                :key="tab.key"
-                class="filter-tab"
-                :class="{ active: activeFilter === tab.key }"
-                @click="handleFilterChange(tab.key)"
-              >
-                {{ tab.label }}
-              </div>
-            </div>
-            <div class="filter-actions">
-              <el-dropdown @command="handleFilterCommand">
-                <el-button>
-                  <el-icon><Filter /></el-icon>
-                  筛选
-                  <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item
-                      v-for="option in filterOptions"
-                      :key="option.value"
-                      :command="option.value"
-                    >
-                      {{ option.label }}
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-              <el-dropdown @command="handleSortCommand">
-                <el-button>
-                  排序：{{ currentSortLabel }}
-                  <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item
-                      v-for="option in sortOptions"
-                      :key="option.value"
-                      :command="option.value"
-                    >
-                      {{ option.label }}
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </div>
-
-          <!-- 项目网格 -->
-          <ProjectGrid
-            :projects="projects"
-            :loading="loading"
-            :total="total"
-            @like="handleLike"
-            @page-change="handlePageChange"
-          />
         </div>
       </div>
-    </main>
+    </section>
+
+    <!-- ============ 项目广场 ============ -->
+    <section id="projects" class="mx-auto max-w-7xl scroll-mt-20 px-4 py-10 sm:px-6">
+      <!-- 搜索结果提示 -->
+      <div v-if="query.search" class="mb-6 flex items-center gap-3">
+        <h2 class="text-lg font-semibold text-ink">「{{ query.search }}」的搜索结果</h2>
+        <button class="btn-ghost !py-1 text-xs" @click="clearSearch">
+          清除搜索
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- 分类 -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button class="cat-pill" :class="{ 'is-active': !query.categoryId }" @click="setCategory(null)">
+          全部
+        </button>
+        <button
+          v-for="cat in categories"
+          :key="cat.id"
+          class="cat-pill"
+          :class="{ 'is-active': query.categoryId === String(cat.id) }"
+          @click="setCategory(cat.id)"
+        >
+          <span v-if="cat.icon">{{ categoryIcon(cat.icon) }}</span>
+          {{ cat.name }}
+          <span class="text-xs opacity-60">{{ cat.count }}</span>
+        </button>
+      </div>
+
+      <!-- 筛选 / 排序 -->
+      <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+        <div class="flex gap-2">
+          <button
+            v-for="f in FILTERS"
+            :key="f.value"
+            class="rounded-full px-3.5 py-1.5 text-sm transition-colors"
+            :class="query.filter === f.value ? 'bg-amber-soft font-medium text-amber-warm' : 'text-ink-mid hover:bg-sand'"
+            @click="toggleFilter(f.value)"
+          >
+            {{ f.label }}
+          </button>
+        </div>
+
+        <div class="flex items-center gap-1 text-sm">
+          <span class="mr-1 text-xs text-ink-dim">排序</span>
+          <button
+            v-for="s in SORTS"
+            :key="s.value"
+            class="rounded-full px-3 py-1.5 transition-colors"
+            :class="query.sort === s.value ? 'bg-pine-soft font-medium text-pine-deep' : 'text-ink-mid hover:bg-sand'"
+            @click="setSort(s.value)"
+          >
+            {{ s.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 加载中 -->
+      <div v-if="loading" class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <ProjectCardSkeleton v-for="i in 8" :key="i" />
+      </div>
+
+      <!-- 加载失败 -->
+      <EmptyState
+        v-else-if="loadError"
+        icon="🔌"
+        title="加载失败了"
+        description="可能是网络或服务暂时不可用，请稍后重试。"
+      >
+        <button class="btn-primary" @click="fetchProjects">重新加载</button>
+      </EmptyState>
+
+      <!-- 空结果 -->
+      <EmptyState
+        v-else-if="!projects.length"
+        icon="🌱"
+        :title="query.search ? '没有找到相关项目' : '这里还很安静'"
+        :description="query.search ? '换个关键词试试，或者浏览全部项目。' : '成为第一个发布项目的人，让创意在这里发芽。'"
+      >
+        <router-link to="/publish" class="btn-primary">发布第一个项目</router-link>
+      </EmptyState>
+
+      <!-- 项目网格 -->
+      <template v-else>
+        <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <ProjectCard
+            v-for="(p, i) in projects"
+            :key="p.id"
+            :project="p"
+            class="animate-fade-up"
+            :style="{ animationDelay: `${Math.min(i, 8) * 45}ms` }"
+          />
+        </div>
+
+        <div class="mt-10">
+          <Pagination :page="page" :total="total" :page-size="PAGE_SIZE" @change="setPage" />
+        </div>
+      </template>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { useProjectStore } from '@/store/modules/project'
-import { storeToRefs } from 'pinia'
-import { ElMessage } from 'element-plus'
-import { useUserStore } from '@/store/modules/user'
-import {
-  Star,
-  Filter,
-  ArrowDown
-} from '@element-plus/icons-vue'
-import Header from '@/components/Header.vue'
-import Sidebar from '@/components/Sidebar.vue'
-import ProjectGrid from '@/components/ProjectGrid.vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getProjects } from '@/api/project'
+import { getCategories } from '@/api/category'
+import { categoryIcon } from '@/utils/categoryIcon'
+import ProjectCard from '@/components/ProjectCard.vue'
+import ProjectCardSkeleton from '@/components/ProjectCardSkeleton.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import Pagination from '@/components/Pagination.vue'
+
+const PAGE_SIZE = 12
+const FILTERS = [
+  { label: '⭐ 编辑推荐', value: 'recommend' },
+  { label: '🔥 热门', value: 'hot' }
+]
+const SORTS = [
+  { label: '最新', value: 'latest' },
+  { label: '最热', value: 'hot' },
+  { label: '参与最多', value: 'participants' }
+]
 
 const route = useRoute()
-const projectStore = useProjectStore()
-const userStore = useUserStore()
-const { projects, loading, total } = storeToRefs(projectStore)
+const router = useRouter()
 
-const selectedCategoryId = ref(null)
-const currentPage = ref(1)
-const pageSize = ref(12)
-const searchKeyword = ref('')
-const activeFilter = ref('all')
-const activeSort = ref('recommend')
+const categories = ref([])
+const projects = ref([])
+const total = ref(0)
+const loading = ref(true)
+const loadError = ref(false)
 
-// 筛选标签
-const filterTabs = [
-  { key: 'all', label: '全部' },
-  { key: 'recommend', label: '推荐' },
-  { key: 'hot', label: '热门' },
-  { key: 'latest', label: '最新' }
-]
-
-// 筛选项
-const filterOptions = [
-  { label: '全部分类', value: 'all' },
-  { label: '技术开发', value: 'tech' },
-  { label: '设计创意', value: 'design' },
-  { label: '产品/运营', value: 'product' },
-  { label: '内容创作', value: 'content' }
-]
-
-// 排序选项
-const sortOptions = [
-  { label: '推荐', value: 'recommend' },
-  { label: '最新', value: 'latest' },
-  { label: '热门', value: 'hot' },
-  { label: '最多参与', value: 'participants' }
-]
-
-// 当前排序标签
-const currentSortLabel = computed(() => {
-  const option = sortOptions.find(opt => opt.value === activeSort.value)
-  return option ? option.label : '推荐'
+// 筛选状态完全由路由 query 驱动，可分享、可后退
+const query = reactive({
+  categoryId: route.query.categoryId || null,
+  search: route.query.search || '',
+  filter: route.query.filter || '',
+  sort: route.query.sort || 'latest'
 })
+const page = ref(Number(route.query.page) || 1)
 
-// 加载项目列表
-const loadProjects = async () => {
-  const params = {
-    page: currentPage.value,
-    pageSize: pageSize.value,
-    filter: activeFilter.value,
-    sort: activeSort.value
-  }
+const isFiltering = computed(
+  () => !!(query.search || query.categoryId || query.filter || (route.query.page && page.value > 1))
+)
 
-  if (selectedCategoryId.value) {
-    params.categoryId = selectedCategoryId.value
-  }
-
-  if (searchKeyword.value) {
-    params.search = searchKeyword.value
-  }
-
-  await projectStore.fetchProjects(params)
+const syncRoute = () => {
+  const q = {}
+  if (query.categoryId) q.categoryId = query.categoryId
+  if (query.search) q.search = query.search
+  if (query.filter) q.filter = query.filter
+  if (query.sort !== 'latest') q.sort = query.sort
+  if (page.value > 1) q.page = page.value
+  router.push({ path: '/', query: q })
 }
 
-// 处理分类变化
-const handleCategoryChange = (categoryId) => {
-  selectedCategoryId.value = categoryId
-  currentPage.value = 1
-  loadProjects()
+const setCategory = (id) => {
+  query.categoryId = id ? String(id) : null
+  page.value = 1
+  syncRoute()
+}
+const toggleFilter = (f) => {
+  query.filter = query.filter === f ? '' : f
+  page.value = 1
+  syncRoute()
+}
+const setSort = (s) => {
+  query.sort = s
+  page.value = 1
+  syncRoute()
+}
+const setPage = (p) => {
+  page.value = p
+  syncRoute()
+  document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })
+}
+const clearSearch = () => {
+  query.search = ''
+  page.value = 1
+  syncRoute()
 }
 
-// 处理筛选标签变化
-const handleFilterChange = (filter) => {
-  activeFilter.value = filter
-  currentPage.value = 1
-  loadProjects()
-}
-
-// 处理筛选项变化
-const handleFilterCommand = (value) => {
-  // TODO: 实现具体筛选逻辑
-  ElMessage.info(`筛选：${value}`)
-}
-
-// 处理排序变化
-const handleSortCommand = (value) => {
-  activeSort.value = value
-  currentPage.value = 1
-  loadProjects()
-}
-
-// 处理页码变化
-const handlePageChange = ({ page, pageSize: size }) => {
-  currentPage.value = page
-  pageSize.value = size
-  loadProjects()
-}
-
-// 处理点赞
-const handleLike = async (projectId) => {
-  if (!userStore.isLoggedIn) {
-    ElMessage.warning('请先登录')
-    return
-  }
-
+const fetchProjects = async () => {
+  loading.value = true
+  loadError.value = false
   try {
-    await projectStore.likeProjectAction(projectId)
-    ElMessage.success('点赞成功')
-  } catch (error) {
-    console.error('点赞失败:', error)
+    const res = await getProjects({
+      page: page.value,
+      pageSize: PAGE_SIZE,
+      categoryId: query.categoryId || undefined,
+      search: query.search || undefined,
+      filter: query.filter || undefined,
+      sort: query.sort
+    })
+    projects.value = res.data.projects
+    total.value = res.data.total
+  } catch {
+    loadError.value = true
+  } finally {
+    loading.value = false
   }
 }
 
-// 监听路由查询参数变化
+const fetchCategories = async () => {
+  try {
+    const res = await getCategories()
+    categories.value = res.data
+  } catch {
+    // 分类加载失败不阻塞页面
+  }
+}
+
+// 外部路由变化（如导航栏搜索、页脚快捷链接）时同步并重新拉取
 watch(
-  () => route.query.search,
-  (newSearch) => {
-    searchKeyword.value = newSearch || ''
-    currentPage.value = 1
-    loadProjects()
+  () => route.query,
+  (q) => {
+    if (route.path !== '/') return
+    query.categoryId = q.categoryId || null
+    query.search = q.search || ''
+    query.filter = q.filter || ''
+    query.sort = q.sort || 'latest'
+    page.value = Number(q.page) || 1
+    fetchProjects()
   }
 )
 
-// 初始化
 onMounted(() => {
-  if (route.query.search) {
-    searchKeyword.value = route.query.search
-  }
-  
-  loadProjects()
+  fetchCategories()
+  fetchProjects()
 })
 </script>
 
-<style lang="scss" scoped>
-.home-view {
-  min-height: 100vh;
-  background-color: #f5f7fa;
-
-  .main-content {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 32px 24px;
-
-    .content-container {
-      display: grid;
-      grid-template-columns: 200px 1fr;
-      gap: 32px;
-      align-items: start;
-    }
-
-    .project-section {
-      min-height: 400px;
-
-      .page-header {
-        margin-bottom: 32px;
-
-        .page-title {
-          font-size: 32px;
-          font-weight: 700;
-          color: #303133;
-          margin: 0 0 12px 0;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-
-          .sparkle-icon {
-            font-size: 28px;
-            color: #667eea;
-          }
-        }
-
-        .page-subtitle {
-          font-size: 15px;
-          color: #909399;
-          margin: 0;
-          line-height: 1.6;
-        }
-      }
-
-      .filter-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-        padding-bottom: 24px;
-        border-bottom: 1px solid #e4e7ed;
-
-        .filter-tabs {
-          display: flex;
-          gap: 8px;
-
-          .filter-tab {
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 14px;
-            color: #606266;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: #fff;
-
-            &:hover {
-              color: #667eea;
-              background: #f5f7fa;
-            }
-
-            &.active {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: #fff;
-              font-weight: 500;
-              box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-            }
-          }
-        }
-
-        .filter-actions {
-          display: flex;
-          gap: 12px;
-
-          .el-button {
-            border-radius: 8px;
-          }
-        }
-      }
-    }
-  }
+<style scoped>
+.cat-pill {
+  @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-cream px-3.5 py-1.5 text-sm text-ink-mid transition-all hover:border-pine hover:text-pine;
 }
-
-// 响应式适配
-@media (max-width: 1200px) {
-  .home-view {
-    .main-content {
-      .content-container {
-        gap: 20px;
-      }
-    }
-  }
-}
-
-@media (max-width: 1024px) {
-  .home-view {
-    .main-content {
-      .content-container {
-        grid-template-columns: 180px 1fr;
-      }
-
-      .project-section {
-        .page-header {
-          .page-title {
-            font-size: 28px;
-          }
-
-          .page-subtitle {
-            font-size: 14px;
-          }
-        }
-      }
-    }
-  }
-}
-
-@media (max-width: 768px) {
-  .home-view {
-    .main-content {
-      padding: 16px;
-
-      .content-container {
-        grid-template-columns: 1fr;
-        gap: 16px;
-      }
-
-      .project-section {
-        .page-header {
-          .page-title {
-            font-size: 24px;
-          }
-
-          .page-subtitle {
-            font-size: 13px;
-          }
-        }
-
-        .filter-bar {
-          flex-direction: column;
-          gap: 16px;
-          align-items: flex-start;
-
-          .filter-tabs {
-            flex-wrap: wrap;
-            width: 100%;
-          }
-
-          .filter-actions {
-            width: 100%;
-            justify-content: space-between;
-          }
-        }
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .home-view {
-    .main-content {
-      padding: 12px;
-
-      .project-section {
-        .page-header {
-          margin-bottom: 16px;
-
-          .page-title {
-            font-size: 20px;
-          }
-
-          .page-subtitle {
-            font-size: 12px;
-          }
-        }
-
-        .filter-bar {
-          .filter-tabs {
-            .filter-tab {
-              font-size: 13px;
-              padding: 6px 12px;
-            }
-          }
-
-          .filter-actions {
-            .el-button {
-              padding: 8px 12px;
-              font-size: 13px;
-            }
-          }
-        }
-      }
-    }
-  }
+.cat-pill.is-active {
+  @apply border-pine bg-pine text-white hover:text-white;
 }
 </style>

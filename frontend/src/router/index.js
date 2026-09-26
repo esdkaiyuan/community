@@ -4,50 +4,60 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/views/HomeView.vue')
-    // component: () => import('@/views/TestView.vue')
+    component: () => import('@/views/HomeView.vue'),
+    meta: { title: '首页' }
   },
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/views/LoginView.vue')
+    component: () => import('@/views/LoginView.vue'),
+    meta: { title: '登录' }
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('@/views/RegisterView.vue')
+    component: () => import('@/views/RegisterView.vue'),
+    meta: { title: '注册' }
   },
   {
     path: '/project/:id',
     name: 'ProjectDetail',
-    component: () => import('@/views/ProjectDetailView.vue')
+    component: () => import('@/views/ProjectDetailView.vue'),
+    meta: { title: '项目详情' }
   },
   {
     path: '/publish',
-    name: 'PublishProject',
-    component: () => import('@/views/PublishProjectView.vue'),
-    meta: { requiresAuth: true }
+    name: 'Publish',
+    component: () => import('@/views/PublishView.vue'),
+    meta: { title: '发布项目', requiresAuth: true }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/ProfileView.vue'),
+    meta: { title: '个人中心', requiresAuth: true }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/views/NotFoundView.vue'),
+    meta: { title: '页面不存在' }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    return savedPosition || { top: 0 }
+  }
 })
 
-// 路由错误处理
-router.onError((error) => {
-  console.error('Router error:', error)
-})
+router.beforeEach((to) => {
+  document.title = to.meta.title ? `${to.meta.title} · 共创社区` : '共创社区'
 
-// 路由守卫
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  
-  if (to.meta.requiresAuth && !token) {
-    next('/login')
-  } else {
-    next()
+  if (to.meta.requiresAuth && !localStorage.getItem('token')) {
+    return { name: 'Login', query: { redirect: to.fullPath } }
   }
 })
 

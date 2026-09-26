@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased scroll-smooth;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans;
+  }
+
+  ::selection {
+    @apply bg-pine/20 text-pine-deep;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #d3ccba transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #d3ccba;
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /* 主按钮 */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full bg-pine px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:bg-pine-deep hover:shadow-card-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* 次按钮（描边） */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full border border-line-strong bg-cream px-5 py-2.5 text-sm font-medium text-ink transition-all duration-200 hover:border-pine hover:text-pine active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* 幽灵按钮 */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-ink-mid transition-colors duration-200 hover:bg-pine-soft hover:text-pine-deep;
+  }
+
+  /* 输入框 */
+  .input {
+    @apply w-full rounded-xl border border-line bg-cream px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 placeholder:text-ink-dim focus:border-pine focus:ring-2 focus:ring-pine/15;
+  }
+
+  /* 卡片容器 */
+  .card {
+    @apply rounded-xl2 border border-line bg-cream shadow-card;
+  }
+
+  /* 标签 chip */
+  .chip {
+    @apply inline-flex items-center rounded-full bg-pine-soft px-2.5 py-0.5 text-xs text-pine-deep;
+  }
+
+  /* 骨架屏 */
+  .skeleton {
+    @apply animate-shimmer rounded-lg bg-sand;
+    background-image: linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.6) 40px, transparent 80px);
+    background-size: 800px 100%;
+    background-repeat: no-repeat;
+  }
+}
