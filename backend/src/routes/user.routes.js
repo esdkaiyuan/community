@@ -1,11 +1,12 @@
 const express = require('express')
 const router = express.Router()
 const userController = require('../controllers/user.controller')
-const auth = require('../middleware/auth')
+const { auth } = require('../middleware/auth')
+const { authLimiter } = require('../middleware/rateLimiter')
 
-// 公开路由
-router.post('/register', userController.register)
-router.post('/login', userController.login)
+// 公开路由（注册/登录有更严格的限流）
+router.post('/register', authLimiter, userController.register)
+router.post('/login', authLimiter, userController.login)
 
 // 需要认证的路由
 router.get('/me', auth, userController.getProfile)

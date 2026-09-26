@@ -150,6 +150,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as projectApi from '@/api/project'
 import { useUserStore } from '@/store/user'
+import { getUserFlag, setUserFlag } from '@/utils/storage'
 import { toast } from '@/composables/useToast'
 import EmptyState from '@/components/EmptyState.vue'
 
@@ -163,10 +164,16 @@ const notFound = ref(false)
 const acting = ref(false)
 const imgFailed = ref(false)
 
-// 后端未返回当前用户的点赞/参与状态，用本地记录辅助（按 用户id-项目id 记忆）
-const localFlag = (kind) => `${kind}:${userStore.userId}:${route.params.id}`
 const liked = ref(false)
 const participated = ref(false)
+
+// 同步点赞/参与状态：优先采用服务端权威数据，未登录时退回本地标记
+const syncFlags = () => {
+  const uid = userStore.userId
+  const pid = route.params.id
+  liked.value = project.value?.liked ?? getUserFlag('like', uid, pid)
+  participated.value = project.value?.participated ?? getUserFlag('join', uid, pid)
+}
 
 const isOwner = computed(
   () => userStore.isLoggedIn && project.value?.creator?.id === userStore.userId
@@ -201,8 +208,7 @@ const fetchDetail = async () => {
   try {
     const res = await projectApi.getProject(route.params.id)
     project.value = res.data
-    liked.value = localStorage.getItem(localFlag('like')) === '1'
-    participated.value = localStorage.getItem(localFlag('join')) === '1'
+    syncFlags()
   } catch (e) {
     if (e.response?.status === 404) notFound.value = true
   } finally {
@@ -218,12 +224,12 @@ const handleLike = async () => {
       const res = await projectApi.unlikeProject(project.value.id)
       project.value.likeCount = res.data.likeCount
       liked.value = false
-      localStorage.removeItem(localFlag('like'))
+      setUserFlag('like', userStore.userId, project.value.id, false)
     } else {
       const res = await projectApi.likeProject(project.value.id)
       project.value.likeCount = res.data.likeCount
       liked.value = true
-      localStorage.setItem(localFlag('like'), '1')
+      setUserFlag('like', userStore.userId, project.value.id, true)
       toast('点赞成功，为创意加油！')
     }
   } catch (e) {
@@ -231,10 +237,10 @@ const handleLike = async () => {
     const msg = e.response?.data?.message || ''
     if (msg.includes('已点赞')) {
       liked.value = true
-      localStorage.setItem(localFlag('like'), '1')
+      setUserFlag('like', userStore.userId, project.value.id, true)
     } else if (msg.includes('尚未点赞')) {
       liked.value = false
-      localStorage.removeItem(localFlag('like'))
+      setUserFlag('like', userStore.userId, project.value.id, false)
     }
   } finally {
     acting.value = false
@@ -249,23 +255,23 @@ const handleParticipate = async () => {
       const res = await projectApi.cancelParticipate(project.value.id)
       project.value.participantCount = res.data.participantCount
       participated.value = false
-      localStorage.removeItem(localFlag('join'))
+      setUserFlag('join', userStore.userId, project.value.id, false)
       toast('已退出该项目', 'info')
     } else {
       const res = await projectApi.participateProject(project.value.id)
       project.value.participantCount = res.data.participantCount
       participated.value = true
-      localStorage.setItem(localFlag('join'), '1')
+      setUserFlag('join', userStore.userId, project.value.id, true)
       toast('参与成功，欢迎加入共创！')
     }
   } catch (e) {
     const msg = e.response?.data?.message || ''
     if (msg.includes('已参与')) {
       participated.value = true
-      localStorage.setItem(localFlag('join'), '1')
+      setUserFlag('join', userStore.userId, project.value.id, true)
     } else if (msg.includes('未参与')) {
       participated.value = false
-      localStorage.removeItem(localFlag('join'))
+      setUserFlag('join', userStore.userId, project.value.id, false)
     }
   } finally {
     acting.value = false

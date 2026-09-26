@@ -1,5 +1,7 @@
 import axios from 'axios'
 import { toast } from '@/composables/useToast'
+import { clearSession, getToken } from '@/utils/storage'
+import router from '@/router'
 
 const request = axios.create({
   baseURL: '/api',
@@ -8,7 +10,7 @@ const request = axios.create({
 
 // 请求拦截：附带 token
 request.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -23,14 +25,14 @@ request.interceptors.response.use(
     const message = error.response?.data?.message || '网络异常，请稍后重试'
 
     if (status === 401) {
-      // token 失效：清除本地登录态并跳转登录页
-      localStorage.removeItem('token')
-      localStorage.removeItem('userInfo')
-      if (!location.pathname.startsWith('/login')) {
+      // token 失效：清除本地登录态并跳转登录页（复用 router，避免整页刷新）
+      clearSession()
+      if (router.currentRoute.value.path !== '/login') {
         toast(message === '未提供认证令牌' ? '请先登录' : '登录已过期，请重新登录', 'error')
-        setTimeout(() => {
-          location.href = `/login?redirect=${encodeURIComponent(location.pathname + location.search)}`
-        }, 600)
+        router.push({
+          name: 'Login',
+          query: { redirect: router.currentRoute.value.fullPath }
+        })
       }
     } else {
       toast(message, 'error')

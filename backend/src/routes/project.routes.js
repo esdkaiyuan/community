@@ -1,11 +1,11 @@
 const express = require('express')
 const router = express.Router()
 const projectController = require('../controllers/project.controller')
-const auth = require('../middleware/auth')
+const { auth, optionalAuth } = require('../middleware/auth')
 
-// 公开路由
+// 公开路由（详情页用可选认证，登录用户可拿到 liked/participated 状态）
 router.get('/', projectController.getProjects)
-router.get('/:id', projectController.getProjectById)
+router.get('/:id', optionalAuth, projectController.getProjectById)
 
 // 需要认证的路由
 router.post('/', auth, projectController.createProject)

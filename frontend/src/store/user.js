@@ -1,19 +1,11 @@
 import { defineStore } from 'pinia'
 import * as userApi from '@/api/user'
-
-// 安全解析本地缓存的用户信息
-const readCachedUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem('userInfo')) || null
-  } catch {
-    return null
-  }
-}
+import { getUserInfo, getToken, saveSession, setUserInfo, clearSession } from '@/utils/storage'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    token: localStorage.getItem('token') || '',
-    userInfo: readCachedUser()
+    token: getToken(),
+    userInfo: getUserInfo()
   }),
 
   getters: {
@@ -26,8 +18,7 @@ export const useUserStore = defineStore('user', {
     setSession({ token, user }) {
       this.token = token
       this.userInfo = user
-      localStorage.setItem('token', token)
-      localStorage.setItem('userInfo', JSON.stringify(user))
+      saveSession({ token, user })
     },
 
     async login(payload) {
@@ -46,15 +37,14 @@ export const useUserStore = defineStore('user', {
     async fetchMe() {
       const res = await userApi.getMe()
       this.userInfo = res.data
-      localStorage.setItem('userInfo', JSON.stringify(res.data))
+      setUserInfo(res.data)
       return res.data
     },
 
     logout() {
       this.token = ''
       this.userInfo = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('userInfo')
+      clearSession()
     }
   }
 })

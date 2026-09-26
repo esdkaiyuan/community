@@ -1,15 +1,9 @@
 const jwt = require('jsonwebtoken')
+const env = require('../config/env')
 
-const generateToken = (userId) => {
-  return jwt.sign(
-    { userId },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
-  )
-}
+const generateToken = (userId) =>
+  jwt.sign({ userId }, env.jwt.secret, { expiresIn: env.jwt.expiresIn })
 
-const verifyToken = (token) => {
-  return jwt.verify(token, process.env.JWT_SECRET)
-}
+const verifyToken = (token) => jwt.verify(token, env.jwt.secret)
 
 module.exports = { generateToken, verifyToken }

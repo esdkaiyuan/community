@@ -20,8 +20,7 @@ module.exports = {
       restart_delay: 4000,
       cron_restart: '0 0 * * *',
       kill_timeout: 5000,
-      wait_ready: true,
-      listen_timeout: 3000
+      listen_timeout: 10000
     }
   ]
 }

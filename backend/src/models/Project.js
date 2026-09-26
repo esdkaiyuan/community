@@ -42,7 +42,7 @@ const Project = sequelize.define('Project', {
       if (Array.isArray(raw)) return raw
       try {
         return JSON.parse(raw)
-      } catch (e) {
+      } catch {
         return []
       }
     },

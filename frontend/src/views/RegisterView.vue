@@ -161,11 +161,3 @@ const handleSubmit = async () => {
 }
 </script>
 
-<style scoped>
-.form-label {
-  @apply mb-1.5 block text-sm font-medium text-ink;
-}
-.form-error {
-  @apply mt-1.5 text-xs text-clay;
-}
-</style>

@@ -5,6 +5,7 @@ const Category = require('./Category')
 const Tag = require('./Tag')
 const ProjectTag = require('./ProjectTag')
 const ProjectParticipant = require('./ProjectParticipant')
+const ProjectLike = require('./ProjectLike')
 
 module.exports = {
   sequelize,
@@ -13,5 +14,6 @@ module.exports = {
   Category,
   Tag,
   ProjectTag,
-  ProjectParticipant
+  ProjectParticipant,
+  ProjectLike
 }

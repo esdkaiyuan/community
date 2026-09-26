@@ -269,11 +269,3 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.cat-pill {
-  @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-cream px-3.5 py-1.5 text-sm text-ink-mid transition-all hover:border-pine hover:text-pine;
-}
-.cat-pill.is-active {
-  @apply border-pine bg-pine text-white hover:text-white;
-}
-</style>

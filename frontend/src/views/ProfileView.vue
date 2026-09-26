@@ -142,12 +142,12 @@ const handleSave = async () => {
   }
 }
 
-// 后端项目列表暂无按创建者筛选的参数，先取近 100 条在前端过滤
+// 服务端按创建者过滤，只拉自己的项目
 const fetchMyProjects = async () => {
   loadingProjects.value = true
   try {
-    const res = await getProjects({ page: 1, pageSize: 100, sort: 'latest' })
-    myProjects.value = res.data.projects.filter((p) => p.creator?.id === userStore.userId)
+    const res = await getProjects({ page: 1, pageSize: 12, sort: 'latest', creatorId: userStore.userId })
+    myProjects.value = res.data.projects
   } catch {
     myProjects.value = []
   } finally {
