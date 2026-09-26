@@ -20,6 +20,22 @@
 
         <button class="btn-secondary shrink-0" @click="openEdit">编辑资料</button>
       </div>
+
+      <!-- 数据概览：苹果参数式发丝线规格条 -->
+      <div class="relative mt-8 grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-line">
+        <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
+          <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.projectCount ?? '—' }}</p>
+          <p class="mt-0.5 text-xs text-ink-dim">发布项目</p>
+        </div>
+        <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
+          <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.commentCount ?? '—' }}</p>
+          <p class="mt-0.5 text-xs text-ink-dim">参与评论</p>
+        </div>
+        <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
+          <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.likeReceived ?? '—' }}</p>
+          <p class="mt-0.5 text-xs text-ink-dim">收到点赞</p>
+        </div>
+      </div>
     </div>
 
     <!-- 我发布的项目 -->
@@ -54,6 +70,69 @@
           :project="p"
         />
       </div>
+    </div>
+
+    <!-- 我参与的讨论 -->
+    <div class="mt-12">
+      <div class="mb-5 flex items-center justify-between">
+        <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
+          <span class="h-4 w-1 rounded-full bg-pine"></span>
+          我参与的讨论
+          <span v-if="!loadingComments" class="text-sm font-normal text-ink-dim">（{{ commentTotal }}）</span>
+        </h2>
+      </div>
+
+      <div v-if="loadingComments" class="space-y-3">
+        <div v-for="i in 3" :key="i" class="card h-[76px] animate-pulse !shadow-sm" style="animation-delay: 0ms"></div>
+      </div>
+
+      <EmptyState
+        v-else-if="!myComments.length"
+        icon="message-circle"
+        title="还没有参与过讨论"
+        description="去逛逛别人的项目，留下你的第一条评论吧。"
+      >
+        <router-link to="/" class="btn-primary">去逛逛</router-link>
+      </EmptyState>
+
+      <template v-else>
+        <div class="card divide-y divide-line overflow-hidden !p-0">
+          <router-link
+            v-for="(c, i) in myComments"
+            :key="c.id"
+            v-reveal="Math.min(i, 6) * 50"
+            :to="c.project ? `/project/${c.project.id}#comments` : '/'"
+            class="group block px-5 py-4 transition-colors hover:bg-pine-soft/40"
+          >
+            <div class="flex items-center gap-2">
+              <span class="min-w-0 flex-1 truncate text-sm font-medium text-pine-deep">
+                {{ c.project?.title || '项目已删除' }}
+              </span>
+              <span v-if="c.parentId" class="chip !px-2 !py-0.5 text-[11px]">回复</span>
+              <span class="shrink-0 text-xs tabular-nums text-ink-dim">{{ relativeTime(c.createdAt) }}</span>
+            </div>
+            <p class="mt-1.5 line-clamp-2 text-[15px] leading-relaxed text-ink-mid">{{ c.content }}</p>
+            <div class="mt-2 flex items-center gap-1 text-xs tabular-nums text-ink-dim">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.4 12.6 12 21l-8.4-8.4a5.3 5.3 0 1 1 7.5-7.5l.9.9.9-.9a5.3 5.3 0 1 1 7.5 7.5z" />
+              </svg>
+              {{ c.likeCount }}
+              <span class="ml-auto hidden items-center gap-0.5 text-pine-deep opacity-0 transition-opacity group-hover:opacity-100 sm:inline-flex">
+                查看对话
+                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </span>
+            </div>
+          </router-link>
+        </div>
+
+        <div v-if="myComments.length < commentTotal" class="mt-5 text-center">
+          <button class="btn-ghost" :disabled="loadingMore" @click="loadMoreComments">
+            {{ loadingMore ? '加载中…' : '加载更多' }}
+          </button>
+        </div>
+      </template>
     </div>
 
     <!-- 编辑资料弹窗 -->
@@ -105,8 +184,9 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useUserStore } from '@/store/user'
 import { getProjects } from '@/api/project'
-import { updateProfile } from '@/api/user'
+import { getMyComments, getMyStats, updateProfile } from '@/api/user'
 import { toast } from '@/composables/useToast'
+import { relativeTime } from '@/utils/time'
 import ProjectCard from '@/components/ProjectCard.vue'
 import ProjectCardSkeleton from '@/components/ProjectCardSkeleton.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -116,6 +196,15 @@ const user = computed(() => userStore.userInfo)
 
 const myProjects = ref([])
 const loadingProjects = ref(true)
+
+const stats = ref(null)
+
+const myComments = ref([])
+const commentTotal = ref(0)
+const commentPage = ref(1)
+const loadingComments = ref(true)
+const loadingMore = ref(false)
+const COMMENT_PAGE_SIZE = 10
 
 const editing = ref(false)
 const saving = ref(false)
@@ -160,10 +249,55 @@ const fetchMyProjects = async () => {
   }
 }
 
+const fetchStats = async () => {
+  try {
+    const res = await getMyStats()
+    stats.value = res.data
+  } catch {
+    stats.value = null
+  }
+}
+
+const fetchMyComments = async (page = 1) => {
+  const res = await getMyComments({ page, pageSize: COMMENT_PAGE_SIZE })
+  return res.data
+}
+
+const loadMoreComments = async () => {
+  if (loadingMore.value) return
+  loadingMore.value = true
+  try {
+    const data = await fetchMyComments(commentPage.value + 1)
+    myComments.value.push(...data.comments)
+    commentTotal.value = data.total
+    commentPage.value = data.page
+  } catch {
+    // 错误已由拦截器 toast
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+const initComments = async () => {
+  loadingComments.value = true
+  try {
+    const data = await fetchMyComments(1)
+    myComments.value = data.comments
+    commentTotal.value = data.total
+    commentPage.value = data.page
+  } catch {
+    myComments.value = []
+  } finally {
+    loadingComments.value = false
+  }
+}
+
 onMounted(async () => {
   // 确保 userId 可用后再过滤
   if (!user.value) await userStore.fetchMe().catch(() => {})
   fetchMyProjects()
+  fetchStats()
+  initComments()
 })
 </script>
 

@@ -10,6 +10,8 @@ router.post('/login', authLimiter, userController.login)
 
 // 需要认证的路由
 router.get('/me', auth, userController.getProfile)
+router.get('/me/comments', auth, userController.getMyComments)
+router.get('/me/stats', auth, userController.getMyStats)
 router.get('/profile', auth, userController.getProfile)
 router.put('/profile', auth, userController.updateProfile)
 

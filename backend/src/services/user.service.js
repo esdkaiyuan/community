@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs')
 const { Op } = require('sequelize')
-const { User } = require('../models')
+const { User, Comment, Project, ProjectLike, sequelize } = require('../models')
 const { generateToken } = require('../utils/jwt')
 const ApiError = require('../utils/ApiError')
 
@@ -80,6 +80,63 @@ exports.updateProfile = async (userId, { username, avatar, bio }) => {
 
   await user.save()
   return toClientUser(user)
+}
+
+// 我发表的评论（含所属项目，供个人中心「我参与的讨论」）
+exports.getMyComments = async (userId, { page = 1, pageSize = 10 } = {}) => {
+  page = Math.max(1, parseInt(page, 10) || 1)
+  const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 10))
+  const offset = (page - 1) * limit
+
+  const { rows, count } = await Comment.findAndCountAll({
+    where: { user_id: userId },
+    include: [{ model: Project, as: 'project', attributes: ['id', 'title'] }],
+    order: [['created_at', 'DESC']],
+    limit,
+    offset,
+    distinct: true
+  })
+
+  return {
+    comments: rows.map((r) => {
+      const row = r.toJSON()
+      return {
+        id: row.id,
+        parentId: row.parent_id || null,
+        content: row.content,
+        createdAt: row.created_at,
+        likeCount: row.like_count || 0,
+        project: row.project || null
+      }
+    }),
+    total: count,
+    page,
+    pageSize: limit
+  }
+}
+
+// 个人数据概览：发布数 / 评论数 / 收到的点赞（项目点赞 + 评论点赞）
+exports.getMyStats = async (userId) => {
+  const [projectCount, commentCount] = await Promise.all([
+    Project.count({ where: { creator_id: userId } }),
+    Comment.count({ where: { user_id: userId } })
+  ])
+
+  const [likeRows] = await sequelize.query(
+    `SELECT
+       (SELECT COUNT(*) FROM project_likes pl
+          JOIN projects p ON p.id = pl.project_id
+          WHERE p.creator_id = :userId AND p.deleted_at IS NULL) AS projectLikes,
+       (SELECT COALESCE(SUM(pc.like_count), 0) FROM project_comments pc
+          WHERE pc.user_id = :userId AND pc.status = 1) AS commentLikes`,
+    { replacements: { userId }, type: sequelize.QueryTypes.SELECT }
+  )
+
+  return {
+    projectCount,
+    commentCount,
+    likeReceived: Number(likeRows.projectLikes || 0) + Number(likeRows.commentLikes || 0)
+  }
 }
 
 exports.toClientUser = toClientUser

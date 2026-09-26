@@ -21,3 +21,13 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   const user = await userService.updateProfile(req.user.userId, req.body)
   ok(res, { user }, '更新成功')
 })
+
+exports.getMyComments = asyncHandler(async (req, res) => {
+  const data = await userService.getMyComments(req.user.userId, req.query)
+  ok(res, data)
+})
+
+exports.getMyStats = asyncHandler(async (req, res) => {
+  const data = await userService.getMyStats(req.user.userId)
+  ok(res, data)
+})
