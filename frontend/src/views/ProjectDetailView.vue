@@ -24,7 +24,7 @@
       <transition name="bar">
         <div
           v-if="scrolled"
-          class="fixed inset-x-0 top-12 z-40 border-b border-white/60 bg-white/72 backdrop-blur-xl backdrop-saturate-150"
+          class="fixed inset-x-0 top-12 z-40 border-b border-[color:var(--glass-border)] bg-[color:var(--glass-nav)] backdrop-blur-xl backdrop-saturate-150"
         >
           <div class="mx-auto flex h-12 max-w-5xl items-center gap-3 px-4 sm:px-6">
             <span class="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{{ project.title }}</span>
@@ -81,8 +81,8 @@
           </span>
         </div>
         <div class="absolute left-4 top-4 flex gap-2">
-          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="star" class="h-3 w-3 text-amber-warm" />编辑推荐</span>
-          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="flame" class="h-3 w-3 text-clay" />热门</span>
+          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="star" class="h-3 w-3 text-amber-warm" />编辑推荐</span>
+          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="flame" class="h-3 w-3 text-clay" />热门</span>
         </div>
       </div>
 
@@ -122,7 +122,7 @@
         <!-- 侧栏 -->
         <aside class="space-y-5 lg:sticky lg:top-24 lg:self-start">
           <!-- 操作卡（磨砂玻璃材质） -->
-          <div class="rounded-xl2 border border-white/60 bg-white/70 p-5 shadow-card backdrop-blur-xl backdrop-saturate-150">
+          <div class="rounded-xl2 border border-[color:var(--glass-border)] bg-[color:var(--glass-card)] p-5 shadow-card backdrop-blur-xl backdrop-saturate-150">
             <!-- 规格条：苹果官网参数式发丝线网格 -->
             <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line">
               <div class="bg-cream py-3.5 text-center">

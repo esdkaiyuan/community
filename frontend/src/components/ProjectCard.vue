@@ -26,10 +26,10 @@
 
       <!-- 徽标（苹果式白玻璃轻徽章） -->
       <div class="absolute left-3 top-3 flex gap-1.5">
-        <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md">
+        <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md">
           <AppIcon name="star" class="h-3 w-3 text-amber-warm" />推荐
         </span>
-        <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md">
+        <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md">
           <AppIcon name="flame" class="h-3 w-3 text-clay" />热门
         </span>
       </div>

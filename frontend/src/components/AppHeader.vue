@@ -1,5 +1,5 @@
 <template>
-  <header class="sticky top-0 z-50 border-b border-line bg-white/72 backdrop-blur-xl backdrop-saturate-150">
+  <header class="sticky top-0 z-50 border-b border-line bg-[color:var(--glass-nav)] backdrop-blur-xl backdrop-saturate-150">
     <div class="mx-auto flex h-12 max-w-7xl items-center gap-4 px-4 sm:px-6">
       <!-- Logo -->
       <router-link to="/" class="flex shrink-0 items-center gap-2">
@@ -61,7 +61,7 @@
           <transition name="menu">
             <div
               v-if="menuOpen"
-              class="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-white/60 bg-white/85 py-1.5 shadow-pop backdrop-blur-xl backdrop-saturate-150"
+              class="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-[color:var(--glass-border)] bg-[color:var(--glass-menu)] py-1.5 shadow-pop backdrop-blur-xl backdrop-saturate-150"
             >
               <router-link to="/profile" class="menu-item" @click="menuOpen = false">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">

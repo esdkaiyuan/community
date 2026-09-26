@@ -64,7 +64,7 @@
       <!-- 标签 -->
       <div>
         <label class="form-label" for="tag">标签 <span class="text-xs font-normal text-ink-dim">（最多 5 个，回车添加）</span></label>
-        <div class="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 transition-all focus-within:border-pine focus-within:ring-4 focus-within:ring-pine/10">
+        <div class="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-cream px-3 py-2 transition-all focus-within:border-pine focus-within:ring-4 focus-within:ring-pine/10">
           <span
             v-for="(tag, i) in form.tags"
             :key="tag"

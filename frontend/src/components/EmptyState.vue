@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col items-center justify-center py-20 text-center">
-    <div class="flex h-16 w-16 items-center justify-center rounded-full bg-white text-ink-dim shadow-card">
+    <div class="flex h-16 w-16 items-center justify-center rounded-full bg-cream text-ink-dim shadow-card">
       <AppIcon :name="icon" class="h-7 w-7" />
     </div>
     <p class="mt-4 text-base font-medium text-ink">{{ title }}</p>

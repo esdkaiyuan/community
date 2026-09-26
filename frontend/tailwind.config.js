@@ -7,27 +7,29 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: '#F5F5F7',
-        cream: '#FFFFFF',
-        sand: '#E8E8ED',
+        // 通过 CSS 变量取值（style.css :root / prefers-color-scheme: dark），
+        // RGB 三元组 + <alpha-value> 保证 bg-ink/30 这类透明度修饰符可用
+        paper: 'rgb(var(--c-paper) / <alpha-value>)',
+        cream: 'rgb(var(--c-cream) / <alpha-value>)',
+        sand: 'rgb(var(--c-sand) / <alpha-value>)',
         ink: {
-          DEFAULT: '#1D1D1F',
-          mid: '#6E6E73',
-          dim: '#AEAEB2'
+          DEFAULT: 'rgb(var(--c-ink) / <alpha-value>)',
+          mid: 'rgb(var(--c-ink-mid) / <alpha-value>)',
+          dim: 'rgb(var(--c-ink-dim) / <alpha-value>)'
         },
         pine: {
-          DEFAULT: '#0071E3',
-          deep: '#0066CC',
-          soft: '#E8F1FD',
-          tint: '#F5F9FF'
+          DEFAULT: 'rgb(var(--c-pine) / <alpha-value>)',
+          deep: 'rgb(var(--c-pine-deep) / <alpha-value>)',
+          soft: 'rgb(var(--c-pine-soft) / <alpha-value>)',
+          tint: 'rgb(var(--c-pine-tint) / <alpha-value>)'
         },
         amber: {
-          warm: '#C93400',
-          soft: '#FDF0E4'
+          warm: 'rgb(var(--c-amber-warm) / <alpha-value>)',
+          soft: 'rgb(var(--c-amber-soft) / <alpha-value>)'
         },
-        clay: '#D70015',
-        line: '#D2D2D7',
-        'line-strong': '#A1A1A6'
+        clay: 'rgb(var(--c-clay) / <alpha-value>)',
+        line: 'rgb(var(--c-line) / <alpha-value>)',
+        'line-strong': 'rgb(var(--c-line-strong) / <alpha-value>)'
       },
       fontFamily: {
         sans: [

@@ -61,7 +61,7 @@
       <transition name="modal">
         <div
           v-if="editing"
-          class="fixed inset-0 z-[90] flex items-center justify-center bg-ink/30 p-4 backdrop-blur-sm"
+          class="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
           @click.self="editing = false"
         >
           <div class="card w-full max-w-md p-6 shadow-pop sm:p-8">
