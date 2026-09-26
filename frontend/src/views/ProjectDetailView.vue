@@ -81,8 +81,8 @@
           </span>
         </div>
         <div class="absolute left-4 top-4 flex gap-2">
-          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-amber-warm px-2.5 py-1 text-xs font-medium text-white shadow"><AppIcon name="star" class="h-3 w-3" />编辑推荐</span>
-          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-clay px-2.5 py-1 text-xs font-medium text-white shadow"><AppIcon name="flame" class="h-3 w-3" />热门</span>
+          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="star" class="h-3 w-3 text-amber-warm" />编辑推荐</span>
+          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="flame" class="h-3 w-3 text-clay" />热门</span>
         </div>
       </div>
 
@@ -102,11 +102,20 @@
           </div>
 
           <div class="card mt-6 p-6 sm:p-8">
-            <h2 class="mb-4 flex items-center gap-2 text-lg font-semibold text-ink">
+            <h2 class="mb-5 flex items-center gap-2 text-lg font-semibold text-ink">
               <span class="h-4 w-1 rounded-full bg-pine"></span>
               项目介绍
             </h2>
-            <p class="whitespace-pre-wrap text-[15px] leading-loose text-ink-mid">{{ project.description }}</p>
+            <!-- 苹果式分层排版：首段导语 17px 深色强调，后续段落 15px 次级灰 -->
+            <div class="space-y-4">
+              <p
+                v-for="(para, i) in descriptionParagraphs"
+                :key="i"
+                :class="i === 0 ? 'text-[17px] font-medium leading-relaxed text-ink' : 'text-[15px] leading-loose text-ink-mid'"
+              >
+                {{ para }}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -208,6 +217,14 @@ const imgFailed = ref(false)
 
 const liked = ref(false)
 const participated = ref(false)
+
+// 项目介绍分层：按空行/换行拆段，首段作为导语强调（苹果产品页排版）
+const descriptionParagraphs = computed(() =>
+  (project.value?.description || '')
+    .split(/\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+)
 
 // 同步点赞/参与状态：优先采用服务端权威数据，未登录时退回本地标记
 const syncFlags = () => {

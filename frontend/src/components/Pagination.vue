@@ -59,10 +59,11 @@ const go = (p) => {
 </script>
 
 <style scoped>
+/* apple.com 式极简分页：无边框圆片，选中蓝字加粗 */
 .page-btn {
-  @apply flex h-9 min-w-[2.25rem] items-center justify-center rounded-lg border border-line bg-cream px-2 text-sm text-ink-mid transition-colors hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink-mid;
+  @apply flex h-9 min-w-[2.25rem] items-center justify-center rounded-full px-2 text-sm text-ink-mid transition-colors hover:bg-sand hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-mid;
 }
 .page-btn.is-active {
-  @apply border-pine bg-pine text-white hover:text-white;
+  @apply bg-transparent font-semibold text-pine hover:bg-transparent hover:text-pine;
 }
 </style>

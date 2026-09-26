@@ -79,7 +79,7 @@
             v-for="f in FILTERS"
             :key="f.value"
             class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-colors"
-            :class="query.filter === f.value ? 'bg-amber-soft font-medium text-amber-warm' : 'text-ink-mid hover:bg-sand'"
+            :class="query.filter === f.value ? 'bg-sand font-semibold text-ink' : 'text-ink-mid hover:bg-sand/60'"
             @click="toggleFilter(f.value)"
           >
             <AppIcon :name="f.icon" class="h-3.5 w-3.5" />
@@ -93,7 +93,7 @@
             v-for="s in SORTS"
             :key="s.value"
             class="rounded-full px-3 py-1.5 transition-colors"
-            :class="query.sort === s.value ? 'bg-pine-soft font-medium text-pine-deep' : 'text-ink-mid hover:bg-sand'"
+            :class="query.sort === s.value ? 'font-semibold text-pine' : 'text-ink-mid hover:bg-sand/60'"
             @click="setSort(s.value)"
           >
             {{ s.label }}

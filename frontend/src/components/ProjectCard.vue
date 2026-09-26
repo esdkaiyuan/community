@@ -24,14 +24,18 @@
         </span>
       </div>
 
-      <!-- 徽标 -->
+      <!-- 徽标（苹果式白玻璃轻徽章） -->
       <div class="absolute left-3 top-3 flex gap-1.5">
-        <span v-if="project.isRecommend" class="rounded-full bg-amber-warm px-2.5 py-0.5 text-[11px] font-medium text-white shadow-sm">推荐</span>
-        <span v-if="project.isHot" class="rounded-full bg-clay px-2.5 py-0.5 text-[11px] font-medium text-white shadow-sm">热门</span>
+        <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md">
+          <AppIcon name="star" class="h-3 w-3 text-amber-warm" />推荐
+        </span>
+        <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md">
+          <AppIcon name="flame" class="h-3 w-3 text-clay" />热门
+        </span>
       </div>
       <span
         v-if="project.categoryName"
-        class="absolute bottom-3 left-3 rounded-full bg-black/45 px-2.5 py-0.5 text-xs text-white backdrop-blur-sm"
+        class="absolute bottom-3 left-3 rounded-full bg-black/40 px-2.5 py-0.5 text-xs text-white backdrop-blur-md"
       >
         {{ project.categoryName }}
       </span>
@@ -84,6 +88,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import AppIcon from '@/components/AppIcon.vue'
 
 const props = defineProps({
   project: { type: Object, required: true }
