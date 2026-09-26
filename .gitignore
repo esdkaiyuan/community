@@ -32,3 +32,6 @@ Thumbs.db
 # 部署包与调试截图（本地生成，不提交）
 *.zip
 /docs/screenshots/
+
+# ESLint flat config 加载缓存
+*.timestamp-*.mjs
