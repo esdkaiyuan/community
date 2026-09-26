@@ -1,5 +1,5 @@
 const { Op } = require('sequelize')
-const { Comment, Project, User } = require('../models')
+const { Comment, Project, User, CommentLike } = require('../models')
 const ApiError = require('../utils/ApiError')
 const { stripEmoji, hasEmoji } = require('../utils/textSanitize')
 
@@ -13,6 +13,7 @@ const toClientComment = (comment, extra = {}) => {
     parentId: row.parent_id || null,
     content: row.content,
     createdAt: row.created_at,
+    likeCount: row.like_count || 0,
     user: row.user
       ? { id: row.user.id, username: row.user.username, avatar: row.user.avatar || '' }
       : null,
@@ -60,14 +61,27 @@ exports.listComments = async ({ projectId, page = 1, pageSize = 20, currentUserI
     repliesByRoot.set(reply.parent_id, list)
   }
 
+  // 当前用户的点赞状态（一次查出本页所有评论的点赞记录）
+  const allIds = [...rootIds, ...replyRows.map((r) => r.id)]
+  let likedSet = new Set()
+  if (currentUserId != null && allIds.length) {
+    const likes = await CommentLike.findAll({
+      where: { user_id: currentUserId, comment_id: { [Op.in]: allIds } },
+      attributes: ['comment_id']
+    })
+    likedSet = new Set(likes.map((l) => l.comment_id))
+  }
+  const liked = (id) => likedSet.has(id)
+
   const total = await Comment.count({ where: { project_id: projectId } })
 
   return {
     comments: rootRows.map((row) =>
       toClientComment(row, {
         canDelete: canDelete(row.user_id),
+        liked: liked(row.id),
         replyCount: (repliesByRoot.get(row.id) || []).length,
-        replies: repliesByRoot.get(row.id) || []
+        replies: (repliesByRoot.get(row.id) || []).map((r) => ({ ...r, liked: liked(r.id) }))
       })
     ),
     total,
@@ -108,7 +122,7 @@ exports.createComment = async ({ projectId, content, userId, parentId }) => {
   const full = await Comment.findByPk(comment.id, { include: [withUser] })
 
   return {
-    comment: toClientComment(full, { canDelete: true, replyCount: 0, replies: [] }),
+    comment: toClientComment(full, { canDelete: true, liked: false, replyCount: 0, replies: [] }),
     hadEmoji: hasEmoji(content),
     commentCount: project.comment_count
   }
@@ -137,6 +151,38 @@ exports.deleteComment = async ({ projectId, commentId, userId }) => {
   await project.save()
 
   return { commentCount: project.comment_count }
+}
+
+exports.likeComment = async ({ projectId, commentId, userId }) => {
+  const comment = await getCommentOr404(projectId, commentId)
+
+  const existing = await CommentLike.findOne({ where: { comment_id: commentId, user_id: userId } })
+  if (existing) throw ApiError.conflict('已点赞过该评论')
+
+  await CommentLike.create({ comment_id: commentId, user_id: userId })
+  comment.like_count += 1
+  await comment.save()
+  return { likeCount: comment.like_count }
+}
+
+exports.unlikeComment = async ({ projectId, commentId, userId }) => {
+  const comment = await getCommentOr404(projectId, commentId)
+
+  const existing = await CommentLike.findOne({ where: { comment_id: commentId, user_id: userId } })
+  if (!existing) throw ApiError.badRequest('尚未点赞该评论')
+
+  await existing.destroy()
+  if (comment.like_count > 0) {
+    comment.like_count -= 1
+    await comment.save()
+  }
+  return { likeCount: comment.like_count }
+}
+
+const getCommentOr404 = async (projectId, commentId) => {
+  const comment = await Comment.findOne({ where: { id: commentId, project_id: projectId } })
+  if (!comment) throw ApiError.notFound('评论不存在或已被删除')
+  return comment
 }
 
 // 评论计数与真实条数对账（供管理/修复用）

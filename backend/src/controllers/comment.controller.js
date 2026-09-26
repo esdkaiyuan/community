@@ -30,3 +30,21 @@ exports.deleteComment = asyncHandler(async (req, res) => {
   })
   ok(res, data, '评论已删除')
 })
+
+exports.likeComment = asyncHandler(async (req, res) => {
+  const data = await commentService.likeComment({
+    projectId: req.params.id,
+    commentId: req.params.commentId,
+    userId: req.user.userId
+  })
+  ok(res, data, '点赞成功')
+})
+
+exports.unlikeComment = asyncHandler(async (req, res) => {
+  const data = await commentService.unlikeComment({
+    projectId: req.params.id,
+    commentId: req.params.commentId,
+    userId: req.user.userId
+  })
+  ok(res, data, '已取消点赞')
+})

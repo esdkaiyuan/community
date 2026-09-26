@@ -71,6 +71,16 @@ CREATE TABLE IF NOT EXISTS project_tags (
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
 );
 
+-- 评论点赞表（唯一约束防止重复点赞；评论删除时级联清理）
+CREATE TABLE IF NOT EXISTS comment_likes (
+    comment_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (comment_id, user_id),
+    FOREIGN KEY (comment_id) REFERENCES project_comments(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- 项目参与者表
 CREATE TABLE IF NOT EXISTS project_participants (
     project_id INT NOT NULL,

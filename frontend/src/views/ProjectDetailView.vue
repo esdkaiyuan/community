@@ -40,6 +40,14 @@
               {{ project.likeCount }}
             </button>
             <button
+              class="btn-ghost !px-3 !py-1.5 text-sm"
+              title="查看评论"
+              @click="scrollToComments"
+            >
+              <AppIcon name="message-circle" class="h-4 w-4" />
+              {{ commentCount }}
+            </button>
+            <button
               class="!px-4 !py-1.5 text-sm"
               :class="participated ? 'btn-secondary' : 'btn-primary'"
               :disabled="acting"
@@ -193,7 +201,7 @@
       </div>
 
       <!-- 评论区（App Store 评价风） -->
-      <CommentSection :project-id="project.id" />
+      <CommentSection :project-id="project.id" @change="commentCount = $event" />
     </template>
   </div>
 </template>
@@ -221,6 +229,13 @@ const imgFailed = ref(false)
 
 const liked = ref(false)
 const participated = ref(false)
+
+// 评论总数（由评论区组件上报，供顶部玻璃操作条展示）
+const commentCount = ref(0)
+
+const scrollToComments = () => {
+  document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 // 项目介绍分层：按空行/换行拆段，首段作为导语强调（苹果产品页排版）
 const descriptionParagraphs = computed(() =>

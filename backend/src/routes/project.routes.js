@@ -12,6 +12,8 @@ router.get('/:id', optionalAuth, projectController.getProjectById)
 router.get('/:id/comments', optionalAuth, commentController.getComments)
 router.post('/:id/comments', auth, commentController.createComment)
 router.delete('/:id/comments/:commentId', auth, commentController.deleteComment)
+router.post('/:id/comments/:commentId/like', auth, commentController.likeComment)
+router.delete('/:id/comments/:commentId/like', auth, commentController.unlikeComment)
 
 // 需要认证的路由
 router.post('/', auth, projectController.createProject)

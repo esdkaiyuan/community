@@ -1,5 +1,5 @@
 <template>
-  <section class="mt-14">
+  <section id="comments" class="mt-14 scroll-mt-24">
     <!-- 分区标题：App Store「评分与评论」式大标题 + 发丝线分隔 -->
     <div class="flex items-end justify-between gap-4">
       <h2 class="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">评论</h2>
@@ -76,7 +76,8 @@
             <div class="flex items-center gap-2">
               <span class="truncate text-[15px] font-medium text-ink">{{ c.user?.username || '匿名共创者' }}</span>
               <span class="shrink-0 text-xs text-ink-dim">{{ relativeTime(c.createdAt) }}</span>
-              <div class="ml-auto flex shrink-0 items-center gap-1">
+              <div class="ml-auto flex shrink-0 items-center gap-0.5">
+                <LikeButton :liked="c.liked" :count="c.likeCount" :disabled="liking === c.id" @toggle="toggleLike(c)" />
                 <button
                   v-if="userStore.isLoggedIn"
                   class="rounded-full px-2 py-1 text-xs text-ink-dim transition-colors hover:bg-pine-soft hover:text-pine-deep"
@@ -107,15 +108,18 @@
               <div class="flex items-center gap-2">
                 <span class="truncate text-sm font-medium text-ink">{{ r.user?.username || '匿名共创者' }}</span>
                 <span class="shrink-0 text-xs text-ink-dim">{{ relativeTime(r.createdAt) }}</span>
-                <button
-                  v-if="r.canDelete"
-                  class="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs text-ink-dim transition-colors hover:bg-[#FBE9EB] hover:text-clay"
-                  :disabled="removing === r.id"
-                  @click="handleDelete(r, c)"
-                >
-                  <AppIcon name="trash-2" class="h-3 w-3" />
-                  删除
-                </button>
+                <div class="ml-auto flex shrink-0 items-center gap-0.5">
+                  <LikeButton :liked="r.liked" :count="r.likeCount" :disabled="liking === r.id" @toggle="toggleLike(r)" />
+                  <button
+                    v-if="r.canDelete"
+                    class="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs text-ink-dim transition-colors hover:bg-[#FBE9EB] hover:text-clay"
+                    :disabled="removing === r.id"
+                    @click="handleDelete(r, c)"
+                  >
+                    <AppIcon name="trash-2" class="h-3 w-3" />
+                    删除
+                  </button>
+                </div>
               </div>
               <p class="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink-mid">{{ r.content }}</p>
             </div>
@@ -170,7 +174,7 @@
 
 <script setup>
 import { computed, h, nextTick, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import * as commentApi from '@/api/comment'
 import { useUserStore } from '@/store/user'
 import { hasEmoji, stripEmoji } from '@/utils/text'
@@ -190,11 +194,36 @@ const Avatar = (props) => {
 }
 Avatar.props = { user: { type: Object, default: null }, size: { type: String, default: 'md' } }
 
+// 点赞按钮：心形 + 计数，点赞态填充苹果红
+const LikeButton = (props, { emit }) =>
+  h(
+    'button',
+    {
+      class: `inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors ${
+        props.liked ? 'text-[#FF3B30]' : 'text-ink-dim hover:bg-[#FBE9EB] hover:text-clay'
+      }`,
+      disabled: props.disabled,
+      onClick: () => emit('toggle')
+    },
+    [
+      h('svg', { class: 'h-3.5 w-3.5', viewBox: '0 0 24 24', fill: props.liked ? 'currentColor' : 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [
+        h('path', { d: 'M20.4 12.6 12 21l-8.4-8.4a5.3 5.3 0 1 1 7.5-7.5l.9.9.9-.9a5.3 5.3 0 1 1 7.5 7.5z' })
+      ]),
+      props.count > 0 ? String(props.count) : null
+    ]
+  )
+LikeButton.props = { liked: Boolean, count: { type: Number, default: 0 }, disabled: Boolean }
+LikeButton.emits = ['toggle']
+
 const props = defineProps({
   projectId: { type: [Number, String], required: true }
 })
 
+// 总数变化上报（详情页玻璃操作条展示实时评论数）
+const emit = defineEmits(['change'])
+
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 
 const comments = ref([])
@@ -205,6 +234,7 @@ const loading = ref(true)
 const loadingMore = ref(false)
 const submitting = ref(false)
 const removing = ref(null)
+const liking = ref(null)
 const draft = ref('')
 
 // 回复状态：replyingTo 为根评论 id，replyDraft 为回复内容
@@ -235,6 +265,7 @@ const sanitize = (text) => {
 const applyRes = (res) => {
   comments.value.push(...res.data.comments)
   total.value = res.data.total
+  emit('change', total.value)
 }
 
 const fetchFirst = async () => {
@@ -272,6 +303,7 @@ const handleSubmit = async () => {
     const res = await commentApi.createComment(props.projectId, { content })
     comments.value.unshift(res.data.comment)
     total.value = res.data.commentCount
+    emit('change', total.value)
     draft.value = ''
     toast(hadEmoji ? '评论已发布，表情符号已自动移除' : '评论已发布')
   } catch (e) {
@@ -313,12 +345,46 @@ const submitReply = async (root) => {
     root.replies.push(res.data.comment)
     root.replyCount += 1
     total.value = res.data.commentCount
+    emit('change', total.value)
     cancelReply()
     toast(hadEmoji ? '回复已发布，表情符号已自动移除' : '回复已发布')
   } catch (e) {
     toast(e.response?.data?.message || '发布失败，请稍后再试', 'error')
   } finally {
     submitting.value = false
+  }
+}
+
+const toggleLike = async (c) => {
+  if (!userStore.isLoggedIn) {
+    toast('请先登录', 'info')
+    router.push({ name: 'Login', query: { redirect: route.fullPath } })
+    return
+  }
+  if (liking.value === c.id) return
+  liking.value = c.id
+  try {
+    if (c.liked) {
+      const res = await commentApi.unlikeComment(props.projectId, c.id)
+      c.likeCount = res.data.likeCount
+      c.liked = false
+    } else {
+      const res = await commentApi.likeComment(props.projectId, c.id)
+      c.likeCount = res.data.likeCount
+      c.liked = true
+    }
+  } catch (e) {
+    const msg = e.response?.data?.message || ''
+    // 本地状态与服务端不一致时纠正（如换设备后重复点赞）
+    if (msg.includes('已点赞')) {
+      c.liked = true
+    } else if (msg.includes('尚未点赞')) {
+      c.liked = false
+    } else {
+      toast(msg || '操作失败，请稍后再试', 'error')
+    }
+  } finally {
+    liking.value = null
   }
 }
 
@@ -335,6 +401,7 @@ const handleDelete = async (c, root) => {
       comments.value = comments.value.filter((item) => item.id !== c.id)
     }
     total.value = res.data.commentCount
+    emit('change', total.value)
     toast('评论已删除', 'info')
   } catch (e) {
     toast(e.response?.data?.message || '删除失败，请稍后再试', 'error')
