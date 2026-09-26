@@ -5,7 +5,7 @@
       <div class="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-b from-pine to-pine-deep p-10 text-white md:flex">
         <div class="relative">
           <span class="text-xs tracking-[0.3em] opacity-70">CO-CREATION COMMUNITY</span>
-          <h2 class="mt-4 font-display text-3xl font-bold leading-snug">
+          <h2 class="mt-4 font-display text-3xl font-semibold leading-snug tracking-tight">
             加入共创社区，<br />让想法遇见同行者
           </h2>
         </div>
@@ -18,7 +18,7 @@
 
       <!-- 表单 -->
       <div class="p-8 sm:p-10">
-        <h1 class="font-display text-2xl font-bold text-ink">创建账号</h1>
+        <h1 class="font-display text-3xl font-semibold tracking-tight text-ink">创建账号</h1>
         <p class="mt-1.5 text-sm text-ink-mid">
           已有账号？
           <router-link to="/login" class="font-medium text-pine hover:underline">直接登录</router-link>

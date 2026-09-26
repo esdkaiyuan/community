@@ -1,7 +1,7 @@
 <template>
   <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
     <div class="mb-8">
-      <h1 class="font-display text-3xl font-bold text-ink">发布项目</h1>
+      <h1 class="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">发布项目</h1>
       <p class="mt-2 text-sm text-ink-mid">把你的想法写下来，让志同道合的人找到你。</p>
     </div>
 
@@ -64,14 +64,14 @@
       <!-- 标签 -->
       <div>
         <label class="form-label" for="tag">标签 <span class="text-xs font-normal text-ink-dim">（最多 5 个，回车添加）</span></label>
-        <div class="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-cream px-3 py-2 transition-all focus-within:border-pine focus-within:ring-2 focus-within:ring-pine/15">
+        <div class="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 transition-all focus-within:border-pine focus-within:ring-4 focus-within:ring-pine/10">
           <span
             v-for="(tag, i) in form.tags"
             :key="tag"
             class="chip !py-1"
           >
             # {{ tag }}
-            <button type="button" class="ml-1 text-pine-deep/60 hover:text-clay" aria-label="移除标签" @click="form.tags.splice(i, 1)">
+            <button type="button" class="ml-1 text-ink-dim transition-colors hover:text-clay" aria-label="移除标签" @click="form.tags.splice(i, 1)">
               <AppIcon name="x" class="h-3 w-3" />
             </button>
           </span>
