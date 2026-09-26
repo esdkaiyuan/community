@@ -20,6 +20,37 @@
     </EmptyState>
 
     <template v-else-if="project">
+      <!-- 滚动玻璃条：滚过封面后浮现（apple.com 产品页式） -->
+      <transition name="bar">
+        <div
+          v-if="scrolled"
+          class="fixed inset-x-0 top-12 z-40 border-b border-white/60 bg-white/72 backdrop-blur-xl backdrop-saturate-150"
+        >
+          <div class="mx-auto flex h-12 max-w-5xl items-center gap-3 px-4 sm:px-6">
+            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{{ project.title }}</span>
+            <button
+              class="btn-ghost !px-3 !py-1.5 text-sm"
+              :class="liked ? '!text-clay' : ''"
+              :disabled="acting"
+              @click="handleLike"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" :fill="liked ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.4 12.6 12 21l-8.4-8.4a5.3 5.3 0 1 1 7.5-7.5l.9.9.9-.9a5.3 5.3 0 1 1 7.5 7.5z" />
+              </svg>
+              {{ project.likeCount }}
+            </button>
+            <button
+              class="!px-4 !py-1.5 text-sm"
+              :class="participated ? 'btn-secondary' : 'btn-primary'"
+              :disabled="acting"
+              @click="handleParticipate"
+            >
+              {{ participated ? '已参与' : '参与共创' }}
+            </button>
+          </div>
+        </div>
+      </transition>
+
       <!-- 面包屑 -->
       <nav class="mb-5 flex items-center gap-1.5 text-sm text-ink-dim">
         <router-link to="/" class="transition-colors hover:text-pine">项目广场</router-link>
@@ -35,8 +66,8 @@
         <span class="truncate text-ink-mid">{{ project.title }}</span>
       </nav>
 
-      <!-- 封面 -->
-      <div class="relative aspect-[21/9] overflow-hidden rounded-xl2 border border-line">
+      <!-- 封面（无边框白卡材质，与全站卡片一致） -->
+      <div class="relative aspect-[21/9] overflow-hidden rounded-xl2 shadow-card">
         <img
           v-if="project.coverImage && !imgFailed"
           :src="project.coverImage"
@@ -58,7 +89,7 @@
       <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_300px]">
         <!-- 主内容 -->
         <div class="min-w-0">
-          <h1 class="font-display text-3xl font-bold leading-snug text-ink">{{ project.title }}</h1>
+          <h1 class="text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">{{ project.title }}</h1>
 
           <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-dim">
             <span v-if="project.categoryName" class="chip">{{ project.categoryName }}</span>
@@ -81,16 +112,25 @@
 
         <!-- 侧栏 -->
         <aside class="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          <!-- 操作卡 -->
-          <div class="card p-5">
-            <div class="grid grid-cols-2 gap-3 text-center">
-              <div class="rounded-xl bg-pine-tint py-3">
-                <p class="text-2xl font-bold text-pine-deep">{{ project.participantCount }}</p>
+          <!-- 操作卡（磨砂玻璃材质） -->
+          <div class="rounded-xl2 border border-white/60 bg-white/70 p-5 shadow-card backdrop-blur-xl backdrop-saturate-150">
+            <!-- 规格条：苹果官网参数式发丝线网格 -->
+            <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line">
+              <div class="bg-cream py-3.5 text-center">
+                <p class="text-2xl font-semibold tabular-nums text-ink">{{ project.participantCount }}</p>
                 <p class="mt-0.5 text-xs text-ink-mid">共创伙伴</p>
               </div>
-              <div class="rounded-xl bg-amber-soft py-3">
-                <p class="text-2xl font-bold text-amber-warm">{{ project.likeCount }}</p>
-                <p class="mt-0.5 text-xs text-ink-mid">收到点赞</p>
+              <div class="bg-cream py-3.5 text-center">
+                <p class="text-2xl font-semibold tabular-nums text-ink">{{ project.likeCount }}</p>
+                <p class="mt-0.5 text-xs text-ink-mid">收获点赞</p>
+              </div>
+              <div class="bg-cream py-3.5 text-center">
+                <p class="text-2xl font-semibold tabular-nums text-ink">{{ project.viewCount ?? 0 }}</p>
+                <p class="mt-0.5 text-xs text-ink-mid">浏览次数</p>
+              </div>
+              <div class="bg-cream py-3.5 text-center">
+                <p class="text-2xl font-semibold tabular-nums text-ink">{{ createdShort }}</p>
+                <p class="mt-0.5 text-xs text-ink-mid">发布日期</p>
               </div>
             </div>
 
@@ -147,7 +187,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as projectApi from '@/api/project'
 import { useUserStore } from '@/store/user'
@@ -190,6 +230,21 @@ const PALETTES = [
   { bg: 'linear-gradient(135deg, #E8F5F4 0%, #C2E8E5 100%)', fg: '#00796B' }
 ]
 const placeholder = computed(() => PALETTES[(Number(project.value?.id) || 0) % PALETTES.length])
+
+// 规格条用短日期
+const createdShort = computed(() => {
+  if (!project.value?.createdAt) return '—'
+  const d = new Date(project.value.createdAt)
+  return `${d.getMonth() + 1} 月 ${d.getDate()} 日`
+})
+
+// 滚过封面后浮现顶部玻璃操作条（apple.com 产品页式）
+const scrolled = ref(false)
+const onScroll = () => {
+  scrolled.value = window.scrollY > 420
+}
+onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
+onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 
 const formatDate = (str) => {
   if (!str) return ''
@@ -294,3 +349,15 @@ const handleDelete = async () => {
 
 watch(() => route.params.id, fetchDetail, { immediate: true })
 </script>
+
+<style scoped>
+.bar-enter-active,
+.bar-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.bar-enter-from,
+.bar-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+</style>

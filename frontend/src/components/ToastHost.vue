@@ -5,7 +5,7 @@
         <div
           v-for="t in toasts"
           :key="t.id"
-          class="pointer-events-auto flex items-center gap-2.5 rounded-2xl border border-line bg-white/95 px-4 py-2.5 text-sm text-ink shadow-pop backdrop-blur animate-toast-in"
+          class="pointer-events-auto flex items-center gap-2.5 rounded-2xl border border-white/60 bg-white/80 px-4 py-2.5 text-sm text-ink shadow-pop backdrop-blur-xl backdrop-saturate-150 animate-toast-in"
         >
           <AppIcon :name="iconMap[t.type] || iconMap.info" class="h-4.5 w-4.5 shrink-0" :class="colorMap[t.type] || colorMap.info" />
           <span>{{ t.message }}</span>

@@ -61,7 +61,7 @@
           <transition name="menu">
             <div
               v-if="menuOpen"
-              class="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-line bg-cream py-1.5 shadow-pop"
+              class="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-white/60 bg-white/85 py-1.5 shadow-pop backdrop-blur-xl backdrop-saturate-150"
             >
               <router-link to="/profile" class="menu-item" @click="menuOpen = false">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
