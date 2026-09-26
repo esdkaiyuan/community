@@ -178,6 +178,7 @@ import { useRoute, useRouter } from 'vue-router'
 import * as commentApi from '@/api/comment'
 import { useUserStore } from '@/store/user'
 import { hasEmoji, stripEmoji } from '@/utils/text'
+import { relativeTime } from '@/utils/time'
 import { toast } from '@/composables/useToast'
 import AppIcon from '@/components/AppIcon.vue'
 
@@ -242,18 +243,6 @@ const replyingTo = ref(null)
 const replyDraft = ref('')
 
 const hasMore = computed(() => comments.value.length < total.value)
-
-const relativeTime = (str) => {
-  if (!str) return ''
-  const diff = Date.now() - new Date(str).getTime()
-  const min = 60_000
-  if (diff < min) return '刚刚'
-  if (diff < 60 * min) return `${Math.floor(diff / min)} 分钟前`
-  if (diff < 24 * 60 * min) return `${Math.floor(diff / (60 * min))} 小时前`
-  if (diff < 30 * 24 * 60 * min) return `${Math.floor(diff / (24 * 60 * min))} 天前`
-  const d = new Date(str)
-  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`
-}
 
 // 提交前净化：与后端同一套规则，全站仅允许矢量图标
 const sanitize = (text) => {

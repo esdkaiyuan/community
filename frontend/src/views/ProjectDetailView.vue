@@ -207,7 +207,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as projectApi from '@/api/project'
 import { useUserStore } from '@/store/user'
@@ -302,6 +302,11 @@ const fetchDetail = async () => {
     const res = await projectApi.getProject(route.params.id)
     project.value = res.data
     syncFlags()
+    // 从通知跳转过来时定位到评论区
+    if (route.hash === '#comments') {
+      await nextTick()
+      setTimeout(() => scrollToComments(), 300)
+    }
   } catch (e) {
     if (e.response?.status === 404) notFound.value = true
   } finally {

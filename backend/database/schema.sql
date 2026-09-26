@@ -102,6 +102,23 @@ CREATE TABLE IF NOT EXISTS project_likes (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- 站内通知表（评论/回复/点赞触发；相关评论删除时级联清理）
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    user_id INT UNSIGNED NOT NULL COMMENT '接收人',
+    actor_id INT UNSIGNED NOT NULL COMMENT '触发者',
+    type ENUM('comment','reply','like') NOT NULL,
+    project_id INT UNSIGNED NOT NULL,
+    comment_id INT UNSIGNED DEFAULT NULL,
+    is_read TINYINT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_read (user_id, is_read, created_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES project_comments(id) ON DELETE CASCADE
+);
+
 -- 项目评论表（复用线上遗留表结构：parent_id/like_count/status 暂未启用，按平铺列表展示）
 CREATE TABLE IF NOT EXISTS project_comments (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,

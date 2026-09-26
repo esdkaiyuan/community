@@ -2,6 +2,7 @@ const { Op } = require('sequelize')
 const { Comment, Project, User, CommentLike } = require('../models')
 const ApiError = require('../utils/ApiError')
 const { stripEmoji, hasEmoji } = require('../utils/textSanitize')
+const notificationService = require('./notification.service')
 
 const MAX_CONTENT_LEN = 500
 
@@ -102,11 +103,13 @@ exports.createComment = async ({ projectId, content, userId, parentId }) => {
 
   // 回复：校验目标评论属于同一项目；回复回复时展平挂到根评论（仅两级）
   let rootId = null
+  let recipientUserId = project.creator_id // 评论通知项目创建者
   if (parentId) {
     let parent = await Comment.findOne({ where: { id: parentId, project_id: projectId } })
     if (!parent) throw ApiError.badRequest('回复的评论不存在或已被删除')
     if (parent.parent_id) parent = await Comment.findByPk(parent.parent_id)
     rootId = parent.id
+    recipientUserId = parent.user_id // 回复通知根评论作者
   }
 
   const comment = await Comment.create({
@@ -118,6 +121,15 @@ exports.createComment = async ({ projectId, content, userId, parentId }) => {
 
   project.comment_count += 1
   await project.save()
+
+  // 站内通知（自己触发的不通知自己，服务内部处理）
+  notificationService.notify({
+    userId: recipientUserId,
+    type: rootId ? 'reply' : 'comment',
+    actorId: userId,
+    projectId: Number(projectId),
+    commentId: comment.id
+  })
 
   const full = await Comment.findByPk(comment.id, { include: [withUser] })
 
@@ -162,6 +174,16 @@ exports.likeComment = async ({ projectId, commentId, userId }) => {
   await CommentLike.create({ comment_id: commentId, user_id: userId })
   comment.like_count += 1
   await comment.save()
+
+  // 通知评论作者（自己点赞自己不通知）
+  notificationService.notify({
+    userId: comment.user_id,
+    type: 'like',
+    actorId: userId,
+    projectId: Number(projectId),
+    commentId: comment.id
+  })
+
   return { likeCount: comment.like_count }
 }
 
