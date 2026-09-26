@@ -149,7 +149,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 
 <style scoped>
 .menu-item {
-  @apply flex items-center gap-2.5 px-4 py-2 text-sm text-ink transition-colors hover:bg-pine-tint;
+  @apply flex items-center gap-2.5 px-4 py-2 text-sm text-ink transition-colors hover:bg-sand;
 }
 
 .menu-enter-active,

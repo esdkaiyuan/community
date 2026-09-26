@@ -47,7 +47,12 @@
       </EmptyState>
 
       <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <ProjectCard v-for="p in myProjects" :key="p.id" :project="p" />
+        <ProjectCard
+          v-for="(p, i) in myProjects"
+          :key="p.id"
+          v-reveal="Math.min(i, 5) * 60"
+          :project="p"
+        />
       </div>
     </div>
 

@@ -39,6 +39,26 @@
 }
 
 @layer components {
+  /* 滚动渐入（v-reveal 指令）：苹果官网式淡入上浮 */
+  .reveal-init {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-init {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+
   /* 主按钮（apple.com：#0071E3 胶囊，hover #0077ED） */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-1.5 rounded-full bg-pine px-5 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-[#0077ED] active:bg-pine-deep disabled:cursor-not-allowed disabled:opacity-50;

@@ -101,7 +101,7 @@
             <span v-for="tag in project.tags" :key="tag" class="chip"># {{ tag }}</span>
           </div>
 
-          <div class="card mt-6 p-6 sm:p-8">
+          <div v-reveal class="card mt-6 p-6 sm:p-8">
             <h2 class="mb-5 flex items-center gap-2 text-lg font-semibold text-ink">
               <span class="h-4 w-1 rounded-full bg-pine"></span>
               项目介绍

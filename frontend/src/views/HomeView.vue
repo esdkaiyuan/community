@@ -132,9 +132,8 @@
           <ProjectCard
             v-for="(p, i) in projects"
             :key="p.id"
+            v-reveal="Math.min(i, 7) * 60"
             :project="p"
-            class="animate-fade-up"
-            :style="{ animationDelay: `${Math.min(i, 8) * 45}ms` }"
           />
         </div>
 
