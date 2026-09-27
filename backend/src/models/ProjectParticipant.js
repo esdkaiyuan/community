@@ -27,4 +27,7 @@ const ProjectParticipant = sequelize.define('ProjectParticipant', {
 Project.belongsToMany(User, { through: ProjectParticipant, foreignKey: 'project_id', as: 'participants' })
 User.belongsToMany(Project, { through: ProjectParticipant, foreignKey: 'user_id', as: 'joinedProjects' })
 
+// 直接查中间表时带上用户信息（拿得到 role / joined_at）
+ProjectParticipant.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
+
 module.exports = ProjectParticipant

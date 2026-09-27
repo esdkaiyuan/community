@@ -7,6 +7,7 @@ const { auth, optionalAuth } = require('../middleware/auth')
 // 公开路由（列表/详情用可选认证，登录用户可拿到 favorited 状态与「只看收藏」筛选）
 router.get('/', optionalAuth, projectController.getProjects)
 router.get('/:id', optionalAuth, projectController.getProjectById)
+router.get('/:id/participants', projectController.getProjectParticipants)
 
 // 项目评论（嵌套路由，参数与详情页一致使用 :id）
 router.get('/:id/comments', optionalAuth, commentController.getComments)

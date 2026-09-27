@@ -219,6 +219,13 @@
               </div>
             </div>
           </div>
+
+          <!-- 共创伙伴：头像堆叠 + 完整名单 -->
+          <ProjectParticipants
+            :project-id="project.id"
+            :participants="project.participants || []"
+            :count="project.participantCount || 0"
+          />
         </aside>
       </div>
 
@@ -239,6 +246,7 @@ import { useFavoritePulse } from '@/composables/useFavoritePulse'
 import EmptyState from '@/components/EmptyState.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import CommentSection from '@/components/CommentSection.vue'
+import ProjectParticipants from '@/components/ProjectParticipants.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -373,6 +381,24 @@ const handleLike = async () => {
   }
 }
 
+// 参与 / 退出后即时更新共创伙伴堆叠，不必等下一次详情请求
+const addSelfToParticipants = () => {
+  const list = project.value?.participants
+  if (!Array.isArray(list) || list.some((p) => p.id === userStore.userId)) return
+  list.push({
+    id: userStore.userId,
+    username: userStore.username || '我',
+    avatar: userStore.avatar || '',
+    role: 'member',
+    joinedAt: new Date().toISOString()
+  })
+}
+const removeSelfFromParticipants = () => {
+  const list = project.value?.participants
+  if (!Array.isArray(list)) return
+  project.value.participants = list.filter((p) => p.id !== userStore.userId)
+}
+
 const handleParticipate = async () => {
   if (!requireLogin() || acting.value) return
   acting.value = true
@@ -381,12 +407,14 @@ const handleParticipate = async () => {
       const res = await projectApi.cancelParticipate(project.value.id)
       project.value.participantCount = res.data.participantCount
       participated.value = false
+      removeSelfFromParticipants()
       setUserFlag('join', userStore.userId, project.value.id, false)
       toast('已退出该项目', 'info')
     } else {
       const res = await projectApi.participateProject(project.value.id)
       project.value.participantCount = res.data.participantCount
       participated.value = true
+      addSelfToParticipants()
       setUserFlag('join', userStore.userId, project.value.id, true)
       toast('参与成功，欢迎加入共创！')
     }
@@ -394,9 +422,11 @@ const handleParticipate = async () => {
     const msg = e.response?.data?.message || ''
     if (msg.includes('已参与')) {
       participated.value = true
+      addSelfToParticipants()
       setUserFlag('join', userStore.userId, project.value.id, true)
     } else if (msg.includes('未参与')) {
       participated.value = false
+      removeSelfFromParticipants()
       setUserFlag('join', userStore.userId, project.value.id, false)
     }
   } finally {

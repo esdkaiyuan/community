@@ -27,6 +27,31 @@ const toClientProject = (p, extra = {}) => {
   }
 }
 
+// 共创者预览条数（详情页头像堆叠）
+const PARTICIPANT_PREVIEW = 8
+
+// 中间表行 -> 前端共创者形状（用户已注销时兜底，避免渲染空头像）
+const toClientParticipant = (p) => {
+  const row = p.toJSON ? p.toJSON() : p
+  const user = row.user
+  return {
+    id: user ? user.id : row.user_id,
+    username: user && user.username ? user.username : '已注销用户',
+    avatar: user ? user.avatar || '' : '',
+    role: row.role,
+    joinedAt: row.joined_at
+  }
+}
+
+// 发起人永远置顶，其余按加入时间升序
+const sortParticipants = (rows) =>
+  rows.slice().sort((a, b) => {
+    const ac = a.role === 'creator' ? 0 : 1
+    const bc = b.role === 'creator' ? 0 : 1
+    if (ac !== bc) return ac - bc
+    return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
+  })
+
 const SORT_MAP = {
   latest: [['created_at', 'DESC']],
   hot: [['like_count', 'DESC']],
@@ -38,7 +63,13 @@ const SORT_MAP = {
 }
 
 const getProjectOr404 = async (id) => {
-  const project = await Project.findByPk(id)
+  // 详情/编辑都要用 category 与 creator 的展示字段，统一在这里带出来
+  const project = await Project.findByPk(id, {
+    include: [
+      { model: Category, as: 'category', attributes: ['id', 'name', 'icon'] },
+      { model: User, as: 'creator', attributes: ['id', 'username', 'avatar'] }
+    ]
+  })
   if (!project) throw ApiError.notFound('项目不存在')
   return project
 }
@@ -119,19 +150,61 @@ exports.getProjectDetail = async (id, currentUserId) => {
   // 浏览量异步累加，不阻塞响应
   Project.update({ view_count: project.view_count + 1 }, { where: { id } }).catch(() => {})
 
-  const extra = {}
+  const [participantRows, participantTotal, liked, participated, favorited] = await Promise.all([
+    ProjectParticipant.findAll({
+      where: { project_id: id },
+      include: [{ model: User, as: 'user', attributes: ['id', 'username', 'avatar'] }],
+      order: [['joined_at', 'ASC']],
+      limit: 200
+    }),
+    ProjectParticipant.count({ where: { project_id: id } }),
+    currentUserId ? ProjectLike.findOne({ where: { project_id: id, user_id: currentUserId } }) : null,
+    currentUserId ? ProjectParticipant.findOne({ where: { project_id: id, user_id: currentUserId } }) : null,
+    currentUserId ? ProjectFavorite.findOne({ where: { project_id: id, user_id: currentUserId } }) : null
+  ])
+
+  // 历史数据可能存在计数漂移：以中间表真实行数为准，并异步回写自愈
+  if (project.participant_count !== participantTotal) {
+    Project.update({ participant_count: participantTotal }, { where: { id } }).catch(() => {})
+  }
+
+  // 详情页只带预览条数，完整名单走 /projects/:id/participants
+  const extra = {
+    participantCount: participantTotal,
+    participants: sortParticipants(participantRows)
+      .slice(0, PARTICIPANT_PREVIEW)
+      .map(toClientParticipant)
+  }
   if (currentUserId) {
-    const [liked, participated, favorited] = await Promise.all([
-      ProjectLike.findOne({ where: { project_id: id, user_id: currentUserId } }),
-      ProjectParticipant.findOne({ where: { project_id: id, user_id: currentUserId } }),
-      ProjectFavorite.findOne({ where: { project_id: id, user_id: currentUserId } })
-    ])
     extra.liked = !!liked
     extra.participated = !!participated
     extra.favorited = !!favorited
   }
 
   return toClientProject(project, extra)
+}
+
+exports.listParticipants = async (id, { page = 1, pageSize = 24 } = {}) => {
+  await getProjectOr404(id)
+  page = Math.max(1, parseInt(page, 10) || 1)
+  const limit = Math.min(60, Math.max(1, parseInt(pageSize, 10) || 24))
+  const offset = (page - 1) * limit
+
+  const { count, rows } = await ProjectParticipant.findAndCountAll({
+    where: { project_id: id },
+    include: [{ model: User, as: 'user', attributes: ['id', 'username', 'avatar'] }],
+    order: [['joined_at', 'ASC']],
+    limit,
+    offset
+  })
+
+  return {
+    // 分页列表保持数据库顺序（joined_at 升序），分页切片后才重排会跨页错位
+    participants: rows.map(toClientParticipant),
+    total: count,
+    page,
+    pageSize: limit
+  }
 }
 
 exports.createProject = async ({ title, description, coverImage, categoryId, tags, creatorId }) => {

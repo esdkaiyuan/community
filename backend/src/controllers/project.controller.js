@@ -18,6 +18,11 @@ exports.getProjectById = asyncHandler(async (req, res) => {
   ok(res, data, '获取项目详情成功')
 })
 
+exports.getProjectParticipants = asyncHandler(async (req, res) => {
+  const data = await projectService.listParticipants(req.params.id, req.query)
+  ok(res, data, '获取共创伙伴成功')
+})
+
 exports.createProject = asyncHandler(async (req, res) => {
   const data = await projectService.createProject({ ...req.body, creatorId: req.user.userId })
   created(res, data, '项目创建成功')

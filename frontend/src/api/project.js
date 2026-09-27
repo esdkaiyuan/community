@@ -6,6 +6,9 @@ export const getProjects = (params) => request.get('/projects', { params })
 // 项目详情
 export const getProject = (id) => request.get(`/projects/${id}`)
 
+// 共创伙伴名单（分页）
+export const getProjectParticipants = (id, params) => request.get(`/projects/${id}/participants`, { params })
+
 // 创建项目
 export const createProject = (data) => request.post('/projects', data)
 
