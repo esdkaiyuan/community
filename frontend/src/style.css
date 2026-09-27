@@ -211,3 +211,24 @@
     animation: none;
   }
 }
+
+/* 评论深链命中：背景短暂点亮再淡出，告诉用户「就是这一条」 */
+@keyframes comment-flash {
+  0% {
+    background-color: rgb(var(--c-pine-soft) / 0.9);
+  }
+  100% {
+    background-color: rgb(var(--c-pine-soft) / 0);
+  }
+}
+.comment-flash {
+  animation: comment-flash 2.4s ease-out;
+  border-radius: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comment-flash {
+    animation: none;
+    background-color: rgb(var(--c-pine-soft) / 0.55);
+  }
+}

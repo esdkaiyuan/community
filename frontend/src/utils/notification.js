@@ -8,8 +8,11 @@ const TEXT_MAP = {
 
 export const notificationText = (type) => TEXT_MAP[type] || '与你互动于'
 
-// 参与类通知落到项目详情页；评论 / 回复 / 点赞是围绕讨论的，落到评论区锚点
+// 参与类通知落到项目详情页；评论 / 回复 / 点赞是围绕讨论的，落到评论区；
+// 带上 commentId 时直接深链到那一条（前端会先翻到它所在的那一页再滚动高亮）
 export const notificationTarget = (n) => {
   const path = `/project/${n.project?.id}`
-  return n.type === 'participate' ? { path } : { path, hash: '#comments' }
+  if (n.type === 'participate') return { path }
+  if (n.commentId) return { path, query: { comment: n.commentId } }
+  return { path, hash: '#comments' }
 }

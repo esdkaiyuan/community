@@ -15,6 +15,8 @@ router.get('/:id/related', projectController.getProjectRelated)
 
 // 项目评论（嵌套路由，参数与详情页一致使用 :id）
 router.get('/:id/comments', optionalAuth, commentController.getComments)
+// 深链定位：具名子路径必须排在 /:id/comments/:commentId 之前
+router.get('/:id/comments/locate', optionalAuth, commentController.locateComment)
 router.post('/:id/comments', auth, commentController.createComment)
 router.delete('/:id/comments/:commentId', auth, commentController.deleteComment)
 router.post('/:id/comments/:commentId/like', auth, commentController.likeComment)

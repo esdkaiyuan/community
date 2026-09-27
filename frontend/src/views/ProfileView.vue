@@ -148,7 +148,7 @@
             :key="c.id"
             v-reveal="Math.min(i, 6) * 50"
             data-test="profile-discussion"
-            :to="c.project ? `/project/${c.project.id}#comments` : '/'"
+            :to="c.project ? { path: `/project/${c.project.id}`, query: { comment: c.id } } : '/'"
             class="group block px-5 py-4 transition-colors hover:bg-pine-soft/40"
           >
             <div class="flex items-center gap-2">

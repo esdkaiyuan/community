@@ -66,6 +66,8 @@ exports.list = async ({ userId, page = 1, pageSize = 15, unreadOnly = false }) =
         createdAt: row.created_at,
         actor: row.actor,
         project: row.project,
+        // 评论 / 回复 / 点赞类通知带上评论 id，前端才能深链直达那一条，而不是停在评论区顶部
+        commentId: row.comment_id || null,
         commentPreview: row.comment?.content?.slice(0, 60) || null
       }
     }),

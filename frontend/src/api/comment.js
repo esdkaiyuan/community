@@ -4,6 +4,10 @@ import request from './request'
 export const getComments = (projectId, params) =>
   request.get(`/projects/${projectId}/comments`, { params })
 
+// 定位某条评论在列表里的页码（深链用：先加载到那一页再滚动高亮）
+export const locateComment = (projectId, commentId, pageSize) =>
+  request.get(`/projects/${projectId}/comments/locate`, { params: { commentId, pageSize } })
+
 // 发布评论（parentId 可选：回复根评论）
 export const createComment = (projectId, data) =>
   request.post(`/projects/${projectId}/comments`, data)

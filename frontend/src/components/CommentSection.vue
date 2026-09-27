@@ -65,10 +65,12 @@
     <ul v-else-if="comments.length" class="mt-2">
       <li
         v-for="(c, i) in comments"
+        :id="`comment-${c.id}`"
         :key="c.id"
         v-reveal="i < 4 ? i * 60 : 0"
         data-test="comment-item"
-        class="border-b border-line py-6 last:border-b-0"
+        class="scroll-mt-24 border-b border-line py-6 last:border-b-0"
+        :class="{ 'comment-flash': flashId === c.id }"
       >
         <!-- 根评论 -->
         <div class="flex gap-3.5">
@@ -103,7 +105,14 @@
 
         <!-- 回复列表（缩进，小一号） -->
         <div v-if="c.replies?.length" class="ml-[26px] mt-4 space-y-4 border-l border-line pl-6 sm:ml-[38px] sm:pl-7">
-          <div v-for="r in c.replies" :key="r.id" data-test="comment-reply" class="flex gap-3">
+          <div
+            v-for="r in c.replies"
+            :id="`comment-${r.id}`"
+            :key="r.id"
+            data-test="comment-reply"
+            class="scroll-mt-24 flex gap-3"
+            :class="{ 'comment-flash': flashId === r.id }"
+          >
             <Avatar :user="r.user" size="sm" />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
@@ -246,6 +255,9 @@ const draft = ref('')
 // 回复状态：replyingTo 为根评论 id，replyDraft 为回复内容
 const replyingTo = ref(null)
 const replyDraft = ref('')
+
+// 正在高亮的评论 id（深链命中时短暂点亮）
+const flashId = ref(null)
 
 const hasMore = computed(() => comments.value.length < total.value)
 
@@ -404,5 +416,38 @@ const handleDelete = async (c, root) => {
   }
 }
 
-onMounted(fetchFirst)
+// 深链：URL 带 ?comment=<id>（通知 / 「我参与的讨论」跳过来）时，
+// 先问后端这条评论在第几页，把「加载更多」连续点到那一页，再滚过去高亮。
+// 不做定位的话深链只能命中第一页，评论一多就是个静默失效的假链接
+const focusComment = async (rawId) => {
+  const commentId = Number(rawId)
+  if (!commentId) return
+  try {
+    const { data } = await commentApi.locateComment(props.projectId, commentId, PAGE_SIZE)
+    // 列表是追加式分页：逐页补齐到目标页（hasMore 为假时自然退出，不会死循环）
+    let guard = 0
+    while (page.value < data.page && hasMore.value && guard < 20) {
+      await loadMore()
+      guard += 1
+    }
+    await nextTick()
+    const el = document.getElementById(`comment-${commentId}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    flashId.value = commentId
+    setTimeout(() => {
+      if (flashId.value === commentId) flashId.value = null
+    }, 2400)
+  } catch (e) {
+    // 评论被删 / 不属于本项目：退化成普通列表，提示一句就够，不要挡住页面。
+    // 服务端那句「评论不存在」是接口口径，对拿着旧链接点进来的人来说太生硬
+    const status = e.response?.status
+    toast(status === 404 ? '这条评论已经不在了' : e.response?.data?.message || '定位失败', 'info')
+  }
+}
+
+onMounted(async () => {
+  await fetchFirst()
+  if (route.query.comment) await focusComment(route.query.comment)
+})
 </script>

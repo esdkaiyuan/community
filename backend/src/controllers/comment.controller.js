@@ -12,6 +12,16 @@ exports.getComments = asyncHandler(async (req, res) => {
   ok(res, data, '获取评论列表成功')
 })
 
+// 深链定位：给出某条评论在评论列表里的页码（前端据此加载到那一页再滚动高亮）
+exports.locateComment = asyncHandler(async (req, res) => {
+  const data = await commentService.locateComment({
+    projectId: req.params.id,
+    commentId: req.query.commentId,
+    pageSize: req.query.pageSize
+  })
+  ok(res, data, '定位成功')
+})
+
 exports.createComment = asyncHandler(async (req, res) => {
   const data = await commentService.createComment({
     projectId: req.params.id,

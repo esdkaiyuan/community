@@ -40,7 +40,9 @@ exports.listComments = async ({ projectId, page = 1, pageSize = 20, currentUserI
   const { rows: rootRows } = await Comment.findAndCountAll({
     where: { project_id: projectId, parent_id: null },
     include: [withUser],
-    order: [['created_at', 'DESC']],
+    // id 兜底排序：同一秒内发的多条评论顺序必须稳定可复现，
+    // 否则 locateComment 算出的页号会和实际分页错位
+    order: [['created_at', 'DESC'], ['id', 'DESC']],
     limit,
     offset,
     distinct: true
@@ -87,6 +89,42 @@ exports.listComments = async ({ projectId, page = 1, pageSize = 20, currentUserI
     ),
     total,
     page,
+    pageSize: limit
+  }
+}
+
+// 深链定位：算出目标评论落在评论列表的第几页。
+// 列表是「根评论分页 + 回复挂在根下」，所以回复要按它父级的位置算；
+// 前端据此把「加载更多」连续点到那一页，再滚动高亮 —— 否则深链只能命中第一页
+exports.locateComment = async ({ projectId, commentId, pageSize = 10 }) => {
+  const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 10))
+  const comment = await Comment.findByPk(commentId)
+  // 评论被删 / 不属于这个项目时（defaultScope 已过滤 status=0）一律当不存在
+  if (!comment || Number(comment.project_id) !== Number(projectId)) {
+    throw ApiError.notFound('评论不存在')
+  }
+
+  const rootId = comment.parent_id || comment.id
+  const root = rootId === comment.id ? comment : await Comment.findByPk(rootId)
+  if (!root) throw ApiError.notFound('评论不存在')
+
+  // 排在它前面的根评论条数，排序规则与 listComments 一致（created_at DESC、同秒 id DESC）
+  const ahead = await Comment.count({
+    where: {
+      project_id: projectId,
+      parent_id: null,
+      [Op.or]: [
+        { created_at: { [Op.gt]: root.created_at } },
+        { created_at: root.created_at, id: { [Op.gt]: root.id } }
+      ]
+    }
+  })
+
+  return {
+    commentId: comment.id,
+    parentId: comment.parent_id || null,
+    rootId,
+    page: Math.floor(ahead / limit) + 1,
     pageSize: limit
   }
 }
