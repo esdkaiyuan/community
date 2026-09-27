@@ -100,7 +100,7 @@
       </EmptyState>
 
       <template v-else>
-        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div data-test="profile-favorites" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <ProjectCard
             v-for="(p, i) in myFavorites"
             :key="p.id"
@@ -146,6 +146,7 @@
             v-for="(c, i) in myComments"
             :key="c.id"
             v-reveal="Math.min(i, 6) * 50"
+            data-test="profile-discussion"
             :to="c.project ? `/project/${c.project.id}#comments` : '/'"
             class="group block px-5 py-4 transition-colors hover:bg-pine-soft/40"
           >

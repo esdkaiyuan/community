@@ -1,83 +1,86 @@
 # -*- coding: utf-8 -*-
-"""独立通知页验证：全部/未读 列表渲染 + 「查看全部通知」入口 + console 错误"""
-import json
-import sys
-import urllib.request
+"""独立通知页验证
+
+覆盖：
+1) 全部视图列出通知，含 comment / participate 两类文案
+2) 未读分段过滤（URL 带 filter=unread）
+3) 点击一条 -> 标为已读 + 跳转项目，回到未读视图后该条移出
+4) 顶栏面板「查看全部通知」入口
+
+自给自足：A 建项目；B 评论、C 参与 -> A 共 2 条未读（覆盖两类通知）。
+"""
+import time
 
 from playwright.sync_api import sync_playwright
 
-BASE = "http://localhost:5000/api"
-OUT = "docs/screenshots/notifications-page-light.png"
-OUT_UNREAD = "docs/screenshots/notifications-unread-light.png"
-
-
-def api(path, data=None, token=None):
-    req = urllib.request.Request(
-        BASE + path,
-        data=json.dumps(data).encode() if data else None,
-        headers={"Content-Type": "application/json", **({"Authorization": f"Bearer {token}"} if token else {})},
-        method="POST" if data is not None else "GET",
-    )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+from _verify_common import (
+    FRONT,
+    SETTLE,
+    api,
+    attach,
+    check,
+    cleanup_project,
+    create_project,
+    finish,
+    inject_login,
+    register,
+    sql_one,
+)
 
 
 def main():
-    login = api("/users/login", {"email": "nf_author@test.local", "password": "test123456"})
-    token, me = login["data"]["token"], login["data"]["user"]
+    a, b, c = register("nfpagea"), register("nfpageb"), register("nfpagec")
+    pid = create_project(a["token"], f"通知页验证项目 {a['username']}")
+    print("临时项目", pid, "用户", a["uid"], b["uid"], c["uid"])
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 1280, "height": 900})
-        errors = []
-        page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
-        page.on("pageerror", lambda e: errors.append(str(e)))
+    try:
+        api(f"/projects/{pid}/comments", {"content": "用于通知页验证的评论。"}, token=b["token"])
+        api(f"/projects/{pid}/participate", {}, token=c["token"])
+        time.sleep(SETTLE)
 
-        page.goto("http://localhost:3001/login", wait_until="networkidle")
-        page.evaluate(
-            "([t, u]) => { localStorage.setItem('token', t); localStorage.setItem('userInfo', JSON.stringify(u)) }",
-            [token, me],
-        )
+        rows = api("/notifications", token=a["token"])["data"]["notifications"]
+        check("通知接口返回 2 条", len(rows) == 2)
+        check("覆盖 comment 与 participate 两类", {r["type"] for r in rows} == {"comment", "participate"})
 
-        # 1) 全部通知页
-        page.goto("http://localhost:3001/notifications", wait_until="networkidle")
-        page.wait_for_timeout(1800)
-        rows = page.locator(".card > button").count()
-        heading = page.locator("h1").inner_text()
-        print("全部视图 | 标题:", heading, "| 行数:", rows)
-        page.screenshot(path=OUT)
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = attach(browser.new_page(viewport={"width": 1280, "height": 950}, device_scale_factor=2))
+            inject_login(page, a["token"], a["user"])
 
-        # 2) 未读筛选（分段控件第 2 项）
-        page.get_by_role("button", name="未读", exact=True).click()
-        page.wait_for_timeout(1500)
-        unread_rows = page.locator(".card > button").count()
-        print("未读视图 | 行数:", unread_rows, "| url:", page.url)
-        page.screenshot(path=OUT_UNREAD)
+            page.goto(f"{FRONT}/notifications", wait_until="networkidle")
+            page.wait_for_timeout(1700)
+            rows_ui = page.locator("[data-test='notif-row']")
+            check("标题为「通知」", page.locator("h1").inner_text().strip() == "通知")
+            check("通知页列出 2 条", rows_ui.count() == 2)
+            check("有评论通知文案", rows_ui.filter(has_text="评论了你的项目").count() == 1)
+            check("有参与通知文案", rows_ui.filter(has_text="参与了你的项目").count() == 1)
+            page.screenshot(path="docs/screenshots/notifications-page-light.png")
 
-        # 3) 交互：未读视图点击第一条 → 标为已读 + 跳转项目评论区，返回后该条应移出列表
-        badge_before = page.locator("header span.rounded-full.bg-\\[\\#FF3B30\\]").inner_text()
-        page.locator(".card > button").first.click()
-        page.wait_for_timeout(1500)
-        print("点击后跳转:", page.url, "| 跳转前徽标:", badge_before)
-        page.goto("http://localhost:3001/notifications?filter=unread", wait_until="networkidle")
-        page.wait_for_timeout(1600)
-        rows_after = page.locator(".card > button").count()
-        badge_after = page.locator("header span.rounded-full.bg-\\[\\#FF3B30\\]").inner_text()
-        print("未读视图剩余行数:", rows_after, "| 跳转后徽标:", badge_after)
+            page.get_by_role("button", name="未读", exact=True).click()
+            page.wait_for_timeout(1400)
+            check("未读视图 2 条", page.locator("[data-test='notif-row']").count() == 2)
+            check("URL 带 filter=unread", "filter=unread" in page.url)
+            page.screenshot(path="docs/screenshots/notifications-unread-light.png")
 
-        # 4) 头部铃铛面板「查看全部通知」入口
-        page.locator('button[title="通知"]').click()
-        page.wait_for_timeout(800)
-        footer = page.locator("a", has_text="查看全部通知")
-        print("面板入口可见:", footer.count() > 0)
-        page.screenshot(path="docs/screenshots/notifications-panel-footer-light.png")
+            page.locator("[data-test='notif-row']").first.click()
+            page.wait_for_timeout(1500)
+            check(f"点击后跳转项目详情（{page.url}）", f"/project/{pid}" in page.url)
 
-        browser.close()
+            page.goto(f"{FRONT}/notifications?filter=unread", wait_until="networkidle")
+            page.wait_for_timeout(1500)
+            check("已读后未读视图剩 1 条", page.locator("[data-test='notif-row']").count() == 1)
 
-    print("console errors:", len(errors))
-    for e in errors[:5]:
-        print(" -", e)
-    sys.exit(1 if errors else 0)
+            page.locator("button[title='通知']").click()
+            page.wait_for_selector("[data-test='notif-panel']", timeout=3000)
+            page.wait_for_timeout(500)
+            check("面板有「查看全部通知」入口", page.locator("[data-test='notif-panel'] a", has_text="查看全部通知").count() == 1)
+            page.screenshot(path="docs/screenshots/notifications-panel-footer-light.png")
+            browser.close()
+    finally:
+        cleanup_project(pid, [a["uid"], b["uid"], c["uid"]])
+        print("残留项目:", sql_one(f"SELECT COUNT(*) FROM projects WHERE id = {pid}"))
+
+    finish()
 
 
 if __name__ == "__main__":

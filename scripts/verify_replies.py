@@ -1,55 +1,69 @@
-import asyncio
-import json
-import urllib.request
+# -*- coding: utf-8 -*-
+"""评论两级结构验证（根评论 + 回复）
 
-from playwright.async_api import async_playwright
+覆盖：
+1) API：根评论 1 条，replyCount 与 replies 长度一致
+2) 回复的回复会**展平**挂到根评论下（parentId 指向根）
+3) 前端：渲染 1 个根评论项 + 2 条缩进回复
 
-BASE = "http://localhost:3001"
+自给自足：临时账号 A 建项目，发 1 根评论 + 2 条回复（其中一条是回复的回复）。
+"""
+from playwright.sync_api import sync_playwright
 
-
-def api(path, data=None, token=None):
-    req = urllib.request.Request("http://localhost:5000/api" + path)
-    req.add_header("Content-Type", "application/json")
-    if token:
-        req.add_header("Authorization", f"Bearer {token}")
-    body = json.dumps(data).encode() if data is not None else None
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    with opener.open(req, body) as resp:
-        return json.loads(resp.read())
-
-
-async def main():
-    # 造数：注册临时用户 + 1 根评论 + 2 回复
-    reg = api("/users/register", {"username": "ui_reply_demo", "email": "ui_reply_demo@test.local", "password": "test123456"})
-    token = reg["data"]["token"]
-    user = reg["data"]["user"]
-    root = api("/projects/19/comments", {"content": "两级结构展示：根评论外观与 App Store 评价列表一致。"}, token)["data"]["comment"]["id"]
-    api("/projects/19/comments", {"content": "回复展示在缩进线上，头像小一号。", "parentId": root}, token)
-    api("/projects/19/comments", {"content": "回复回复会自动展平到根评论下。", "parentId": root}, token)
-
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page(viewport={"width": 1440, "height": 900})
-        errors = []
-        page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
-        page.on("pageerror", lambda e: errors.append(str(e)))
-
-        await page.goto(BASE + "/project/19", wait_until="domcontentloaded")
-        await page.evaluate(
-            """({token, user}) => {
-                localStorage.setItem('token', token);
-                localStorage.setItem('userInfo', JSON.stringify(user));
-            }""",
-            {"token": token, "user": user},
-        )
-        await page.reload(wait_until="networkidle")
-        await page.wait_for_timeout(1500)
-        await page.locator("h2", has_text="评论").first.scroll_into_view_if_needed()
-        await page.wait_for_timeout(1800)
-        await page.screenshot(path="docs/screenshots/replies-light.png")
-
-        print("console errors:", errors if errors else "NONE")
-        await browser.close()
+from _verify_common import (
+    FRONT,
+    api,
+    attach,
+    check,
+    cleanup_project,
+    comment,
+    create_project,
+    finish,
+    inject_login,
+    register,
+    sql_one,
+)
 
 
-asyncio.run(main())
+def main():
+    a = register("ufreply")
+    pid = create_project(a["token"], f"两级回复验证项目 {a['username']}")
+    print("临时项目", pid, "用户", a["uid"])
+
+    try:
+        root = comment(a["token"], pid, "根评论：外观应与 App Store 评价列表一致。")
+        r1 = comment(a["token"], pid, "回复一：挂在根评论的缩进线上。", parent_id=root["id"])
+        comment(a["token"], pid, "回复二：回复的回复也会展平到根评论下。", parent_id=r1["id"])
+
+        data = api(f"/projects/{pid}/comments")["data"]
+        check("根评论 1 条", len(data["comments"]) == 1)
+        item = data["comments"][0]
+        check("replyCount 为 2", item["replyCount"] == 2)
+        check("replies 返回 2 条", len(item["replies"]) == 2)
+        check("展平后 parentId 都指向根评论", all(r["parentId"] == item["id"] for r in item["replies"]))
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = attach(browser.new_page(viewport={"width": 1280, "height": 950}, device_scale_factor=2))
+            inject_login(page, a["token"], a["user"])
+            page.goto(f"{FRONT}/project/{pid}", wait_until="networkidle")
+            page.wait_for_timeout(1500)
+            page.locator("[data-test='comment-item']").first.scroll_into_view_if_needed()
+            page.wait_for_timeout(1600)
+
+            check("页面渲染 1 个根评论项", page.locator("[data-test='comment-item']").count() == 1)
+            replies = page.locator("[data-test='comment-reply']")
+            check("页面渲染 2 条回复", replies.count() == 2)
+            border = replies.first.evaluate("el => getComputedStyle(el.parentElement).borderLeftWidth")
+            check(f"回复容器带缩进竖线（borderLeft={border}）", border not in ("0px", ""))
+            page.screenshot(path="docs/screenshots/replies-light.png")
+            browser.close()
+    finally:
+        cleanup_project(pid, [a["uid"]])
+        print("残留项目:", sql_one(f"SELECT COUNT(*) FROM projects WHERE id = {pid}"))
+
+    finish()
+
+
+if __name__ == "__main__":
+    main()

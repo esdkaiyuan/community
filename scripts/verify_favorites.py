@@ -1,89 +1,83 @@
 # -*- coding: utf-8 -*-
-"""项目收藏验证：详情页收藏按钮态 + 顶部玻璃条书签 + 个人中心「我的收藏」分区"""
-import json
-import sys
-import urllib.request
+"""收藏闭环验证：详情页操作卡 / 顶部玻璃条书签 / 个人中心「我的收藏」/ 取消收藏
 
+覆盖：
+1) API：收藏后 /users/me/favorites 计数与详情接口 favorited 标记
+2) 详情页操作卡出现「已收藏」按钮
+3) 个人中心「我的收藏」分区计数与卡片数
+4) 就地取消收藏后卡片即时移出、服务端同步
+
+自给自足：临时账号 A 建 2 个项目并收藏。
+"""
 from playwright.sync_api import sync_playwright
 
-BASE = "http://localhost:5000/api"
-OUT_DETAIL = "docs/screenshots/favorite-detail-light.png"
-OUT_PROFILE = "docs/screenshots/favorite-profile-light.png"
-
-
-def api(path, data=None, token=None, method=None):
-    req = urllib.request.Request(
-        BASE + path,
-        data=json.dumps(data).encode() if data else None,
-        headers={"Content-Type": "application/json", **({"Authorization": f"Bearer {token}"} if token else {})},
-        method=method or ("POST" if data is not None else "GET"),
-    )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+from _verify_common import (
+    FRONT,
+    api,
+    attach,
+    check,
+    cleanup_project,
+    cleanup_users,
+    create_project,
+    finish,
+    inject_login,
+    register,
+    sql_one,
+)
 
 
 def main():
-    login = api("/users/login", {"email": "fav_tester@test.local", "password": "test123456"})
-    token, me = login["data"]["token"], login["data"]["user"]
+    a = register("favdetail")
+    p1 = create_project(a["token"], f"收藏验证项目一 {a['username']}")
+    p2 = create_project(a["token"], f"收藏验证项目二 {a['username']}")
+    print("临时项目", p1, p2, "用户", a["uid"])
 
-    # 造数：收藏 19 与 18 两个项目（重复收藏返回 409，可忽略）
-    for pid in (19, 18):
-        try:
-            api(f"/projects/{pid}/favorite", {}, token)
-        except urllib.error.HTTPError:
-            pass
+    try:
+        for pid in (p1, p2):
+            api(f"/projects/{pid}/favorite", {}, token=a["token"])
+        check("接口返回 2 条收藏", api("/users/me/favorites", token=a["token"])["data"]["total"] == 2)
+        check("详情接口标记 favorited", api(f"/projects/{p1}", token=a["token"])["data"]["favorited"] is True)
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 1280, "height": 900})
-        errors = []
-        page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
-        page.on("pageerror", lambda e: errors.append(str(e)))
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = attach(browser.new_page(viewport={"width": 1280, "height": 950}, device_scale_factor=2))
+            inject_login(page, a["token"], a["user"])
 
-        page.goto("http://localhost:3001/login", wait_until="networkidle")
-        page.evaluate(
-            "([t, u]) => { localStorage.setItem('token', t); localStorage.setItem('userInfo', JSON.stringify(u)) }",
-            [token, me],
-        )
+            # 详情页：滚动过封面让玻璃条浮现，操作卡显示「已收藏」
+            page.goto(f"{FRONT}/project/{p1}", wait_until="networkidle")
+            page.wait_for_timeout(1600)
+            check("详情页操作卡出现「已收藏」", page.get_by_role("button", name="已收藏", exact=True).count() == 1)
+            page.mouse.wheel(0, 700)
+            page.wait_for_timeout(1200)
+            page.screenshot(path="docs/screenshots/favorite-detail-light.png")
 
-        # 1) 详情页：滚动过封面让玻璃条浮现，操作卡显示"已收藏"
-        page.goto("http://localhost:3001/project/19", wait_until="networkidle")
-        page.wait_for_timeout(1500)
-        page.mouse.wheel(0, 700)
-        page.wait_for_timeout(1200)
-        favorite_btn = page.get_by_role("button", name="已收藏")
-        print("操作卡已收藏按钮:", favorite_btn.count() > 0)
-        page.screenshot(path=OUT_DETAIL)
+            # 个人中心「我的收藏」
+            page.goto(f"{FRONT}/profile", wait_until="networkidle")
+            page.wait_for_timeout(1800)
+            heading = page.get_by_role("heading", name="我的收藏")
+            heading.scroll_into_view_if_needed()
+            page.wait_for_timeout(1500)
+            check("收藏分区标题显示（2）", "（2）" in heading.inner_text())
+            box = page.locator("[data-test='profile-favorites']")
+            check("收藏卡 2 张", box.locator("article").count() == 2)
+            page.screenshot(path="docs/screenshots/favorite-profile-light.png")
 
-        # 2) 个人中心：概览条 + 我的收藏
-        page.goto("http://localhost:3001/profile", wait_until="networkidle")
-        page.wait_for_timeout(1800)
-        heading = page.get_by_role("heading", name="我的收藏")
-        heading.scroll_into_view_if_needed()
-        page.wait_for_timeout(600)
-        cards = page.locator("a[href^='/project/']")
-        print("我的收藏卡片:", cards.count())
-        if cards.count():
-            cards.last.scroll_into_view_if_needed()
-        page.wait_for_timeout(1600)
-        page.screenshot(path=OUT_PROFILE)
+            # 就地取消收藏
+            box.locator("article button[aria-label='取消收藏']").first.click()
+            page.wait_for_timeout(1300)
+            check("取消后卡片即时移出", box.locator("article").count() == 1)
+            check(
+                "服务端该收藏已移除",
+                all(x["id"] != p1 for x in api("/users/me/favorites", token=a["token"])["data"]["projects"]),
+            )
+            browser.close()
+    finally:
+        cleanup_project(p1)
+        cleanup_project(p2)
+        cleanup_users([a["uid"]])
+        print("残留:", sql_one(f"SELECT COUNT(*) FROM projects WHERE id IN ({p1},{p2})"))
 
-        # 3) 交互：详情页取消收藏 → 按钮回到"收藏项目"
-        page.goto("http://localhost:3001/project/18", wait_until="networkidle")
-        page.wait_for_timeout(1300)
-        page.get_by_role("button", name="已收藏").click()
-        page.wait_for_timeout(1200)
-        print("取消后按钮:", page.get_by_role("button", name="收藏项目").count() > 0)
-        # 恢复收藏，便于个人中心截图数据一致
-        page.get_by_role("button", name="收藏项目").click()
-        page.wait_for_timeout(1000)
-
-        browser.close()
-
-    print("console errors:", len(errors))
-    for e in errors[:5]:
-        print(" -", e)
-    sys.exit(1 if errors else 0)
+    finish()
 
 
 if __name__ == "__main__":

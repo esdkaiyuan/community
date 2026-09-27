@@ -67,6 +67,7 @@
         v-for="(c, i) in comments"
         :key="c.id"
         v-reveal="i < 4 ? i * 60 : 0"
+        data-test="comment-item"
         class="border-b border-line py-6 last:border-b-0"
       >
         <!-- 根评论 -->
@@ -102,7 +103,7 @@
 
         <!-- 回复列表（缩进，小一号） -->
         <div v-if="c.replies?.length" class="ml-[26px] mt-4 space-y-4 border-l border-line pl-6 sm:ml-[38px] sm:pl-7">
-          <div v-for="r in c.replies" :key="r.id" class="flex gap-3">
+          <div v-for="r in c.replies" :key="r.id" data-test="comment-reply" class="flex gap-3">
             <Avatar :user="r.user" size="sm" />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
@@ -203,6 +204,10 @@ const LikeButton = (props, { emit }) =>
       class: `inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors ${
         props.liked ? 'text-[#FF3B30]' : 'text-ink-dim hover:bg-[#FBE9EB] hover:text-clay'
       }`,
+      type: 'button',
+      'data-test': 'comment-like',
+      'aria-pressed': String(props.liked),
+      'aria-label': props.liked ? '取消点赞' : '点赞',
       disabled: props.disabled,
       onClick: () => emit('toggle')
     },
