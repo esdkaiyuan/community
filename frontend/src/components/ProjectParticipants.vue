@@ -100,7 +100,13 @@
                 <template v-else>{{ initial(p.username) }}</template>
               </span>
               <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-ink">{{ p.username }}</p>
+                <router-link
+                  :to="`/user/${p.id}`"
+                  data-test="participant-name"
+                  class="block truncate text-sm font-medium text-ink transition-colors hover:text-pine"
+                >
+                  {{ p.username }}
+                </router-link>
                 <p class="truncate text-xs text-ink-dim">
                   {{ roleLabel(p.role) }}<template v-if="p.joinedAt"> · {{ relativeTime(p.joinedAt) }}加入</template>
                 </p>

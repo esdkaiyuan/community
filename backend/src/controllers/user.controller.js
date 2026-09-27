@@ -23,6 +23,11 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   ok(res, { user }, '更新成功')
 })
 
+exports.getPublicProfile = asyncHandler(async (req, res) => {
+  const data = await userService.getPublicProfile(req.params.id)
+  ok(res, data, '获取用户主页成功')
+})
+
 exports.getMyComments = asyncHandler(async (req, res) => {
   const data = await userService.getMyComments(req.user.userId, req.query)
   ok(res, data)

@@ -6,6 +6,8 @@ exports.getProjects = asyncHandler(async (req, res) => {
   const data = await projectService.listProjects({
     ...req.query,
     creatorId: req.query.creatorId,
+    // 某人参与过的共创（不含 TA 自己发起的）：公开主页「TA 参与的共创」用
+    participantId: req.query.participantId,
     // 「只看收藏」需要登录态；未登录时静默忽略，退化为普通列表
     favoritedBy: req.query.favorited ? req.user?.userId : undefined,
     currentUserId: req.user?.userId

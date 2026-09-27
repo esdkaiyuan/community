@@ -73,13 +73,23 @@
         </div>
 
         <div class="mt-4 flex items-center justify-between border-t border-line pt-3.5">
-          <!-- 创建者 -->
-          <div class="flex min-w-0 items-center gap-2">
+          <!-- 创建者（可点进 TA 的公开主页；内容层是 pointer-events-none，这里要抬起） -->
+          <router-link
+            v-if="project.creator?.id"
+            :to="`/user/${project.creator.id}`"
+            data-test="card-creator"
+            class="pointer-events-auto relative z-10 flex min-w-0 items-center gap-2 rounded-full transition-opacity hover:opacity-70"
+            :title="`看看 ${project.creator.username} 的主页`"
+          >
             <span class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-[10px] font-bold text-pine-deep">
               <img v-if="project.creator?.avatar" :src="project.creator.avatar" alt="" class="h-full w-full object-cover" />
               <template v-else>{{ (project.creator?.username || '友').slice(0, 1).toUpperCase() }}</template>
             </span>
             <span class="truncate text-xs text-ink-mid">{{ project.creator?.username || '匿名共创者' }}</span>
+          </router-link>
+          <div v-else class="flex min-w-0 items-center gap-2">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sand text-[10px] font-bold text-ink-dim">友</span>
+            <span class="truncate text-xs text-ink-mid">匿名共创者</span>
           </div>
 
           <!-- 数据 -->

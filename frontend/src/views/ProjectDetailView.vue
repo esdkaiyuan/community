@@ -225,7 +225,7 @@
             </div>
           </div>
 
-          <!-- 创建者卡 -->
+          <!-- 创建者卡：名字可点进 TA 的公开主页 -->
           <div class="card p-5">
             <p class="mb-3 text-xs font-medium tracking-wide text-ink-dim">发起人</p>
             <div class="flex items-center gap-3">
@@ -233,11 +233,30 @@
                 <img v-if="project.creator?.avatar" :src="project.creator.avatar" alt="" class="h-full w-full object-cover" />
                 <template v-else>{{ (project.creator?.username || '友').slice(0, 1).toUpperCase() }}</template>
               </span>
-              <div class="min-w-0">
-                <p class="truncate font-medium text-ink">{{ project.creator?.username || '匿名共创者' }}</p>
+              <div class="min-w-0 flex-1">
+                <router-link
+                  v-if="project.creator?.id"
+                  :to="`/user/${project.creator.id}`"
+                  data-test="detail-creator"
+                  class="block truncate font-medium text-ink transition-colors hover:text-pine"
+                >
+                  {{ project.creator?.username || '匿名共创者' }}
+                </router-link>
+                <p v-else class="truncate font-medium text-ink">匿名共创者</p>
                 <p class="text-xs text-ink-dim">项目发起人</p>
               </div>
             </div>
+            <router-link
+              v-if="project.creator?.id"
+              :to="`/user/${project.creator.id}`"
+              class="btn-ghost mt-3 w-full text-sm"
+              data-test="detail-creator-home"
+            >
+              看看 TA 的其他项目
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m9 6 6 6-6 6" />
+              </svg>
+            </router-link>
           </div>
 
           <!-- 共创伙伴：头像堆叠 + 完整名单 -->

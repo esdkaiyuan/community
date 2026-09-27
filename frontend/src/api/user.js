@@ -15,6 +15,9 @@ export const updateProfile = (data) => request.put('/users/profile', data)
 // 我发表的评论（个人中心「我参与的讨论」）
 export const getMyComments = (params) => request.get('/users/me/comments', { params })
 
+// 公开主页（任何人可看，响应不含 email）
+export const getPublicProfile = (id) => request.get(`/users/${id}`)
+
 // 个人数据概览（发布/评论/收藏/获赞）
 export const getMyStats = () => request.get('/users/me/stats')
 

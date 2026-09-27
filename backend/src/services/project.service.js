@@ -117,6 +117,7 @@ exports.listProjects = async ({
   filter,
   sort,
   creatorId,
+  participantId,
   favoritedBy,
   currentUserId
 }) => {
@@ -148,13 +149,29 @@ exports.listProjects = async ({
     ]
   }
 
-  // 「只看收藏」：先取出该用户收藏的项目 id，再据此收窄查询集合
+  // 收窄集合类筛选：先取 id 列表再用 IN 收窄，**交集为空必须短路返回**（否则生成非法 SQL）
+  const idSets = []
+
+  if (participantId) {
+    // 「参与过的共创」不含自己发起的，否则会与「TA 发布的项目」重复
+    const joins = await ProjectParticipant.findAll({
+      where: { user_id: participantId, role: { [Op.ne]: 'creator' } },
+      attributes: ['project_id']
+    })
+    idSets.push(joins.map((j) => j.project_id))
+  }
+
+  // 「只看收藏」
   if (favoritedBy) {
     const favorites = await ProjectFavorite.findAll({
       where: { user_id: favoritedBy },
       attributes: ['project_id']
     })
-    const ids = favorites.map((f) => f.project_id)
+    idSets.push(favorites.map((f) => f.project_id))
+  }
+
+  if (idSets.length) {
+    const ids = idSets.reduce((acc, cur) => acc.filter((id) => cur.includes(id)))
     if (!ids.length) return { projects: [], total: 0, page, pageSize: limit }
     where.id = { [Op.in]: ids }
   }

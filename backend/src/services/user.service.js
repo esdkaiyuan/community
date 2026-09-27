@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs')
 const { Op } = require('sequelize')
-const { User, Comment, Project, ProjectLike, ProjectFavorite, sequelize } = require('../models')
+const { User, Comment, Project, ProjectParticipant, ProjectLike, ProjectFavorite, sequelize } = require('../models')
 const { generateToken } = require('../utils/jwt')
 const ApiError = require('../utils/ApiError')
 
@@ -115,14 +115,8 @@ exports.getMyComments = async (userId, { page = 1, pageSize = 10 } = {}) => {
   }
 }
 
-// 个人数据概览：发布数 / 评论数 / 收藏数 / 收到的点赞（项目点赞 + 评论点赞）
-exports.getMyStats = async (userId) => {
-  const [projectCount, commentCount, favoriteCount] = await Promise.all([
-    Project.count({ where: { creator_id: userId } }),
-    Comment.count({ where: { user_id: userId } }),
-    ProjectFavorite.count({ where: { user_id: userId } })
-  ])
-
+// 收到的点赞 = 别人给 TA 项目的点赞 + TA 评论收到的点赞
+const countLikeReceived = async (userId) => {
   const [likeRows] = await sequelize.query(
     `SELECT
        (SELECT COUNT(*) FROM project_likes pl
@@ -132,13 +126,53 @@ exports.getMyStats = async (userId) => {
           WHERE pc.user_id = :userId AND pc.status = 1) AS commentLikes`,
     { replacements: { userId }, type: sequelize.QueryTypes.SELECT }
   )
+  return Number(likeRows.projectLikes || 0) + Number(likeRows.commentLikes || 0)
+}
+
+// 个人数据概览：发布数 / 评论数 / 收藏数 / 收到的点赞（项目点赞 + 评论点赞）
+exports.getMyStats = async (userId) => {
+  const [projectCount, commentCount, favoriteCount, likeReceived] = await Promise.all([
+    Project.count({ where: { creator_id: userId } }),
+    Comment.count({ where: { user_id: userId } }),
+    ProjectFavorite.count({ where: { user_id: userId } }),
+    countLikeReceived(userId)
+  ])
 
   return {
     projectCount,
     commentCount,
     favoriteCount,
-    likeReceived: Number(likeRows.projectLikes || 0) + Number(likeRows.commentLikes || 0)
+    likeReceived
   }
 }
+
+// 公开主页：任何人可看，所以**不返回 email**（toClientUser 带 email，只用于 /me）
+exports.getPublicProfile = async (userId) => {
+  const user = await User.findByPk(userId, {
+    attributes: ['id', 'username', 'avatar', 'bio', 'created_at']
+  })
+  if (!user) throw ApiError.notFound('用户不存在')
+
+  const [projectCount, joinedCount, likeReceived] = await Promise.all([
+    Project.count({ where: { creator_id: userId } }),
+    // 「参与共创」不含自己发起的：否则与上面的发布数重复计数
+    ProjectParticipant.count({ where: { user_id: userId, role: { [Op.ne]: 'creator' } } }),
+    countLikeReceived(userId)
+  ])
+
+  return {
+    user: {
+      id: user.id,
+      username: user.username,
+      avatar: user.avatar || '',
+      bio: user.bio || '',
+      joinedAt: user.created_at
+    },
+    stats: { projectCount, joinedCount, likeReceived }
+  }
+}
+
+// 「TA 参与的共创」不在这里另造查询：直接复用 listProjects({ participantId })，
+// 排序 / 分页 / 收藏标记都跟广场保持一致
 
 exports.toClientUser = toClientUser

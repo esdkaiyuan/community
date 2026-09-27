@@ -16,4 +16,8 @@ router.get('/me/favorites', auth, userController.getMyFavorites)
 router.get('/profile', auth, userController.getProfile)
 router.put('/profile', auth, userController.updateProfile)
 
+// 公开主页：任何人可看（响应不含 email）。
+// ⚠️ 必须排在 /me、/profile 等具名 GET 之后，否则 GET /users/me 会被当成 id='me'
+router.get('/:id', userController.getPublicProfile)
+
 module.exports = router
