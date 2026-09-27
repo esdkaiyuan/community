@@ -49,7 +49,7 @@
             </button>
             <button
               class="btn-ghost !px-3 !py-1.5 text-sm"
-              :class="favorited ? '!text-pine' : ''"
+              :class="[favorited ? '!text-pine' : '', { 'fav-pop': favoritePulse }]"
               :title="favorited ? '取消收藏' : '收藏项目'"
               :disabled="acting"
               @click="handleFavorite"
@@ -185,7 +185,7 @@
               </button>
               <button
                 class="w-full !py-3"
-                :class="favorited ? 'btn-secondary !border-pine/40 !text-pine' : 'btn-secondary'"
+                :class="[favorited ? 'btn-secondary !border-pine/40 !text-pine' : 'btn-secondary', { 'fav-pop': favoritePulse }]"
                 :disabled="acting"
                 @click="handleFavorite"
               >
@@ -253,6 +253,20 @@ const liked = ref(false)
 const participated = ref(false)
 const favorited = ref(false)
 
+// 收藏成功时的一次性微动效（图标上挑 + 光晕扩散）
+const favoritePulse = ref(false)
+let pulseTimer = null
+const playFavoritePulse = () => {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  favoritePulse.value = false
+  // 先落回基线再触发，保证连续操作也能重播动画
+  requestAnimationFrame(() => {
+    favoritePulse.value = true
+    clearTimeout(pulseTimer)
+    pulseTimer = setTimeout(() => (favoritePulse.value = false), 560)
+  })
+}
+
 // 评论总数（由评论区组件上报，供顶部玻璃操作条展示）
 const commentCount = ref(0)
 
@@ -304,7 +318,10 @@ const onScroll = () => {
   scrolled.value = window.scrollY > 420
 }
 onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
-onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', onScroll)
+  clearTimeout(pulseTimer)
+})
 
 const formatDate = (str) => {
   if (!str) return ''
@@ -413,6 +430,7 @@ const handleFavorite = async () => {
       await projectApi.favoriteProject(project.value.id)
       favorited.value = true
       setUserFlag('favorite', userStore.userId, project.value.id, true)
+      playFavoritePulse()
       toast('已加入收藏，可在个人中心查看')
     }
   } catch (e) {
@@ -454,5 +472,42 @@ watch(() => route.params.id, fetchDetail, { immediate: true })
 .bar-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+/* 收藏成功微动效：书签图标上挑回弹 + 中性光晕扩散（不影响布局） */
+@keyframes fav-icon-lift {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  38% {
+    transform: translateY(-2px) scale(1.18);
+  }
+  70% {
+    transform: translateY(0) scale(0.96);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes fav-halo {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 113, 227, 0.28);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgba(0, 113, 227, 0);
+  }
+}
+.fav-pop {
+  animation: fav-halo 0.56s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.fav-pop svg {
+  animation: fav-icon-lift 0.56s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fav-pop,
+  .fav-pop svg {
+    animation: none;
+  }
 }
 </style>

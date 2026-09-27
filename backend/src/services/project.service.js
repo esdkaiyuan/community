@@ -43,7 +43,17 @@ const getProjectOr404 = async (id) => {
   return project
 }
 
-exports.listProjects = async ({ page = 1, pageSize = 12, categoryId, search, filter, sort, creatorId }) => {
+exports.listProjects = async ({
+  page = 1,
+  pageSize = 12,
+  categoryId,
+  search,
+  filter,
+  sort,
+  creatorId,
+  favoritedBy,
+  currentUserId
+}) => {
   page = Math.max(1, parseInt(page, 10) || 1)
   const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 12))
   const offset = (page - 1) * limit
@@ -60,6 +70,17 @@ exports.listProjects = async ({ page = 1, pageSize = 12, categoryId, search, fil
     ]
   }
 
+  // 「只看收藏」：先取出该用户收藏的项目 id，再据此收窄查询集合
+  if (favoritedBy) {
+    const favorites = await ProjectFavorite.findAll({
+      where: { user_id: favoritedBy },
+      attributes: ['project_id']
+    })
+    const ids = favorites.map((f) => f.project_id)
+    if (!ids.length) return { projects: [], total: 0, page, pageSize: limit }
+    where.id = { [Op.in]: ids }
+  }
+
   const { count, rows } = await Project.findAndCountAll({
     where,
     include: [
@@ -72,8 +93,20 @@ exports.listProjects = async ({ page = 1, pageSize = 12, categoryId, search, fil
     distinct: true
   })
 
+  // 登录用户：批量标记本页项目的收藏状态（卡片书签徽标用），只查一次
+  let favoritedIds = null
+  if (currentUserId && rows.length) {
+    const favorites = await ProjectFavorite.findAll({
+      where: { user_id: currentUserId, project_id: { [Op.in]: rows.map((r) => r.id) } },
+      attributes: ['project_id']
+    })
+    favoritedIds = new Set(favorites.map((f) => f.project_id))
+  }
+
   return {
-    projects: rows.map((row) => toClientProject(row)),
+    projects: rows.map((row) =>
+      toClientProject(row, favoritedIds ? { favorited: favoritedIds.has(row.id) } : {})
+    ),
     total: count,
     page,
     pageSize: limit

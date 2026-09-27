@@ -3,7 +3,13 @@ const asyncHandler = require('../utils/asyncHandler')
 const { ok, created } = require('../utils/response')
 
 exports.getProjects = asyncHandler(async (req, res) => {
-  const data = await projectService.listProjects({ ...req.query, creatorId: req.query.creatorId })
+  const data = await projectService.listProjects({
+    ...req.query,
+    creatorId: req.query.creatorId,
+    // 「只看收藏」需要登录态；未登录时静默忽略，退化为普通列表
+    favoritedBy: req.query.favorited ? req.user?.userId : undefined,
+    currentUserId: req.user?.userId
+  })
   ok(res, data, '获取项目列表成功')
 })
 

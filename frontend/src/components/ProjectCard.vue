@@ -39,6 +39,17 @@
       >
         {{ project.categoryName }}
       </span>
+
+      <!-- 已收藏：右上角白玻璃书签徽标 -->
+      <span
+        v-if="project.favorited"
+        class="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--glass-badge)] text-pine shadow-sm backdrop-blur-md"
+        title="已收藏"
+      >
+        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21 12 16.4 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+        </svg>
+      </span>
     </div>
 
     <!-- 内容 -->

@@ -74,7 +74,7 @@
 
       <!-- 筛选 / 排序 -->
       <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-        <div class="flex gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <button
             v-for="f in FILTERS"
             :key="f.value"
@@ -84,6 +84,21 @@
           >
             <AppIcon :name="f.icon" class="h-3.5 w-3.5" />
             {{ f.label }}
+          </button>
+
+          <!-- 只看收藏（登录后可用，跨分类的个人视图） -->
+          <span v-if="userStore.isLoggedIn" class="mx-0.5 h-5 w-px shrink-0 bg-line" aria-hidden="true"></span>
+          <button
+            v-if="userStore.isLoggedIn"
+            class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-colors"
+            :class="onlyFavorited ? 'bg-sand font-semibold text-pine' : 'text-ink-mid hover:bg-sand/60'"
+            :aria-pressed="onlyFavorited"
+            @click="toggleFavorited"
+          >
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" :fill="onlyFavorited ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21 12 16.4 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
+            只看收藏
           </button>
         </div>
 
@@ -114,6 +129,16 @@
         description="可能是网络或服务暂时不可用，请稍后重试。"
       >
         <button class="btn-primary" @click="fetchProjects">重新加载</button>
+      </EmptyState>
+
+      <!-- 空结果：只看收藏 -->
+      <EmptyState
+        v-else-if="!projects.length && onlyFavorited"
+        icon="bookmark"
+        title="还没有收藏任何项目"
+        description="在项目详情页点一下「收藏」，把心动的创意收进这里慢慢看。"
+      >
+        <button class="btn-primary" @click="toggleFavorited">去看看全部项目</button>
       </EmptyState>
 
       <!-- 空结果 -->
@@ -151,6 +176,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getProjects } from '@/api/project'
 import { getCategories } from '@/api/category'
 import { categoryIcon } from '@/utils/categoryIcon'
+import { useUserStore } from '@/store/user'
 import AppIcon from '@/components/AppIcon.vue'
 import ProjectCard from '@/components/ProjectCard.vue'
 import ProjectCardSkeleton from '@/components/ProjectCardSkeleton.vue'
@@ -170,6 +196,7 @@ const SORTS = [
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const categories = ref([])
 const projects = ref([])
@@ -182,12 +209,23 @@ const query = reactive({
   categoryId: route.query.categoryId || null,
   search: route.query.search || '',
   filter: route.query.filter || '',
+  favorited: route.query.favorited || '',
   sort: route.query.sort || 'latest'
 })
 const page = ref(Number(route.query.page) || 1)
 
+// 「只看收藏」是登录用户的个人视图，未登录时即便 query 带着也不生效
+const onlyFavorited = computed(() => query.favorited === '1' && userStore.isLoggedIn)
+
 const isFiltering = computed(
-  () => !!(query.search || query.categoryId || query.filter || (route.query.page && page.value > 1))
+  () =>
+    !!(
+      query.search ||
+      query.categoryId ||
+      query.filter ||
+      onlyFavorited.value ||
+      (route.query.page && page.value > 1)
+    )
 )
 
 const syncRoute = () => {
@@ -195,6 +233,7 @@ const syncRoute = () => {
   if (query.categoryId) q.categoryId = query.categoryId
   if (query.search) q.search = query.search
   if (query.filter) q.filter = query.filter
+  if (onlyFavorited.value) q.favorited = '1'
   if (query.sort !== 'latest') q.sort = query.sort
   if (page.value > 1) q.page = page.value
   router.push({ path: '/', query: q })
@@ -207,6 +246,11 @@ const setCategory = (id) => {
 }
 const toggleFilter = (f) => {
   query.filter = query.filter === f ? '' : f
+  page.value = 1
+  syncRoute()
+}
+const toggleFavorited = () => {
+  query.favorited = onlyFavorited.value ? '' : '1'
   page.value = 1
   syncRoute()
 }
@@ -236,6 +280,7 @@ const fetchProjects = async () => {
       categoryId: query.categoryId || undefined,
       search: query.search || undefined,
       filter: query.filter || undefined,
+      favorited: onlyFavorited.value ? '1' : undefined,
       sort: query.sort
     })
     projects.value = res.data.projects
@@ -264,9 +309,22 @@ watch(
     query.categoryId = q.categoryId || null
     query.search = q.search || ''
     query.filter = q.filter || ''
+    query.favorited = q.favorited || ''
     query.sort = q.sort || 'latest'
     page.value = Number(q.page) || 1
     fetchProjects()
+  }
+)
+
+// 登出后「只看收藏」失效，需要清掉筛选并回到全量列表
+watch(
+  () => userStore.isLoggedIn,
+  (loggedIn) => {
+    if (!loggedIn && query.favorited) {
+      query.favorited = ''
+      page.value = 1
+      syncRoute()
+    }
   }
 )
 
