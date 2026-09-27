@@ -66,12 +66,13 @@
         <router-link to="/publish" class="btn-primary">发布第一个项目</router-link>
       </EmptyState>
 
-      <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div v-else data-test="profile-my-projects" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <ProjectCard
           v-for="(p, i) in myProjects"
           :key="p.id"
           v-reveal="Math.min(i, 5) * 60"
           :project="p"
+          editable
         />
       </div>
     </div>

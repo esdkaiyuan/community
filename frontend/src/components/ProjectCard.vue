@@ -130,6 +130,19 @@
       >
         <path d="M19 21 12 16.4 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
       </svg>
+      <!-- 就地编辑：仅「我发布的项目」这类自己持有者列表开启（editable），
+           桌面悬停出现、触屏常显。DOM 顺序在收藏按钮之后，
+           既有断言里的 card.locator('button').first 仍命中收藏按钮 -->
+      <router-link
+        v-if="showEdit"
+        :to="`/project/${project.id}/edit`"
+        class="absolute right-12 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--glass-badge)] text-ink-mid shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 hover:text-pine sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+        title="编辑项目"
+        aria-label="编辑项目"
+        data-test="card-edit"
+      >
+        <AppIcon name="pencil" class="h-3.5 w-3.5" />
+      </router-link>
     </button>
   </article>
 </template>
@@ -143,9 +156,12 @@ import { setUserFlag } from '@/utils/storage'
 import { toast } from '@/composables/useToast'
 import { useFavoritePulse } from '@/composables/useFavoritePulse'
 import AppIcon from '@/components/AppIcon.vue'
+import { coverPalette } from '@/utils/placeholder'
 
 const props = defineProps({
-  project: { type: Object, required: true }
+  project: { type: Object, required: true },
+  // 作品归属于当前用户时才展示编辑入口（如个人中心「我发布的项目」）
+  editable: { type: Boolean, default: false }
 })
 
 // 收藏状态变化时通知父级（列表模式下用于把取消收藏的卡片移出「只看收藏」）
@@ -159,17 +175,10 @@ const { favoritePulse, playFavoritePulse } = useFavoritePulse()
 const imgFailed = ref(false)
 const favoriteActing = ref(false)
 
-// 无封面时按 id 从 Apple 中性色系取一组稳定配色
-const PALETTES = [
-  { bg: 'linear-gradient(135deg, #E8E8ED 0%, #D2D2D7 100%)', fg: '#6E6E73' },
-  { bg: 'linear-gradient(135deg, #E8F1FD 0%, #C5DFFF 100%)', fg: '#0066CC' },
-  { bg: 'linear-gradient(135deg, #FDF0E4 0%, #FFDDB8 100%)', fg: '#C93400' },
-  { bg: 'linear-gradient(135deg, #FCE8E9 0%, #FFD1D4 100%)', fg: '#D70015' },
-  { bg: 'linear-gradient(135deg, #F0F0F3 0%, #D8DAE5 100%)', fg: '#3A3A3C' },
-  { bg: 'linear-gradient(135deg, #E8F5F4 0%, #C2E8E5 100%)', fg: '#00796B' }
-]
+const placeholder = computed(() => coverPalette(props.project.id))
 
-const placeholder = computed(() => PALETTES[(Number(props.project.id) || 0) % PALETTES.length])
+// 只有「自己的列表 + 确实是自己的作品」才给编辑入口
+const showEdit = computed(() => props.editable && props.project.creator?.id === userStore.userId)
 
 // 本地状态 + 标记 + 播报，三处保持一致
 const applyFavorite = (value) => {

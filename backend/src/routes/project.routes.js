@@ -10,6 +10,8 @@ router.get('/', optionalAuth, projectController.getProjects)
 router.get('/tags', projectController.getProjectTags)
 router.get('/:id', optionalAuth, projectController.getProjectById)
 router.get('/:id/participants', projectController.getProjectParticipants)
+// 相关推荐（详情页底部的「继续浏览」入口）：公开接口
+router.get('/:id/related', projectController.getProjectRelated)
 
 // 项目评论（嵌套路由，参数与详情页一致使用 :id）
 router.get('/:id/comments', optionalAuth, commentController.getComments)

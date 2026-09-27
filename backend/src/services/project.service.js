@@ -218,6 +218,77 @@ exports.listPopularTags = async ({ limit = 12 } = {}) => {
     .slice(0, max)
 }
 
+// —— 相关项目推荐 ——
+// 权重：共同标签最能说明「为什么推这条」，同分类次之；
+// 跨发起人 +1 只是并列时的多样性偏好，**不是硬性剔除**——
+// 只在 2 个项目的冷启动库里硬剔的话，推荐区会永远空着
+const RELATED_SCORE = { tag: 3, category: 2, crossCreator: 1 }
+const RELATED_POOL = 60 // 候选池上限：够排序即可，不必把整表拉进内存
+
+exports.listRelatedProjects = async (id, { limit = 3 } = {}) => {
+  const project = await getProjectOr404(id)
+  const max = Math.min(12, Math.max(1, parseInt(limit, 10) || 3))
+
+  // 原样大小写用于 SQL 收窄（JSON_CONTAINS 大小写敏感），小写副本只用于比对
+  const tags = (Array.isArray(project.tags) ? project.tags : [])
+    .map((t) => String(t).trim())
+    .filter(Boolean)
+  const tagKeys = new Set(tags.map((t) => t.toLowerCase()))
+
+  // 候选池：至少共享一个标签，或同分类。一条线索都没有就直接返回空，
+  // 不做「最新项目」兜底 —— 那等于把无关结果包装成推荐
+  const candidates = []
+  tags.forEach((t) =>
+    candidates.push(
+      sequelize.where(
+        sequelize.fn('JSON_CONTAINS', sequelize.col('Project.tags'), JSON.stringify(t)),
+        1
+      )
+    )
+  )
+  if (project.category_id) candidates.push({ category_id: project.category_id })
+  if (!candidates.length) return []
+
+  const rows = await Project.findAll({
+    where: {
+      id: { [Op.ne]: project.id },
+      [Op.or]: candidates
+    },
+    include: [
+      { model: Category, as: 'category', attributes: ['id', 'name', 'icon'] },
+      { model: User, as: 'creator', attributes: ['id', 'username', 'avatar'] }
+    ],
+    order: [['created_at', 'DESC']],
+    limit: RELATED_POOL
+  })
+
+  const scored = rows.map((row) => {
+    const rowTags = Array.isArray(row.tags) ? row.tags : []
+    // 比对用小写，展示用原样
+    const byKey = new Map(rowTags.map((t) => [String(t).trim().toLowerCase(), String(t).trim()]))
+    const sharedTags = [...byKey.keys()].filter((k) => tagKeys.has(k)).map((k) => byKey.get(k))
+    const sameCategory = !!(project.category_id && row.category_id === project.category_id)
+    const sameCreator = row.creator_id === project.creator_id
+
+    return {
+      row,
+      reason: { sharedTags, sameCategory, sameCreator },
+      score:
+        sharedTags.length * RELATED_SCORE.tag +
+        (sameCategory ? RELATED_SCORE.category : 0) +
+        (sameCreator ? 0 : RELATED_SCORE.crossCreator)
+    }
+  })
+
+  return scored
+    .filter((x) => x.reason.sharedTags.length || x.reason.sameCategory)
+    // 分高者在前；同分让新的项目占先，避免每次刷新都推那几个老项目
+    .sort((a, b) => b.score - a.score || new Date(b.row.created_at) - new Date(a.row.created_at))
+    .slice(0, max)
+    // 推荐理由要跟着结果回去：看不见依据的推荐会让人怀疑是不是随机塞的
+    .map((x) => toClientProject(x.row, { relatedReason: x.reason }))
+}
+
 exports.getProjectDetail = async (id, currentUserId) => {
   const project = await getProjectOr404(id)
 

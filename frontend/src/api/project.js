@@ -12,6 +12,9 @@ export const getProject = (id) => request.get(`/projects/${id}`)
 // 共创伙伴名单（分页）
 export const getProjectParticipants = (id, params) => request.get(`/projects/${id}/participants`, { params })
 
+// 相关项目推荐（详情页底部的「继续浏览」，按共同标签 / 同分类排序）
+export const getRelatedProjects = (id, params) => request.get(`/projects/${id}/related`, { params })
+
 // 创建项目
 export const createProject = (data) => request.post('/projects', data)
 

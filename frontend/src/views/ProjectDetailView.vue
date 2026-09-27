@@ -249,6 +249,9 @@
         </aside>
       </div>
 
+      <!-- 看完继续逛：按共同标签 / 同分类推荐（有线索才渲染） -->
+      <RelatedProjects :project-id="project.id" />
+
       <!-- 评论区（App Store 评价风） -->
       <CommentSection :project-id="project.id" @change="commentCount = $event" />
     </template>
@@ -267,6 +270,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import CommentSection from '@/components/CommentSection.vue'
 import ProjectParticipants from '@/components/ProjectParticipants.vue'
+import RelatedProjects from '@/components/RelatedProjects.vue'
 
 const route = useRoute()
 const router = useRouter()
