@@ -22,7 +22,7 @@
       </div>
 
       <!-- 数据概览：苹果参数式发丝线规格条 -->
-      <div class="relative mt-8 grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-line">
+      <div class="relative mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-line sm:grid-cols-4">
         <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
           <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.projectCount ?? '—' }}</p>
           <p class="mt-0.5 text-xs text-ink-dim">发布项目</p>
@@ -30,6 +30,10 @@
         <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
           <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.commentCount ?? '—' }}</p>
           <p class="mt-0.5 text-xs text-ink-dim">参与评论</p>
+        </div>
+        <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
+          <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.favoriteCount ?? '—' }}</p>
+          <p class="mt-0.5 text-xs text-ink-dim">收藏项目</p>
         </div>
         <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
           <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.likeReceived ?? '—' }}</p>
@@ -70,6 +74,46 @@
           :project="p"
         />
       </div>
+    </div>
+
+    <!-- 我的收藏 -->
+    <div class="mt-12">
+      <div class="mb-5 flex items-center justify-between">
+        <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
+          <span class="h-4 w-1 rounded-full bg-pine"></span>
+          我的收藏
+          <span v-if="!loadingFavorites" class="text-sm font-normal text-ink-dim">（{{ favoriteTotal }}）</span>
+        </h2>
+      </div>
+
+      <div v-if="loadingFavorites" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ProjectCardSkeleton v-for="i in 3" :key="i" />
+      </div>
+
+      <EmptyState
+        v-else-if="!myFavorites.length"
+        icon="bookmark"
+        title="还没有收藏任何项目"
+        description="遇到感兴趣的项目，点一下收藏，之后在这里能快速找到。"
+      >
+        <router-link to="/" class="btn-secondary">去发现项目</router-link>
+      </EmptyState>
+
+      <template v-else>
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <ProjectCard
+            v-for="(p, i) in myFavorites"
+            :key="p.id"
+            v-reveal="Math.min(i, 5) * 60"
+            :project="p"
+          />
+        </div>
+        <div v-if="myFavorites.length < favoriteTotal" class="mt-6 text-center">
+          <button class="btn-ghost" :disabled="loadingMoreFavorites" @click="loadMoreFavorites">
+            {{ loadingMoreFavorites ? '加载中…' : '加载更多' }}
+          </button>
+        </div>
+      </template>
     </div>
 
     <!-- 我参与的讨论 -->
@@ -184,7 +228,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useUserStore } from '@/store/user'
 import { getProjects } from '@/api/project'
-import { getMyComments, getMyStats, updateProfile } from '@/api/user'
+import { getMyComments, getMyFavorites, getMyStats, updateProfile } from '@/api/user'
 import { toast } from '@/composables/useToast'
 import { relativeTime } from '@/utils/time'
 import ProjectCard from '@/components/ProjectCard.vue'
@@ -198,6 +242,13 @@ const myProjects = ref([])
 const loadingProjects = ref(true)
 
 const stats = ref(null)
+
+const myFavorites = ref([])
+const favoriteTotal = ref(0)
+const favoritePage = ref(1)
+const loadingFavorites = ref(true)
+const loadingMoreFavorites = ref(false)
+const FAVORITE_PAGE_SIZE = 6
 
 const myComments = ref([])
 const commentTotal = ref(0)
@@ -258,6 +309,36 @@ const fetchStats = async () => {
   }
 }
 
+const initFavorites = async () => {
+  loadingFavorites.value = true
+  try {
+    const res = await getMyFavorites({ page: 1, pageSize: FAVORITE_PAGE_SIZE })
+    myFavorites.value = res.data.projects
+    favoriteTotal.value = res.data.total
+    favoritePage.value = res.data.page
+  } catch {
+    myFavorites.value = []
+    favoriteTotal.value = 0
+  } finally {
+    loadingFavorites.value = false
+  }
+}
+
+const loadMoreFavorites = async () => {
+  if (loadingMoreFavorites.value) return
+  loadingMoreFavorites.value = true
+  try {
+    const res = await getMyFavorites({ page: favoritePage.value + 1, pageSize: FAVORITE_PAGE_SIZE })
+    myFavorites.value.push(...res.data.projects)
+    favoriteTotal.value = res.data.total
+    favoritePage.value = res.data.page
+  } catch {
+    // 错误已由拦截器 toast
+  } finally {
+    loadingMoreFavorites.value = false
+  }
+}
+
 const fetchMyComments = async (page = 1) => {
   const res = await getMyComments({ page, pageSize: COMMENT_PAGE_SIZE })
   return res.data
@@ -297,6 +378,7 @@ onMounted(async () => {
   if (!user.value) await userStore.fetchMe().catch(() => {})
   fetchMyProjects()
   fetchStats()
+  initFavorites()
   initComments()
 })
 </script>

@@ -22,3 +22,7 @@ export const unlikeProject = (id) => request.delete(`/projects/${id}/like`)
 // 参与 / 取消参与
 export const participateProject = (id) => request.post(`/projects/${id}/participate`)
 export const cancelParticipate = (id) => request.delete(`/projects/${id}/participate`)
+
+// 收藏 / 取消收藏
+export const favoriteProject = (id) => request.post(`/projects/${id}/favorite`)
+export const unfavoriteProject = (id) => request.delete(`/projects/${id}/favorite`)

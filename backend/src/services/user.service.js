@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs')
 const { Op } = require('sequelize')
-const { User, Comment, Project, ProjectLike, sequelize } = require('../models')
+const { User, Comment, Project, ProjectLike, ProjectFavorite, sequelize } = require('../models')
 const { generateToken } = require('../utils/jwt')
 const ApiError = require('../utils/ApiError')
 
@@ -115,11 +115,12 @@ exports.getMyComments = async (userId, { page = 1, pageSize = 10 } = {}) => {
   }
 }
 
-// 个人数据概览：发布数 / 评论数 / 收到的点赞（项目点赞 + 评论点赞）
+// 个人数据概览：发布数 / 评论数 / 收藏数 / 收到的点赞（项目点赞 + 评论点赞）
 exports.getMyStats = async (userId) => {
-  const [projectCount, commentCount] = await Promise.all([
+  const [projectCount, commentCount, favoriteCount] = await Promise.all([
     Project.count({ where: { creator_id: userId } }),
-    Comment.count({ where: { user_id: userId } })
+    Comment.count({ where: { user_id: userId } }),
+    ProjectFavorite.count({ where: { user_id: userId } })
   ])
 
   const [likeRows] = await sequelize.query(
@@ -135,6 +136,7 @@ exports.getMyStats = async (userId) => {
   return {
     projectCount,
     commentCount,
+    favoriteCount,
     likeReceived: Number(likeRows.projectLikes || 0) + Number(likeRows.commentLikes || 0)
   }
 }

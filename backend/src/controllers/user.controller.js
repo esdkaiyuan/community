@@ -1,4 +1,5 @@
 const userService = require('../services/user.service')
+const favoriteService = require('../services/favorite.service')
 const asyncHandler = require('../utils/asyncHandler')
 const { ok, created } = require('../utils/response')
 
@@ -29,5 +30,10 @@ exports.getMyComments = asyncHandler(async (req, res) => {
 
 exports.getMyStats = asyncHandler(async (req, res) => {
   const data = await userService.getMyStats(req.user.userId)
+  ok(res, data)
+})
+
+exports.getMyFavorites = asyncHandler(async (req, res) => {
+  const data = await favoriteService.listFavorites({ userId: req.user.userId, ...req.query })
   ok(res, data)
 })

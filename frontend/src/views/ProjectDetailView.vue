@@ -48,6 +48,17 @@
               {{ commentCount }}
             </button>
             <button
+              class="btn-ghost !px-3 !py-1.5 text-sm"
+              :class="favorited ? '!text-pine' : ''"
+              :title="favorited ? '取消收藏' : '收藏项目'"
+              :disabled="acting"
+              @click="handleFavorite"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" :fill="favorited ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21 12 16.4 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+            <button
               class="!px-4 !py-1.5 text-sm"
               :class="participated ? 'btn-secondary' : 'btn-primary'"
               :disabled="acting"
@@ -172,6 +183,17 @@
                 </svg>
                 {{ liked ? '已点赞' : '点个赞' }}
               </button>
+              <button
+                class="w-full !py-3"
+                :class="favorited ? 'btn-secondary !border-pine/40 !text-pine' : 'btn-secondary'"
+                :disabled="acting"
+                @click="handleFavorite"
+              >
+                <svg class="h-4 w-4" viewBox="0 0 24 24" :fill="favorited ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 21 12 16.4 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                </svg>
+                {{ favorited ? '已收藏' : '收藏项目' }}
+              </button>
             </div>
 
             <!-- 创建者操作 -->
@@ -229,6 +251,7 @@ const imgFailed = ref(false)
 
 const liked = ref(false)
 const participated = ref(false)
+const favorited = ref(false)
 
 // 评论总数（由评论区组件上报，供顶部玻璃操作条展示）
 const commentCount = ref(0)
@@ -251,6 +274,7 @@ const syncFlags = () => {
   const pid = route.params.id
   liked.value = project.value?.liked ?? getUserFlag('like', uid, pid)
   participated.value = project.value?.participated ?? getUserFlag('join', uid, pid)
+  favorited.value = project.value?.favorited ?? getUserFlag('favorite', uid, pid)
 }
 
 const isOwner = computed(
@@ -370,6 +394,36 @@ const handleParticipate = async () => {
     } else if (msg.includes('未参与')) {
       participated.value = false
       setUserFlag('join', userStore.userId, project.value.id, false)
+    }
+  } finally {
+    acting.value = false
+  }
+}
+
+const handleFavorite = async () => {
+  if (!requireLogin() || acting.value) return
+  acting.value = true
+  try {
+    if (favorited.value) {
+      await projectApi.unfavoriteProject(project.value.id)
+      favorited.value = false
+      setUserFlag('favorite', userStore.userId, project.value.id, false)
+      toast('已取消收藏', 'info')
+    } else {
+      await projectApi.favoriteProject(project.value.id)
+      favorited.value = true
+      setUserFlag('favorite', userStore.userId, project.value.id, true)
+      toast('已加入收藏，可在个人中心查看')
+    }
+  } catch (e) {
+    // 本地状态与服务端不一致时纠正（如换设备后重复收藏）
+    const msg = e.response?.data?.message || ''
+    if (msg.includes('已收藏')) {
+      favorited.value = true
+      setUserFlag('favorite', userStore.userId, project.value.id, true)
+    } else if (msg.includes('尚未收藏')) {
+      favorited.value = false
+      setUserFlag('favorite', userStore.userId, project.value.id, false)
     }
   } finally {
     acting.value = false

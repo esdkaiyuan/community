@@ -1,5 +1,5 @@
 <template>
-  <!-- eslint-disable-next-line vue/no-v-html -- 内容为组件内置静态 path 常量，无用户输入 -->
+  <!-- eslint-disable vue/no-v-html -- 内容为组件内置静态 path 常量，无用户输入 -->
   <svg
     :class="$attrs.class || 'h-4 w-4'"
     viewBox="0 0 24 24"
@@ -47,6 +47,7 @@ const ICONS = {
 
   // 互动 / 数据
   heart: ['M20.4 12.6 12 21l-8.4-8.4a5.3 5.3 0 1 1 7.5-7.5l.9.9.9-.9a5.3 5.3 0 1 1 7.5 7.5z'],
+  bookmark: ['M19 21 12 16.4 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'],
   'message-circle': ['M7.9 20A9 9 0 1 0 4 16.1L2 22z'],
   bell: ['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0'],
   'trash-2': [

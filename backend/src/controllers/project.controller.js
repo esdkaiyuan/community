@@ -46,3 +46,13 @@ exports.cancelParticipate = asyncHandler(async (req, res) => {
   const data = await projectService.cancelParticipate(req.params.id, req.user.userId)
   ok(res, data, '已取消参与')
 })
+
+exports.favoriteProject = asyncHandler(async (req, res) => {
+  const data = await projectService.favoriteProject(req.params.id, req.user.userId)
+  ok(res, data, '收藏成功')
+})
+
+exports.unfavoriteProject = asyncHandler(async (req, res) => {
+  const data = await projectService.unfavoriteProject(req.params.id, req.user.userId)
+  ok(res, data, '已取消收藏')
+})

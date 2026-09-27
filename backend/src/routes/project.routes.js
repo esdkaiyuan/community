@@ -23,5 +23,7 @@ router.post('/:id/like', auth, projectController.likeProject)
 router.delete('/:id/like', auth, projectController.unlikeProject)
 router.post('/:id/participate', auth, projectController.participateProject)
 router.delete('/:id/participate', auth, projectController.cancelParticipate)
+router.post('/:id/favorite', auth, projectController.favoriteProject)
+router.delete('/:id/favorite', auth, projectController.unfavoriteProject)
 
 module.exports = router

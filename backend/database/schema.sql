@@ -102,6 +102,18 @@ CREATE TABLE IF NOT EXISTS project_likes (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- 项目收藏表（复用线上遗留结构：(project_id,user_id) 唯一键防重复收藏）
+CREATE TABLE IF NOT EXISTS project_favorites (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT COMMENT '记录ID',
+    project_id INT UNSIGNED NOT NULL COMMENT '项目ID',
+    user_id INT UNSIGNED NOT NULL COMMENT '用户ID',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
+    UNIQUE KEY uk_project_user (project_id, user_id),
+    KEY idx_user (user_id),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='项目收藏表';
+
 -- 站内通知表（评论/回复/点赞触发；相关评论删除时级联清理）
 CREATE TABLE IF NOT EXISTS notifications (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,

@@ -1,5 +1,5 @@
 const { Op } = require('sequelize')
-const { Project, Category, User, ProjectParticipant, ProjectLike } = require('../models')
+const { Project, Category, User, ProjectParticipant, ProjectLike, ProjectFavorite } = require('../models')
 const ApiError = require('../utils/ApiError')
 const { stripEmoji } = require('../utils/textSanitize')
 const { toClientUser } = require('./user.service')
@@ -88,12 +88,14 @@ exports.getProjectDetail = async (id, currentUserId) => {
 
   const extra = {}
   if (currentUserId) {
-    const [liked, participated] = await Promise.all([
+    const [liked, participated, favorited] = await Promise.all([
       ProjectLike.findOne({ where: { project_id: id, user_id: currentUserId } }),
-      ProjectParticipant.findOne({ where: { project_id: id, user_id: currentUserId } })
+      ProjectParticipant.findOne({ where: { project_id: id, user_id: currentUserId } }),
+      ProjectFavorite.findOne({ where: { project_id: id, user_id: currentUserId } })
     ])
     extra.liked = !!liked
     extra.participated = !!participated
+    extra.favorited = !!favorited
   }
 
   return toClientProject(project, extra)
@@ -172,6 +174,27 @@ exports.unlikeProject = async (id, userId) => {
     await project.save()
   }
   return { likeCount: project.like_count }
+}
+
+// 收藏项目（数据库唯一键兜底防重复）
+exports.favoriteProject = async (id, userId) => {
+  await getProjectOr404(id)
+
+  const existing = await ProjectFavorite.findOne({ where: { project_id: id, user_id: userId } })
+  if (existing) throw ApiError.conflict('已收藏过该项目')
+
+  await ProjectFavorite.create({ project_id: id, user_id: userId })
+  return { favorited: true }
+}
+
+exports.unfavoriteProject = async (id, userId) => {
+  await getProjectOr404(id)
+
+  const existing = await ProjectFavorite.findOne({ where: { project_id: id, user_id: userId } })
+  if (!existing) throw ApiError.badRequest('尚未收藏该项目')
+
+  await existing.destroy()
+  return { favorited: false }
 }
 
 exports.participateProject = async (id, userId) => {

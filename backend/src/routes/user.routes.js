@@ -12,6 +12,7 @@ router.post('/login', authLimiter, userController.login)
 router.get('/me', auth, userController.getProfile)
 router.get('/me/comments', auth, userController.getMyComments)
 router.get('/me/stats', auth, userController.getMyStats)
+router.get('/me/favorites', auth, userController.getMyFavorites)
 router.get('/profile', auth, userController.getProfile)
 router.put('/profile', auth, userController.updateProfile)
 
