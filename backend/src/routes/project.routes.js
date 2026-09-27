@@ -6,6 +6,8 @@ const { auth, optionalAuth } = require('../middleware/auth')
 
 // 公开路由（列表/详情用可选认证，登录用户可拿到 favorited 状态与「只看收藏」筛选）
 router.get('/', optionalAuth, projectController.getProjects)
+// 注意：必须排在 /:id 之前，否则会被当成 id = 'tags' 的项目详情
+router.get('/tags', projectController.getProjectTags)
 router.get('/:id', optionalAuth, projectController.getProjectById)
 router.get('/:id/participants', projectController.getProjectParticipants)
 

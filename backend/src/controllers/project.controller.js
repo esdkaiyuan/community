@@ -18,6 +18,12 @@ exports.getProjectById = asyncHandler(async (req, res) => {
   ok(res, data, '获取项目详情成功')
 })
 
+// 热门标签（广场入口用）：公开接口
+exports.getProjectTags = asyncHandler(async (req, res) => {
+  const data = await projectService.listPopularTags({ limit: req.query.limit })
+  ok(res, data, '获取热门标签成功')
+})
+
 exports.getProjectParticipants = asyncHandler(async (req, res) => {
   const data = await projectService.listParticipants(req.params.id, req.query)
   ok(res, data, '获取共创伙伴成功')

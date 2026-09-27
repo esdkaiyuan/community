@@ -117,7 +117,17 @@
           </div>
 
           <div v-if="project.tags?.length" class="mt-4 flex flex-wrap gap-2">
-            <span v-for="tag in project.tags" :key="tag" class="chip"># {{ tag }}</span>
+            <!-- 标签是可点入口：跳到广场按该标签筛选 -->
+            <router-link
+              v-for="tag in project.tags"
+              :key="tag"
+              :to="{ path: '/', query: { tag } }"
+              class="chip-link"
+              data-test="detail-tag"
+              :title="`看看「${tag}」标签下的项目`"
+            >
+              # {{ tag }}
+            </router-link>
           </div>
 
           <div v-reveal class="card mt-6 p-6 sm:p-8">

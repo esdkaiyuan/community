@@ -1,7 +1,10 @@
 import request from './request'
 
-// 项目列表（page、pageSize、categoryId、search、filter: recommend|hot、sort: latest|hot|participants）
+// 项目列表（page、pageSize、categoryId、tag、search、filter: recommend|hot、sort: latest|hot|participants）
 export const getProjects = (params) => request.get('/projects', { params })
+
+// 热门标签（广场入口）
+export const getProjectTags = (params) => request.get('/projects/tags', { params })
 
 // 项目详情
 export const getProject = (id) => request.get(`/projects/${id}`)

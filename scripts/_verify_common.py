@@ -99,13 +99,15 @@ def register(prefix):
     return {"token": data["token"], "user": data["user"], "uid": data["user"]["id"], "username": username}
 
 
-def create_project(token, title, category_id=1):
+def create_project(token, title, category_id=1, tags=None):
     """建临时项目（线上 `category_id` NOT NULL，必须带 categoryId）-> 项目 id"""
     body = {
         "title": title,
         "description": "这是一条用于自动化验证的临时项目描述，验证结束后会被完整清理。",
         "categoryId": category_id,
     }
+    if tags:
+        body["tags"] = tags
     return api("/projects", body, token=token)["data"]["id"]
 
 

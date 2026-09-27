@@ -54,6 +54,20 @@
         </button>
       </div>
 
+      <!-- 标签筛选提示 -->
+      <div v-if="query.tag" class="mb-6 flex flex-wrap items-center gap-3">
+        <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
+          <AppIcon name="tag" class="h-4 w-4 text-ink-dim" />
+          标签「{{ query.tag }}」下的项目
+        </h2>
+        <button class="btn-ghost !py-1 text-xs" data-test="clear-tag" @click="clearTag">
+          清除筛选
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
       <!-- 分类 -->
       <div class="flex flex-wrap items-center gap-2">
         <button class="cat-pill" :class="{ 'is-active': !query.categoryId }" @click="setCategory(null)">
@@ -70,6 +84,24 @@
           {{ cat.name }}
           <span class="text-xs opacity-60">{{ cat.count }}</span>
         </button>
+      </div>
+
+      <!-- 热门标签：分类之外的第二条浏览路径；没有标签数据时整行不渲染 -->
+      <div v-if="popularTags.length" class="mt-3 flex flex-wrap items-center gap-2" data-test="popular-tags">
+        <span class="inline-flex items-center gap-1 text-xs text-ink-dim">
+          <AppIcon name="tag" class="h-3.5 w-3.5" />
+          热门标签
+        </span>
+        <router-link
+          v-for="t in popularTags"
+          :key="t.name"
+          :to="{ path: '/', query: { tag: t.name } }"
+          class="chip-link"
+          :class="query.tag === t.name ? '!bg-pine !text-white' : ''"
+          :aria-current="query.tag === t.name ? 'page' : undefined"
+        >
+          # {{ t.name }}<span class="ml-1 tabular-nums opacity-60">{{ t.count }}</span>
+        </router-link>
       </div>
 
       <!-- 筛选 / 排序 -->
@@ -141,6 +173,17 @@
         <button class="btn-primary" @click="toggleFavorited">去看看全部项目</button>
       </EmptyState>
 
+      <!-- 空结果：标签筛选 -->
+      <EmptyState
+        v-else-if="!projects.length && query.tag"
+        icon="tag"
+        :title="`还没有「${query.tag}」标签的项目`"
+        description="换个标签看看，或者发布一个打了该标签的项目。"
+      >
+        <button class="btn-secondary" @click="clearTag">看看全部项目</button>
+        <router-link to="/publish" class="btn-primary">发布项目</router-link>
+      </EmptyState>
+
       <!-- 空结果 -->
       <EmptyState
         v-else-if="!projects.length"
@@ -174,7 +217,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getProjects } from '@/api/project'
+import { getProjects, getProjectTags } from '@/api/project'
 import { getCategories } from '@/api/category'
 import { categoryIcon } from '@/utils/categoryIcon'
 import { useUserStore } from '@/store/user'
@@ -200,6 +243,7 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const categories = ref([])
+const popularTags = ref([])
 const projects = ref([])
 const total = ref(0)
 const loading = ref(true)
@@ -208,6 +252,7 @@ const loadError = ref(false)
 // 筛选状态完全由路由 query 驱动，可分享、可后退
 const query = reactive({
   categoryId: route.query.categoryId || null,
+  tag: route.query.tag || '',
   search: route.query.search || '',
   filter: route.query.filter || '',
   favorited: route.query.favorited || '',
@@ -222,6 +267,7 @@ const isFiltering = computed(
   () =>
     !!(
       query.search ||
+      query.tag ||
       query.categoryId ||
       query.filter ||
       onlyFavorited.value ||
@@ -232,6 +278,7 @@ const isFiltering = computed(
 const syncRoute = () => {
   const q = {}
   if (query.categoryId) q.categoryId = query.categoryId
+  if (query.tag) q.tag = query.tag
   if (query.search) q.search = query.search
   if (query.filter) q.filter = query.filter
   if (onlyFavorited.value) q.favorited = '1'
@@ -270,6 +317,11 @@ const clearSearch = () => {
   page.value = 1
   syncRoute()
 }
+const clearTag = () => {
+  query.tag = ''
+  page.value = 1
+  syncRoute()
+}
 
 // 「只看收藏」视图里取消收藏即移出列表，并把总数同步减一
 const onFavoriteChange = ({ id, favorited }) => {
@@ -286,6 +338,7 @@ const fetchProjects = async () => {
       page: page.value,
       pageSize: PAGE_SIZE,
       categoryId: query.categoryId || undefined,
+      tag: query.tag || undefined,
       search: query.search || undefined,
       filter: query.filter || undefined,
       favorited: onlyFavorited.value ? '1' : undefined,
@@ -309,12 +362,23 @@ const fetchCategories = async () => {
   }
 }
 
+// 热门标签失败也不阻塞：没有标签数据时这一行自然不渲染
+const fetchPopularTags = async () => {
+  try {
+    const res = await getProjectTags()
+    popularTags.value = res.data || []
+  } catch {
+    popularTags.value = []
+  }
+}
+
 // 外部路由变化（如导航栏搜索、页脚快捷链接）时同步并重新拉取
 watch(
   () => route.query,
   (q) => {
     if (route.path !== '/') return
     query.categoryId = q.categoryId || null
+    query.tag = q.tag || ''
     query.search = q.search || ''
     query.filter = q.filter || ''
     query.favorited = q.favorited || ''
@@ -338,6 +402,7 @@ watch(
 
 onMounted(() => {
   fetchCategories()
+  fetchPopularTags()
   fetchProjects()
 })
 </script>

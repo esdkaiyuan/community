@@ -142,6 +142,11 @@
     @apply inline-flex items-center rounded-full bg-sand px-2.5 py-0.5 text-xs font-medium text-ink-mid;
   }
 
+  /* 可点击的标签 chip：静止态与 .chip 一致，hover 才加深，避免看起来像按钮 */
+  .chip-link {
+    @apply inline-flex items-center rounded-full bg-sand px-2.5 py-0.5 text-xs font-medium text-ink-mid transition-colors hover:bg-line hover:text-ink;
+  }
+
   /* 骨架屏 */
   .skeleton {
     @apply animate-shimmer rounded-lg bg-sand;

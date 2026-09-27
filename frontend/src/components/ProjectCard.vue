@@ -2,7 +2,16 @@
   <article
     class="card group relative transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover"
   >
-    <router-link :to="`/project/${project.id}`" class="block">
+    <!-- 整卡点击（stretched link）：单个 <a> 铺满卡片，合法 HTML；
+         内容层 pointer-events-none 让点击穿透到链接，交互元素各自 z-10 抬起 -->
+    <router-link
+      :to="`/project/${project.id}`"
+      class="absolute inset-0 z-0 rounded-xl2"
+      :aria-label="`查看项目：${project.title}`"
+      data-test="card-link"
+    ></router-link>
+
+    <div class="pointer-events-none relative">
       <!-- 封面 -->
       <div class="relative aspect-[16/9] overflow-hidden rounded-t-xl2">
         <img
@@ -51,7 +60,16 @@
         </p>
 
         <div v-if="project.tags?.length" class="mt-2.5 flex flex-wrap gap-1.5">
-          <span v-for="tag in project.tags.slice(0, 3)" :key="tag" class="chip"># {{ tag }}</span>
+          <router-link
+            v-for="tag in project.tags.slice(0, 3)"
+            :key="tag"
+            :to="{ path: '/', query: { tag } }"
+            class="chip-link pointer-events-auto relative z-10"
+            data-test="card-tag"
+            :title="`看看「${tag}」标签下的项目`"
+          >
+            # {{ tag }}
+          </router-link>
         </div>
 
         <div class="mt-4 flex items-center justify-between border-t border-line pt-3.5">
@@ -83,7 +101,7 @@
           </div>
         </div>
       </div>
-    </router-link>
+    </div>
 
     <!-- 就地收藏：不进入详情页，桌面悬停出现、触屏常显 -->
     <button

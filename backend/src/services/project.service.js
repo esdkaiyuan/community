@@ -1,4 +1,5 @@
 const { Op } = require('sequelize')
+const sequelize = require('../config/database')
 const { Project, Category, User, ProjectParticipant, ProjectLike, ProjectFavorite } = require('../models')
 const ApiError = require('../utils/ApiError')
 const { stripEmoji } = require('../utils/textSanitize')
@@ -79,6 +80,7 @@ exports.listProjects = async ({
   page = 1,
   pageSize = 12,
   categoryId,
+  tag,
   search,
   filter,
   sort,
@@ -95,10 +97,22 @@ exports.listProjects = async ({
   if (creatorId) where.creator_id = creatorId
   if (filter === 'recommend') where.is_recommend = 1
   if (filter === 'hot') where.is_hot = 1
+  // 标签筛选：tags 列存 JSON 数组，用 JSON_CONTAINS 精确匹配，
+  // 而不是 LIKE —— 否则「开源」会误命中「开源硬件」这类互含子串的标签
+  if (tag) {
+    where[Op.and] = [
+      sequelize.where(
+        sequelize.fn('JSON_CONTAINS', sequelize.col('Project.tags'), JSON.stringify(tag)),
+        1
+      )
+    ]
+  }
   if (search) {
     where[Op.or] = [
       { title: { [Op.like]: `%${search}%` } },
-      { description: { [Op.like]: `%${search}%` } }
+      { description: { [Op.like]: `%${search}%` } },
+      // 关键词也命中标签：搜「开源」能找到打了该标签的项目
+      { tags: { [Op.like]: `%${search}%` } }
     ]
   }
 
@@ -143,6 +157,33 @@ exports.listProjects = async ({
     page,
     pageSize: limit
   }
+}
+
+// 标签是 projects.tags 里的 JSON 数组（无独立表），这里全量聚合出「热门标签」
+// 数据量小、也无索引可用，直接拉非空行在内存里计数；随项目增长可改为定时物化
+exports.listPopularTags = async ({ limit = 12 } = {}) => {
+  const max = Math.min(30, Math.max(1, parseInt(limit, 10) || 12))
+
+  const rows = await Project.findAll({
+    attributes: ['tags'],
+    where: { tags: { [Op.ne]: null } }
+  })
+
+  const counter = new Map()
+  rows.forEach((row) => {
+    const list = Array.isArray(row.tags) ? row.tags : []
+    list.forEach((raw) => {
+      const name = String(raw || '').trim()
+      if (!name) return
+      counter.set(name, (counter.get(name) || 0) + 1)
+    })
+  })
+
+  // 项目数倒序；数量相同按名称稳定排序，避免每次刷新顺序抖动
+  return [...counter.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh'))
+    .slice(0, max)
 }
 
 exports.getProjectDetail = async (id, currentUserId) => {
