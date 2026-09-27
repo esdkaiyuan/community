@@ -32,6 +32,12 @@ const routes = [
     meta: { title: '发布项目', requiresAuth: true }
   },
   {
+    path: '/project/:id/edit',
+    name: 'ProjectEdit',
+    component: () => import('@/views/ProjectEditView.vue'),
+    meta: { title: '编辑项目', requiresAuth: true }
+  },
+  {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/ProfileView.vue'),

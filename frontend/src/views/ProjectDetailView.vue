@@ -209,9 +209,19 @@
             <!-- 创建者操作 -->
             <div v-if="isOwner" class="mt-4 border-t border-line pt-4">
               <p class="mb-2 text-xs text-ink-dim">你是该项目的创建者</p>
-              <button class="btn-ghost w-full !text-clay hover:!bg-[#FBE9EB]" :disabled="acting" @click="handleDelete">
-                删除项目
-              </button>
+              <div class="space-y-2">
+                <router-link
+                  :to="`/project/${project.id}/edit`"
+                  class="btn-secondary w-full !py-3"
+                  data-test="detail-edit"
+                >
+                  <AppIcon name="pencil" class="h-4 w-4" />
+                  编辑项目
+                </router-link>
+                <button class="btn-ghost w-full !text-clay hover:!bg-[#FBE9EB]" :disabled="acting" @click="handleDelete">
+                  删除项目
+                </button>
+              </div>
             </div>
           </div>
 

@@ -64,6 +64,38 @@ const SORT_MAP = {
   ]
 }
 
+// 标签约束：与前端输入框保持一致（5 个上限、单个 12 字符）
+const TAG_MAX_COUNT = 5
+const TAG_MAX_LENGTH = 12
+
+// 标签归一化：剥 emoji → 收敛空白 → 截断 → 去重（大小写不敏感，避免「开源」与「开源 」被算成两个标签）
+// 前端已做一遍，这里是服务端的最后一道闸：直接调 API 也要得到干净的 tags
+const normalizeTags = (tags) => {
+  if (!Array.isArray(tags)) return []
+  const result = []
+  const seen = new Set()
+  for (const raw of tags) {
+    if (result.length >= TAG_MAX_COUNT) break
+    const name = stripEmoji(String(raw ?? ''))
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, TAG_MAX_LENGTH)
+    if (!name) continue
+    const key = name.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(name)
+  }
+  return result
+}
+
+// 分类在线上是 NOT NULL：不校验的话 MySQL 会直接抛 1048，前端只能看到 500
+const assertCategoryExists = async (categoryId) => {
+  if (!categoryId) throw ApiError.badRequest('请选择项目分类')
+  if (!(await Category.findByPk(categoryId))) throw ApiError.badRequest('所选分类不存在')
+  return categoryId
+}
+
 const getProjectOr404 = async (id) => {
   // 详情/编辑都要用 category 与 creator 的展示字段，统一在这里带出来
   const project = await Project.findByPk(id, {
@@ -250,22 +282,22 @@ exports.listParticipants = async (id, { page = 1, pageSize = 24 } = {}) => {
 }
 
 exports.createProject = async ({ title, description, coverImage, categoryId, tags, creatorId }) => {
-  if (!title || !String(title).trim()) throw ApiError.badRequest('标题为必填项')
-  if (String(title).trim().length < 4) throw ApiError.badRequest('标题至少 4 个字符')
-  if (!description || String(description).trim().length < 20) {
+  const cleanTitle = stripEmoji(String(title ?? '')).trim()
+  if (!cleanTitle) throw ApiError.badRequest('标题为必填项')
+  if (cleanTitle.length < 4) throw ApiError.badRequest('标题至少 4 个字符')
+  const cleanDescription = stripEmoji(String(description ?? '')).trim()
+  if (cleanDescription.length < 20) {
     throw ApiError.badRequest('项目介绍至少 20 个字符')
   }
-  if (categoryId && !(await Category.findByPk(categoryId))) {
-    throw ApiError.badRequest('所选分类不存在')
-  }
+  await assertCategoryExists(categoryId)
 
   const project = await Project.create({
-    title: String(title).trim(),
-    description: stripEmoji(description) || description,
+    title: cleanTitle,
+    description: cleanDescription,
     cover_image: coverImage || null,
-    category_id: categoryId || null,
+    category_id: categoryId,
     creator_id: creatorId,
-    tags: Array.isArray(tags) ? tags.slice(0, 5) : []
+    tags: normalizeTags(tags)
   })
 
   await ProjectParticipant.create({ project_id: project.id, user_id: creatorId, role: 'creator' })
@@ -277,16 +309,19 @@ exports.updateProject = async (id, userId, { title, description, coverImage, cat
   if (project.creator_id !== userId) throw ApiError.forbidden('无权修改此项目')
 
   if (title !== undefined) {
-    if (String(title).trim().length < 4) throw ApiError.badRequest('标题至少 4 个字符')
-    project.title = String(title).trim()
+    const cleanTitle = stripEmoji(String(title)).trim()
+    if (cleanTitle.length < 4) throw ApiError.badRequest('标题至少 4 个字符')
+    project.title = cleanTitle
   }
   if (description !== undefined) {
-    if (String(description).trim().length < 20) throw ApiError.badRequest('项目介绍至少 20 个字符')
-    project.description = stripEmoji(description) || description
+    const cleanDescription = stripEmoji(String(description)).trim()
+    if (cleanDescription.length < 20) throw ApiError.badRequest('项目介绍至少 20 个字符')
+    project.description = cleanDescription
   }
   if (coverImage !== undefined) project.cover_image = coverImage || null
-  if (categoryId !== undefined) project.category_id = categoryId || null
-  if (tags !== undefined && Array.isArray(tags)) project.tags = tags.slice(0, 5)
+  if (categoryId !== undefined) project.category_id = await assertCategoryExists(categoryId)
+  // 传空数组即清空标签（编辑页允许把标签删光）
+  if (tags !== undefined && Array.isArray(tags)) project.tags = normalizeTags(tags)
 
   await project.save()
   return toClientProject(project)

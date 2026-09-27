@@ -8,19 +8,24 @@
 
 约定（血泪换来的）：
 - 断言失败进 assert_fails，console 错误进 console_errors，**两个独立列表**，否则断言失败会被误报成 console error
+- 断言 400/403/404 这类错误分支要用 `api_status()`（`api()` 会抛 HTTPError）
 - 临时账号 / 临时项目一律带时间戳，`finally` 里用 cleanup_project / cleanup_users 清干净
-- mysql CLI 必须是 Windows 路径；Python subprocess 用 Git Bash 的 `/c/...` 会 WinError 2
+- mysql CLI 必须是 Windows 路径，且必须带 `--default-character-set=utf8mb4`（否则中文结果解码即崩）
 - 数据库凭据与 backend/.env 保持一致（本地开发库）
 """
 import json
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 
 BASE = "http://localhost:5000/api"
 FRONT = "http://localhost:3001"
 MYSQL = r"C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe"  # 必须 Windows 路径
+# ⚠️ 必须带 --default-character-set=utf8mb4：否则 mysql CLI 按 GBK 输出，
+# 结果里一旦有中文（项目标题/标签），Python 侧按 utf-8 解码会抛 UnicodeDecodeError
+MYSQL_CHARSET = "--default-character-set=utf8mb4"
 DB_USER = "co_creation_esdk"
 DB_PASS = "GchzPPQ8sM6Rc2Xn"
 DB_NAME = "co_creation_esdk"
@@ -50,7 +55,7 @@ def api(path, data=None, token=None, method=None):
 
 def sql(statement):
     subprocess.run(
-        [MYSQL, "-u", DB_USER, f"-p{DB_PASS}", DB_NAME, "-e", statement],
+        [MYSQL, "-u", DB_USER, f"-p{DB_PASS}", DB_NAME, MYSQL_CHARSET, "-e", statement],
         check=True,
         capture_output=True,
     )
@@ -59,12 +64,37 @@ def sql(statement):
 def sql_one(statement):
     """返回单值（-N -B 去表头与对齐）"""
     res = subprocess.run(
-        [MYSQL, "-u", DB_USER, f"-p{DB_PASS}", DB_NAME, "-N", "-B", "-e", statement],
+        [MYSQL, "-u", DB_USER, f"-p{DB_PASS}", DB_NAME, MYSQL_CHARSET, "-N", "-B", "-e", statement],
         check=True,
         capture_output=True,
         text=True,
     )
     return res.stdout.strip()
+
+
+def api_status(path, data=None, token=None, method=None):
+    """同 api()，但 4xx/5xx 不抛异常，返回 (status, body)。
+
+    断言错误分支（400/403/404）时用这个，否则 urllib 会直接抛 HTTPError。
+    """
+    req = urllib.request.Request(
+        BASE + path,
+        data=json.dumps(data).encode() if data is not None else None,
+        headers={
+            "Content-Type": "application/json",
+            **({"Authorization": f"Bearer {token}"} if token else {}),
+        },
+        method=method or ("POST" if data is not None else "GET"),
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return resp.status, json.loads(resp.read())
+    except urllib.error.HTTPError as err:
+        raw = err.read()
+        try:
+            return err.code, json.loads(raw)
+        except ValueError:
+            return err.code, {"raw": raw.decode(errors="replace")}
 
 
 def check(label, cond):
