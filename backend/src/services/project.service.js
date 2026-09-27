@@ -23,6 +23,10 @@ const toClientProject = (p, extra = {}) => {
     viewCount: row.view_count || 0,
     isRecommend: !!row.is_recommend,
     isHot: !!row.is_hot,
+    // 近 7 天活跃度：只有列表按 sort=trending 查询时才带出来
+    ...(row.trendScore === undefined || row.trendScore === null
+      ? {}
+      : { trendScore: Number(row.trendScore) || 0 }),
     createdAt: row.created_at,
     creator: row.creator ? toClientUser(row.creator) : null,
     ...extra
@@ -53,6 +57,25 @@ const sortParticipants = (rows) =>
     if (ac !== bc) return ac - bc
     return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
   })
+
+// 「本周热门」的统计窗口（天）
+const TREND_WINDOW_DAYS = 7
+
+// 近 7 天的活跃度：参与（最重）×3 + 评论 ×2 + 点赞 ×1。
+// 只看累计值（like_count）的话，早期爆款会永远压在上面 —— 时间窗口衡量的是「最近发生了什么」
+const TREND_SCORE_SQL = `(
+  (SELECT COUNT(*) FROM project_likes pl
+     WHERE pl.project_id = \`Project\`.\`id\`
+       AND pl.created_at >= DATE_SUB(NOW(), INTERVAL ${TREND_WINDOW_DAYS} DAY))
+  + (SELECT COUNT(*) FROM project_comments pc
+     WHERE pc.project_id = \`Project\`.\`id\`
+       AND pc.status = 1
+       AND pc.created_at >= DATE_SUB(NOW(), INTERVAL ${TREND_WINDOW_DAYS} DAY)) * 2
+  + (SELECT COUNT(*) FROM project_participants pp
+     WHERE pp.project_id = \`Project\`.\`id\`
+       AND pp.role <> 'creator'
+       AND pp.joined_at >= DATE_SUB(NOW(), INTERVAL ${TREND_WINDOW_DAYS} DAY)) * 3
+)`
 
 const SORT_MAP = {
   latest: [['created_at', 'DESC']],
@@ -176,13 +199,22 @@ exports.listProjects = async ({
     where.id = { [Op.in]: ids }
   }
 
+  // 「本周热门」只有在这个排序下才算：三个子查询白给其它排序添负担，
+  // 而且分数只在「按它排序」时才有解释意义（卡片据此显示「本周 N」徽标）
+  const isTrending = sort === 'trending'
+
   const { count, rows } = await Project.findAndCountAll({
     where,
     include: [
       { model: Category, as: 'category', attributes: ['id', 'name', 'icon'] },
       { model: User, as: 'creator', attributes: ['id', 'username', 'avatar'] }
     ],
-    order: SORT_MAP[sort] || SORT_MAP.latest,
+    ...(isTrending
+      ? {
+          attributes: { include: [[sequelize.literal(TREND_SCORE_SQL), 'trendScore']] },
+          order: [sequelize.literal('trendScore DESC'), ['created_at', 'DESC']]
+        }
+      : { order: SORT_MAP[sort] || SORT_MAP.latest }),
     limit,
     offset,
     distinct: true
@@ -389,6 +421,11 @@ exports.createProject = async ({ title, description, coverImage, categoryId, tag
   })
 
   await ProjectParticipant.create({ project_id: project.id, user_id: creatorId, role: 'creator' })
+  // 发起人自己也是一名共创者：计数列从 0 起，不补这一下列表里会永远少 1，
+  // 「参与最多」排序也跟着失真（详情页的自愈只能兜住详情页，列表读的是列值）
+  project.participant_count = 1
+  await project.save()
+
   return toClientProject(project)
 }
 

@@ -148,6 +148,15 @@
         </div>
       </div>
 
+      <!-- 排序口径说明：只在「本周热门」下出现，否则用户看不出这个顺序是怎么来的 -->
+      <p
+        v-if="query.sort === 'trending'"
+        data-test="trend-hint"
+        class="mt-3 text-xs text-ink-dim"
+      >
+        按近 7 天的活跃度排序：参与 ×3、评论 ×2、点赞 ×1；卡片上的「本周 N」就是这项得分。
+      </p>
+
       <!-- 加载中 -->
       <div v-if="loading" class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <ProjectCardSkeleton v-for="i in 8" :key="i" />
@@ -202,6 +211,7 @@
             :key="p.id"
             v-reveal="Math.min(i, 7) * 60"
             :project="p"
+            :trend="query.sort === 'trending' ? p.trendScore : null"
             @favorite-change="onFavoriteChange"
           />
         </div>
@@ -235,7 +245,8 @@ const FILTERS = [
 const SORTS = [
   { label: '最新', value: 'latest' },
   { label: '最热', value: 'hot' },
-  { label: '参与最多', value: 'participants' }
+  { label: '参与最多', value: 'participants' },
+  { label: '本周热门', value: 'trending' }
 ]
 
 const route = useRoute()

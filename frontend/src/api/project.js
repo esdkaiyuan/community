@@ -1,6 +1,7 @@
 import request from './request'
 
-// 项目列表（page、pageSize、categoryId、tag、search、filter: recommend|hot、sort: latest|hot|participants）
+// 项目列表（page、pageSize、categoryId、tag、search、filter: recommend|hot、
+// sort: latest|hot|participants|trending；sort=trending 时每条多带一个 trendScore）
 export const getProjects = (params) => request.get('/projects', { params })
 
 // 热门标签（广场入口）

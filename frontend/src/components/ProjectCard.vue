@@ -41,6 +41,15 @@
           <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md">
             <AppIcon name="flame" class="h-3 w-3 text-clay" />热门
           </span>
+          <!-- 本周活跃度：只在按「本周热门」排序时出现，用来解释「为什么它排在前面」 -->
+          <span
+            v-if="trend > 0"
+            data-test="card-trend"
+            class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md"
+            :title="`近 7 天 ${trend} 次互动（点赞 / 评论 / 参与）`"
+          >
+            <AppIcon name="trendingUp" class="h-3 w-3 text-pine" />本周 {{ trend }}
+          </span>
         </div>
         <span
           v-if="project.categoryName"
@@ -171,7 +180,9 @@ import { coverPalette } from '@/utils/placeholder'
 const props = defineProps({
   project: { type: Object, required: true },
   // 作品归属于当前用户时才展示编辑入口（如个人中心「我发布的项目」）
-  editable: { type: Boolean, default: false }
+  editable: { type: Boolean, default: false },
+  // 近 7 天活跃度（仅广场按「本周热门」排序时由父级传入）；null = 不展示徽标
+  trend: { type: Number, default: null }
 })
 
 // 收藏状态变化时通知父级（列表模式下用于把取消收藏的卡片移出「只看收藏」）
