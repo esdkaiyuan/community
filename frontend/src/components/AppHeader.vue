@@ -52,6 +52,7 @@
             <AppIcon name="bell" class="h-[18px] w-[18px]" />
             <span
               v-if="unread > 0"
+              data-test="unread-badge"
               class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF3B30] px-1 text-[10px] font-semibold tabular-nums text-white"
             >
               {{ unread > 99 ? '99+' : unread }}
@@ -61,6 +62,7 @@
           <transition name="menu">
             <div
               v-if="notifOpen"
+              data-test="notif-panel"
               class="absolute right-0 top-full mt-2 w-80 overflow-hidden rounded-xl2 border border-[color:var(--glass-border)] bg-[color:var(--glass-menu)] shadow-pop backdrop-blur-xl backdrop-saturate-150"
             >
               <div class="flex items-center justify-between border-b border-line px-4 py-3">
@@ -79,6 +81,7 @@
                   <button
                     v-for="n in notifications"
                     :key="n.id"
+                    data-test="notif-item"
                     class="flex w-full items-start gap-2.5 border-b border-line px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-sand"
                     :class="n.isRead ? '' : 'bg-pine-soft/40'"
                     @click="openNotification(n)"
@@ -90,7 +93,7 @@
                     <span class="min-w-0 flex-1">
                       <span class="block text-[13px] leading-snug text-ink">
                         <span class="font-medium">{{ n.actor?.username || '有人' }}</span>
-                        {{ typeText(n.type) }}
+                        {{ notificationText(n.type) }}
                         <span class="text-ink-mid">「{{ n.project?.title || '项目' }}」</span>
                       </span>
                       <span v-if="n.commentPreview" class="mt-0.5 block truncate text-xs text-ink-dim">{{ n.commentPreview }}</span>
@@ -102,7 +105,7 @@
                 <div v-else class="flex flex-col items-center gap-1.5 px-4 py-10 text-center">
                   <AppIcon name="bell" class="h-7 w-7 text-ink-dim/50" :stroke-width="1.5" />
                   <p class="text-sm text-ink-mid">暂无通知</p>
-                  <p class="text-xs text-ink-dim">有人评论或点赞你的项目时会在这里提醒你。</p>
+                  <p class="text-xs text-ink-dim">有人评论、点赞或参与你的项目时会在这里提醒你。</p>
                 </div>
               </div>
 
@@ -184,6 +187,7 @@ import { useUserStore } from '@/store/user'
 import { toast } from '@/composables/useToast'
 import { getNotifications, getUnreadCount, markRead } from '@/api/notification'
 import { relativeTime } from '@/utils/time'
+import { notificationText, notificationTarget } from '@/utils/notification'
 import AppIcon from '@/components/AppIcon.vue'
 
 const router = useRouter()
@@ -203,9 +207,6 @@ let pollTimer = null
 
 const avatar = computed(() => userStore.userInfo?.avatar || '')
 const initial = computed(() => (userStore.username || '友').slice(0, 1).toUpperCase())
-
-const typeText = (type) =>
-  ({ comment: '评论了你的项目', reply: '回复了你在', like: '赞了你在' }[type] || '与你互动于')
 
 const fetchUnread = async () => {
   if (!userStore.isLoggedIn) return
@@ -240,7 +241,7 @@ const openNotification = async (n) => {
     unread.value = Math.max(0, unread.value - 1)
     markRead({ ids: [n.id] }).catch(() => {})
   }
-  router.push({ path: `/project/${n.project?.id}`, hash: '#comments' })
+  router.push(notificationTarget(n))
 }
 
 const markAllRead = () => {

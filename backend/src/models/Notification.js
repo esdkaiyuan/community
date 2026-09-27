@@ -4,7 +4,7 @@ const User = require('./User')
 const Project = require('./Project')
 const Comment = require('./Comment')
 
-// 站内通知：评论/回复/点赞触发（actor 与 user 相同时不产生）
+// 站内通知：评论/回复/点赞/参与触发（actor 与 user 相同时不产生）
 const Notification = sequelize.define(
   'Notification',
   {
@@ -24,7 +24,7 @@ const Notification = sequelize.define(
       comment: '触发者'
     },
     type: {
-      type: DataTypes.ENUM('comment', 'reply', 'like'),
+      type: DataTypes.ENUM('comment', 'reply', 'like', 'participate'),
       allowNull: false
     },
     project_id: {

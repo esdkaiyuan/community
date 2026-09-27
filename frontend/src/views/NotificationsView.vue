@@ -46,7 +46,7 @@
         :description="
           filter === 'unread'
             ? '所有通知都已读完，继续保持。'
-            : '有人评论、回复或点赞你的内容时，这里会第一时间告诉你。'
+            : '有人评论、回复、点赞或参与你的项目时，这里会第一时间告诉你。'
         "
       >
         <router-link v-if="filter === 'unread'" class="btn-secondary text-sm" to="/notifications?filter=all">
@@ -59,6 +59,7 @@
           v-for="(n, i) in notifications"
           :key="n.id"
           v-reveal="Math.min(i, 8) * 40"
+          data-test="notif-row"
           class="group flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-sand"
           :class="n.isRead ? '' : 'bg-pine-soft/40'"
           @click="openNotification(n)"
@@ -73,7 +74,7 @@
           <span class="min-w-0 flex-1">
             <span class="block text-[15px] leading-snug text-ink">
               <span class="font-medium">{{ n.actor?.username || '有人' }}</span>
-              {{ typeText(n.type) }}
+              {{ notificationText(n.type) }}
               <span class="text-ink-mid">「{{ n.project?.title || '项目' }}」</span>
             </span>
             <span v-if="n.commentPreview" class="mt-1 block truncate text-[13px] text-ink-mid">
@@ -104,6 +105,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getNotifications, markRead } from '@/api/notification'
 import { toast } from '@/composables/useToast'
 import { relativeTime } from '@/utils/time'
+import { notificationText, notificationTarget } from '@/utils/notification'
 import EmptyState from '@/components/EmptyState.vue'
 
 const route = useRoute()
@@ -123,9 +125,6 @@ const loading = ref(true)
 const loadingMore = ref(false)
 const marking = ref(false)
 const PAGE_SIZE = 15
-
-const typeText = (type) =>
-  ({ comment: '评论了你的项目', reply: '回复了你在', like: '赞了你在' }[type] || '与你互动于')
 
 const isUnreadView = computed(() => filter.value === 'unread')
 
@@ -186,7 +185,7 @@ const openNotification = async (n) => {
       total.value = Math.max(0, total.value - 1)
     }
   }
-  router.push({ path: `/project/${n.project?.id}`, hash: '#comments' })
+  router.push(notificationTarget(n))
 }
 
 const markAllRead = async () => {

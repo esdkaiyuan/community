@@ -259,6 +259,8 @@ def main():
             browser.close()
     finally:
         # 先清中间表再删项目，避免级联链路过深；最后删用户
+        # 注：参与共创自本轮起会通知发起人，所以要一并清掉通知
+        sql(f"DELETE FROM notifications WHERE project_id = {pid};")
         sql(f"DELETE FROM project_participants WHERE project_id = {pid};")
         sql(f"DELETE FROM project_likes WHERE project_id = {pid};")
         sql(f"DELETE FROM projects WHERE id = {pid};")

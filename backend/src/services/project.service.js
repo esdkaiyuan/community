@@ -3,6 +3,7 @@ const { Project, Category, User, ProjectParticipant, ProjectLike, ProjectFavorit
 const ApiError = require('../utils/ApiError')
 const { stripEmoji } = require('../utils/textSanitize')
 const { toClientUser } = require('./user.service')
+const notificationService = require('./notification.service')
 
 // 数据库行 -> 前端数据形状（camelCase）
 const toClientProject = (p, extra = {}) => {
@@ -312,6 +313,15 @@ exports.participateProject = async (id, userId) => {
   await ProjectParticipant.create({ project_id: id, user_id: userId, role: 'member' })
   project.participant_count += 1
   await project.save()
+
+  // 通知发起人（同一人对同一项目只提醒一次，避免「退出 → 再加入」刷屏）
+  notificationService.notifyOnce({
+    userId: project.creator_id,
+    type: 'participate',
+    actorId: userId,
+    projectId: Number(id)
+  })
+
   return { participantCount: project.participant_count }
 }
 
