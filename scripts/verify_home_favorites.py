@@ -116,7 +116,7 @@ def main():
             page.wait_for_timeout(1600)
 
             check("筛选后卡片数收窄到 1", cards.count() == 1)
-            check("卡片带收藏书签徽标", page.locator("[title='已收藏']").count() == 1)
+            check("卡片带已收藏态按钮", page.locator("article button[aria-label='取消收藏']").count() == 1)
             check("URL 带上 favorited=1", "favorited=1" in page.url)
 
             page.screenshot(path=OUT_LIGHT)

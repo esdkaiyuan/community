@@ -106,6 +106,7 @@
             :key="p.id"
             v-reveal="Math.min(i, 5) * 60"
             :project="p"
+            @favorite-change="onFavoriteChange"
           />
         </div>
         <div v-if="myFavorites.length < favoriteTotal" class="mt-6 text-center">
@@ -337,6 +338,14 @@ const loadMoreFavorites = async () => {
   } finally {
     loadingMoreFavorites.value = false
   }
+}
+
+// 在「我的收藏」里就地取消收藏，卡片即时移出列表，计数同步
+const onFavoriteChange = ({ id, favorited }) => {
+  if (favorited) return
+  myFavorites.value = myFavorites.value.filter((p) => p.id !== id)
+  if (favoriteTotal.value > 0) favoriteTotal.value -= 1
+  if (stats.value) stats.value.favoriteCount = Math.max(0, (stats.value.favoriteCount ?? 1) - 1)
 }
 
 const fetchMyComments = async (page = 1) => {

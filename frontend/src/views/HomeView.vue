@@ -159,6 +159,7 @@
             :key="p.id"
             v-reveal="Math.min(i, 7) * 60"
             :project="p"
+            @favorite-change="onFavoriteChange"
           />
         </div>
 
@@ -268,6 +269,13 @@ const clearSearch = () => {
   query.search = ''
   page.value = 1
   syncRoute()
+}
+
+// 「只看收藏」视图里取消收藏即移出列表，并把总数同步减一
+const onFavoriteChange = ({ id, favorited }) => {
+  if (!onlyFavorited.value || favorited) return
+  projects.value = projects.value.filter((p) => p.id !== id)
+  if (total.value > 0) total.value -= 1
 }
 
 const fetchProjects = async () => {
