@@ -53,11 +53,13 @@
                 :aria-label="showPassword ? '隐藏密码' : '显示密码'"
                 @click="showPassword = !showPassword"
               >
-                <svg v-if="showPassword" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <!-- ⚠️ h-4.5 不是合法的 Tailwind 尺寸类（默认 spacing 只有 0.5/1.5/2.5/3.5），
+                     写了会静默不生成 CSS，svg 失去尺寸约束被撑成巨图 -->
+                <svg v-if="showPassword" class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                   <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
-                <svg v-else class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <svg v-else class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                   <path d="M3 3l18 18M10.6 5.1A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17.5 17.5 0 0 1-2.5 3.4M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.6 0 3-.4 4.3-1" />
                 </svg>
               </button>
@@ -106,8 +108,10 @@ const handleSubmit = async () => {
     await userStore.login({ email: form.email, password: form.password })
     toast(`欢迎回来，${userStore.username}！`)
     router.push(route.query.redirect || '/')
-  } catch {
-    // 具体错误已由拦截器 toast
+  } catch (e) {
+    // 登录失败就该就地红字（拦截器对「没带 token 的 401」不弹全局提示），
+    // 否则点了登录页面毫无反应，用户只会以为是按钮坏了
+    errors.password = e.response?.data?.message || '登录失败，请稍后重试'
   } finally {
     submitting.value = false
   }

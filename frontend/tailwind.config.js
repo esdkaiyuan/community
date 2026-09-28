@@ -55,6 +55,8 @@ export default {
       boxShadow: {
         card: '0 2px 8px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06)',
         'card-hover': '0 4px 12px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.12)',
+        // 提示卡：单层短距 + 一层长距柔化，模拟系统通知的悬浮感（不做硬投影）
+        toast: '0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 32px -6px rgba(0, 0, 0, 0.16)',
         pop: '0 12px 40px rgba(0, 0, 0, 0.18)'
       },
       borderRadius: {
@@ -65,10 +67,6 @@ export default {
           from: { opacity: '0', transform: 'translateY(16px)' },
           to: { opacity: '1', transform: 'translateY(0)' }
         },
-        'toast-in': {
-          from: { opacity: '0', transform: 'translateY(-10px) scale(0.98)' },
-          to: { opacity: '1', transform: 'translateY(0) scale(1)' }
-        },
         shimmer: {
           '0%': { backgroundPosition: '-400px 0' },
           '100%': { backgroundPosition: '400px 0' }
@@ -76,7 +74,6 @@ export default {
       },
       animation: {
         'fade-up': 'fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both',
-        'toast-in': 'toast-in 0.25s ease-out both',
         shimmer: 'shimmer 1.5s linear infinite'
       }
     }

@@ -32,6 +32,12 @@ TOTAL = 8  # 1 位发起人 + 7 位共创伙伴
 assert_fails = []
 console_errors = []
 
+# 模块级兜底：注册接口限流 429 可能在任何一步抛出（本脚本要建 8 个账号，最容易撞），
+# 注册/造数时立刻登记，顶层 finally 才能把已经建出来的临时数据清掉。
+# ⚠️ 旧结构把注册写在 main() 的 try 之外，429 时 finally 不执行 —— 实测漏了 5 个账号。
+PIDS = []
+UIDS = []
+
 
 def api(path, data=None, token=None, method=None):
     req = urllib.request.Request(
@@ -103,6 +109,7 @@ def main():
             {"username": f"part{TS}{i}", "email": f"part{TS}{i}@example.com", "password": PASSWORD},
         )
         users.append({"token": reg["data"]["token"], "user": reg["data"]["user"]})
+        UIDS.append(reg["data"]["user"]["id"])
     creator, member = users[0], users[1]
     uids = [u["user"]["id"] for u in users]
     print(f"临时用户 {TOTAL} 个:", uids)
@@ -116,6 +123,7 @@ def main():
         },
         token=creator["token"],
     )["data"]["id"]
+    PIDS.append(pid)
     print("临时项目 id =", pid)
 
     try:
@@ -278,4 +286,16 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        # 兜底清理：注册/造数阶段就失败（如 429）时上面的 finally 根本没机会跑
+        for pid in PIDS:
+            sql(f"DELETE FROM notifications WHERE project_id = {pid};")
+            sql(f"DELETE FROM project_participants WHERE project_id = {pid};")
+            sql(f"DELETE FROM project_likes WHERE project_id = {pid};")
+            sql(f"DELETE FROM projects WHERE id = {pid};")
+        if UIDS:
+            sql(f"DELETE FROM users WHERE id IN ({','.join(str(i) for i in UIDS)});")
+            print("兜底清理完成，剩余临时用户:",
+                  sql_one(f"SELECT COUNT(*) FROM users WHERE id IN ({','.join(str(i) for i in UIDS)})"))
