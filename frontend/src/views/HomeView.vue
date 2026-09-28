@@ -43,6 +43,37 @@
 
     <!-- ============ 项目广场 ============ -->
     <section id="projects" class="mx-auto max-w-7xl scroll-mt-20 px-4 py-10 sm:px-6">
+      <!-- 人物筛选：从主页「查看全部」进来时必须先说清在看谁，
+           否则页面长得跟普通广场一模一样，用户不知道自己被筛过了 -->
+      <div
+        v-if="personMode"
+        data-test="person-banner"
+        class="mb-6 flex flex-wrap items-center gap-3 rounded-xl2 border border-line bg-pine-soft/40 px-4 py-3"
+      >
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine text-base font-semibold text-white">
+          <img v-if="person?.user?.avatar" :src="person.user.avatar" alt="" class="h-full w-full object-cover" />
+          <template v-else>{{ personInitial }}</template>
+        </span>
+        <div class="min-w-0 flex-1">
+          <h2 class="truncate text-lg font-semibold text-ink" data-test="person-title">{{ personTitle }}</h2>
+          <p class="mt-0.5 text-xs text-ink-dim" data-test="person-sub">{{ personSubtitle }}</p>
+        </div>
+        <router-link
+          v-if="!personMissing"
+          :to="`/user/${personId}`"
+          class="btn-ghost !py-1 text-xs"
+          data-test="person-profile"
+        >
+          查看 TA 的主页
+        </router-link>
+        <button class="btn-ghost !py-1 text-xs" data-test="clear-person" @click="clearPerson">
+          清除筛选
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
       <!-- 搜索结果提示 -->
       <div v-if="query.search" class="mb-6 flex items-center gap-3">
         <h2 class="text-lg font-semibold text-ink">「{{ query.search }}」的搜索结果</h2>
@@ -172,6 +203,26 @@
         <button class="btn-primary" @click="fetchProjects">重新加载</button>
       </EmptyState>
 
+      <!-- 空结果：被筛选的人不存在（URL 里的编号是手改的或账号已注销） -->
+      <EmptyState
+        v-else-if="personMissing"
+        icon="user"
+        title="找不到这位共创者"
+        description="Ta 可能已经注销，或者链接里的编号不对。"
+      >
+        <button class="btn-primary" @click="clearPerson">看看全部项目</button>
+      </EmptyState>
+
+      <!-- 空结果：人物筛选下的「TA 一个都还没有」，要带上名字而不是笼统的「这里还很安静」 -->
+      <EmptyState
+        v-else-if="!projects.length && personMode"
+        :icon="personMode === 'creator' ? 'lightbulb' : 'users'"
+        :title="emptyPersonTitle"
+        :description="emptyPersonDesc"
+      >
+        <button class="btn-secondary" @click="clearPerson">看看全部项目</button>
+      </EmptyState>
+
       <!-- 空结果：只看收藏 -->
       <EmptyState
         v-else-if="!projects.length && onlyFavorited"
@@ -205,7 +256,7 @@
 
       <!-- 项目网格 -->
       <template v-else>
-        <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div data-test="projects-grid" class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <ProjectCard
             v-for="(p, i) in projects"
             :key="p.id"
@@ -229,6 +280,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProjects, getProjectTags } from '@/api/project'
 import { getCategories } from '@/api/category'
+import { getPublicProfile } from '@/api/user'
 import { categoryIcon } from '@/utils/categoryIcon'
 import { useUserStore } from '@/store/user'
 import AppIcon from '@/components/AppIcon.vue'
@@ -267,9 +319,38 @@ const query = reactive({
   search: route.query.search || '',
   filter: route.query.filter || '',
   favorited: route.query.favorited || '',
-  sort: route.query.sort || 'latest'
+  sort: route.query.sort || 'latest',
+  // 这两个来自主页「查看全部」（creatorId=TA 发布的 / participantId=TA 参与的）
+  creatorId: route.query.creatorId || null,
+  participantId: route.query.participantId || null
 })
 const page = ref(Number(route.query.page) || 1)
+
+// 被筛选的共创者信息；只拿公开资料用于上下文展示，不参与列表查询
+const person = ref(null)
+const personMissing = ref(false)
+let personSeq = 0
+
+const personMode = computed(() => (query.creatorId ? 'creator' : query.participantId ? 'participant' : null))
+const personId = computed(() => query.creatorId || query.participantId || '')
+const personName = computed(() => person.value?.user?.username || '这位共创者')
+const personInitial = computed(() => personName.value.slice(0, 1).toUpperCase())
+const personTitle = computed(() =>
+  personMode.value === 'participant' ? `${personName.value} 参与的共创` : `${personName.value} 发布的项目`
+)
+const personSubtitle = computed(() => {
+  if (personMissing.value) return '链接里的编号可能不对'
+  if (personMode.value === 'participant') return `TA 作为伙伴加入的项目，不含 TA 自己发起的（共 ${total.value} 个）`
+  return `共 ${total.value} 个项目`
+})
+const emptyPersonTitle = computed(() =>
+  personMode.value === 'participant' ? `${personName.value} 还没有参与别人的项目` : `${personName.value} 还没有发布项目`
+)
+const emptyPersonDesc = computed(() =>
+  personMode.value === 'participant'
+    ? 'TA 目前只是自己项目的发起人。去 TA 的主页看看发布过什么。'
+    : '想法攒够了就会开花，先去看看 TA 参与过的共创。'
+)
 
 // 「只看收藏」是登录用户的个人视图，未登录时即便 query 带着也不生效
 const onlyFavorited = computed(() => query.favorited === '1' && userStore.isLoggedIn)
@@ -282,6 +363,7 @@ const isFiltering = computed(
       query.categoryId ||
       query.filter ||
       onlyFavorited.value ||
+      personMode.value ||
       (route.query.page && page.value > 1)
     )
 )
@@ -292,6 +374,8 @@ const syncRoute = () => {
   if (query.tag) q.tag = query.tag
   if (query.search) q.search = query.search
   if (query.filter) q.filter = query.filter
+  if (query.creatorId) q.creatorId = query.creatorId
+  if (query.participantId) q.participantId = query.participantId
   if (onlyFavorited.value) q.favorited = '1'
   if (query.sort !== 'latest') q.sort = query.sort
   if (page.value > 1) q.page = page.value
@@ -333,6 +417,34 @@ const clearTag = () => {
   page.value = 1
   syncRoute()
 }
+// 人物筛选与标签/搜索一样是「可清除」的临时视图，清掉后回到全量广场
+const clearPerson = () => {
+  query.creatorId = null
+  query.participantId = null
+  page.value = 1
+  syncRoute()
+}
+
+// 拉被筛选者的公开资料只为在 banner 里报出名字；失败说明这人不存在（编号手改 / 已注销）
+const loadPerson = async (id) => {
+  if (!id) {
+    person.value = null
+    personMissing.value = false
+    return
+  }
+  const seq = ++personSeq
+  person.value = null
+  personMissing.value = false
+  try {
+    const data = (await getPublicProfile(id)).data
+    // 快速切人时旧请求可能后到，用序号丢弃过期响应
+    if (seq !== personSeq) return
+    person.value = data
+  } catch {
+    if (seq !== personSeq) return
+    personMissing.value = true
+  }
+}
 
 // 「只看收藏」视图里取消收藏即移出列表，并把总数同步减一
 const onFavoriteChange = ({ id, favorited }) => {
@@ -353,6 +465,8 @@ const fetchProjects = async () => {
       search: query.search || undefined,
       filter: query.filter || undefined,
       favorited: onlyFavorited.value ? '1' : undefined,
+      creatorId: query.creatorId || undefined,
+      participantId: query.participantId || undefined,
       sort: query.sort
     })
     projects.value = res.data.projects
@@ -394,7 +508,10 @@ watch(
     query.filter = q.filter || ''
     query.favorited = q.favorited || ''
     query.sort = q.sort || 'latest'
+    query.creatorId = q.creatorId || null
+    query.participantId = q.participantId || null
     page.value = Number(q.page) || 1
+    loadPerson(query.creatorId || query.participantId)
     fetchProjects()
   }
 )
@@ -414,6 +531,7 @@ watch(
 onMounted(() => {
   fetchCategories()
   fetchPopularTags()
+  loadPerson(personId.value)
   fetchProjects()
 })
 </script>

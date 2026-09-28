@@ -5,7 +5,7 @@
 1) GET /users/me/comments 返回本人评论（含回复），带项目信息
 2) GET /users/me/stats 的 commentCount 口径一致
 3) 个人中心讨论分区计数与卡片数
-4) 点击讨论卡落到该项目评论区（#comments）
+4) 点击讨论卡**直达那一条评论**（?comment=<id> 深链；早期版本是 #comments 锚点，已废弃）
 
 自给自足：临时账号 A 建项目，留 1 根评论 + 1 回复。
 """
@@ -33,7 +33,7 @@ def main():
 
     try:
         root = comment(a["token"], pid, "第一条讨论内容，用来验证个人中心的讨论分区。")
-        comment(a["token"], pid, "第二条是回复，同样会出现在讨论列表里。", parent_id=root["id"])
+        reply = comment(a["token"], pid, "第二条是回复，同样会出现在讨论列表里。", parent_id=root["id"])
 
         mine = api("/users/me/comments", token=a["token"])["data"]
         check("接口返回 2 条我的讨论", len(mine["comments"]) == 2)
@@ -58,8 +58,16 @@ def main():
             page.screenshot(path="docs/screenshots/profile-discussions-light.png")
 
             cards.first.click()
-            page.wait_for_timeout(1500)
-            check(f"点击讨论卡落该项目评论区（{page.url}）", f"/project/{pid}" in page.url and "#comments" in page.url)
+            page.wait_for_timeout(1800)
+            # 列表按 created_at DESC，first 是最新那条（回复），它同样要能定位
+            check(
+                f"点击讨论卡落该项目评论区（{page.url}）",
+                f"/project/{pid}" in page.url and "comment=" in page.url,
+            )
+            check(
+                "深链带的是本次两条评论之一的 id",
+                any(f"comment={c['id']}" in page.url for c in (root, reply)),
+            )
             browser.close()
     finally:
         cleanup_project(pid, [a["uid"]])

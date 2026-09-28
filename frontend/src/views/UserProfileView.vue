@@ -71,8 +71,20 @@
           <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
             <span class="h-4 w-1 rounded-full bg-pine"></span>
             {{ isMe ? '我发布的项目' : 'TA 发布的项目' }}
-            <span v-if="!loadingCreated" class="text-sm font-normal text-ink-dim">（{{ created.length }}）</span>
+            <span v-if="!loadingCreated" data-test="created-count" class="text-sm font-normal text-ink-dim">（{{ createdCount }}）</span>
           </h2>
+          <!-- 预览只 6 条，被截断才给入口；跳广场用现成的 creatorId 筛选 -->
+          <router-link
+            v-if="!loadingCreated && hasMoreCreated"
+            data-test="view-all-created"
+            :to="{ path: '/', query: { creatorId: route.params.id } }"
+            class="btn-ghost !py-1 text-xs"
+          >
+            查看全部
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m9 6 6 6-6 6" />
+            </svg>
+          </router-link>
         </div>
 
         <div v-if="loadingCreated" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -99,8 +111,19 @@
           <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
             <span class="h-4 w-1 rounded-full bg-pine"></span>
             {{ isMe ? '我参与的共创' : 'TA 参与的共创' }}
-            <span v-if="!loadingJoined" class="text-sm font-normal text-ink-dim">（{{ joined.length }}）</span>
+            <span v-if="!loadingJoined" data-test="joined-count" class="text-sm font-normal text-ink-dim">（{{ joinedCount }}）</span>
           </h2>
+          <router-link
+            v-if="!loadingJoined && hasMoreJoined"
+            data-test="view-all-joined"
+            :to="{ path: '/', query: { participantId: route.params.id } }"
+            class="btn-ghost !py-1 text-xs"
+          >
+            查看全部
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m9 6 6 6-6 6" />
+            </svg>
+          </router-link>
         </div>
 
         <div v-if="loadingJoined" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -149,6 +172,15 @@ const loadingJoined = ref(true)
 const PAGE_SIZE = 6
 
 const isMe = computed(() => !!profile.value && Number(profile.value.user.id) === Number(userStore.userId))
+
+// 括号里的计数要说真话：列表只预览 6 条，展示「6 / 8」会让人以为 TA 就这么多，
+// 所以优先用服务端的真实统计，取不到才退回本页条数
+const createdCount = computed(() => Number(profile.value?.stats?.projectCount ?? created.value.length))
+const joinedCount = computed(() => Number(profile.value?.stats?.joinedCount ?? joined.value.length))
+
+// 「查看全部」只在列表确实被截断时出现，点了却还是这几条就是假入口
+const hasMoreCreated = computed(() => created.value.length > 0 && createdCount.value > created.value.length)
+const hasMoreJoined = computed(() => joined.value.length > 0 && joinedCount.value > joined.value.length)
 
 const joinedText = computed(() => {
   const d = profile.value?.user?.joinedAt ? new Date(profile.value.user.joinedAt) : null

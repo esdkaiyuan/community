@@ -38,3 +38,7 @@ Thumbs.db
 
 # WorkBuddy 项目记忆
 .workbuddy/
+
+# Python 缓存（验证脚本）
+__pycache__/
+*.pyc

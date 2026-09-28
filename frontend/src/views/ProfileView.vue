@@ -50,6 +50,15 @@
           我发布的项目
           <span v-if="!loadingProjects" class="text-sm font-normal text-ink-dim">（{{ myProjects.length }}）</span>
         </h2>
+        <!-- 自己看自己也走同一条广场筛选路径，不另做一套「我的项目」列表页 -->
+        <router-link
+          v-if="stats && stats.projectCount > myProjects.length"
+          data-test="profile-view-all-projects"
+          :to="{ path: '/', query: { creatorId: userStore.userId } }"
+          class="btn-ghost text-sm"
+        >
+          查看全部
+        </router-link>
         <router-link to="/publish" class="btn-ghost text-sm">+ 发布新项目</router-link>
       </div>
 
@@ -291,10 +300,13 @@ const handleSave = async () => {
 }
 
 // 服务端按创建者过滤，只拉自己的项目
+// 预览 6 条与公开主页一致：超出部分交给广场的 creatorId 筛选（能排序、能翻页）
+const PROJECT_PREVIEW = 6
+
 const fetchMyProjects = async () => {
   loadingProjects.value = true
   try {
-    const res = await getProjects({ page: 1, pageSize: 12, sort: 'latest', creatorId: userStore.userId })
+    const res = await getProjects({ page: 1, pageSize: PROJECT_PREVIEW, sort: 'latest', creatorId: userStore.userId })
     myProjects.value = res.data.projects
   } catch {
     myProjects.value = []
