@@ -29,7 +29,7 @@ echo 服务启动中...
 echo ======================================
 echo.
 echo 后端地址: http://localhost:5000
-echo 前端地址: http://localhost:3000
+echo 前端地址: http://localhost:3001
 echo.
 echo 按任意键关闭此窗口（不会影响已启动的服务）
 pause >nul
