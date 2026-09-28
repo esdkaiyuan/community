@@ -32,9 +32,9 @@
         </div>
       </form>
 
-      <!-- 右侧操作区 -->
-      <div class="ml-auto flex shrink-0 items-center gap-2 md:ml-0">
-        <router-link v-if="userStore.isLoggedIn" to="/publish" class="btn-primary !px-4 !py-2">
+      <!-- 右侧操作区：窄屏必须能收缩，否则用户名一长就把整个视口撑出横向滚动条 -->
+      <div class="ml-auto flex min-w-0 items-center gap-2 md:ml-0">
+        <router-link v-if="userStore.isLoggedIn" to="/publish" class="btn-primary shrink-0 !px-4 !py-2">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
             <path d="M12 5v14M5 12h14" />
           </svg>
@@ -43,10 +43,11 @@
         </router-link>
 
         <!-- 通知铃铛（已登录） -->
-        <div v-if="userStore.isLoggedIn" ref="notifRef" class="relative">
+        <div v-if="userStore.isLoggedIn" ref="notifRef" class="relative shrink-0">
           <button
             class="relative flex h-9 w-9 items-center justify-center rounded-full text-ink transition-colors hover:bg-sand"
             title="通知"
+            aria-label="通知"
             @click="toggleNotif"
           >
             <AppIcon name="bell" class="h-[18px] w-[18px]" />
@@ -120,18 +121,20 @@
           </transition>
         </div>
 
-        <!-- 已登录：用户菜单 -->
-        <div v-if="userStore.isLoggedIn" ref="menuRef" class="relative">
+        <!-- 已登录：用户菜单（窄屏只留头像，用户名 / 箭头从 sm 起显示） -->
+        <div v-if="userStore.isLoggedIn" ref="menuRef" class="relative shrink-0">
           <button
-            class="flex items-center gap-2 rounded-full border border-line bg-cream py-1.5 pl-1.5 pr-3 transition-colors hover:border-pine"
+            class="flex items-center gap-2 rounded-full border border-line bg-cream py-1.5 pl-1.5 pr-1.5 transition-colors hover:border-pine sm:pr-3"
+            aria-label="账号菜单"
+            :aria-expanded="menuOpen"
             @click="menuOpen = !menuOpen"
           >
             <span class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-xs font-bold text-pine-deep">
               <img v-if="avatar" :src="avatar" alt="" class="h-full w-full object-cover" />
               <template v-else>{{ initial }}</template>
             </span>
-            <span class="max-w-[6rem] truncate text-sm text-ink">{{ userStore.username }}</span>
-            <svg class="h-3.5 w-3.5 text-ink-dim transition-transform" :class="{ 'rotate-180': menuOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <span class="hidden max-w-[6rem] truncate text-sm text-ink sm:inline">{{ userStore.username }}</span>
+            <svg class="hidden h-3.5 w-3.5 text-ink-dim transition-transform sm:block" :class="{ 'rotate-180': menuOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <path d="m6 9 6 6 6-6" />
             </svg>
           </button>
@@ -230,6 +233,12 @@ const fetchNotifications = async () => {
 }
 
 const toggleNotif = () => {
+  // 窄屏放不下 320px 的通知气泡（锚在铃铛上会从视口左侧溢出），
+  // 直接进通知页——完整列表本来就在那里，小屏上比浮层更好用
+  if (window.matchMedia('(max-width: 767px)').matches) {
+    router.push('/notifications')
+    return
+  }
   notifOpen.value = !notifOpen.value
   if (notifOpen.value) fetchNotifications()
 }

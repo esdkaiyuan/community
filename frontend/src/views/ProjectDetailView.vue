@@ -218,7 +218,7 @@
                   <AppIcon name="pencil" class="h-4 w-4" />
                   编辑项目
                 </router-link>
-                <button class="btn-ghost w-full !text-clay hover:!bg-[#FBE9EB]" :disabled="acting" @click="handleDelete">
+                <button class="btn-ghost w-full !text-clay hover:!bg-clay/10" :disabled="acting" @click="handleDelete">
                   删除项目
                 </button>
               </div>
@@ -290,6 +290,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import CommentSection from '@/components/CommentSection.vue'
 import ProjectParticipants from '@/components/ProjectParticipants.vue'
 import RelatedProjects from '@/components/RelatedProjects.vue'
+import { coverPalette } from '@/utils/placeholder'
 
 const route = useRoute()
 const router = useRouter()
@@ -336,15 +337,9 @@ const isOwner = computed(
   () => userStore.isLoggedIn && project.value?.creator?.id === userStore.userId
 )
 
-const PALETTES = [
-  { bg: 'linear-gradient(135deg, #E8E8ED 0%, #D2D2D7 100%)', fg: '#6E6E73' },
-  { bg: 'linear-gradient(135deg, #E8F1FD 0%, #C5DFFF 100%)', fg: '#0066CC' },
-  { bg: 'linear-gradient(135deg, #FDF0E4 0%, #FFDDB8 100%)', fg: '#C93400' },
-  { bg: 'linear-gradient(135deg, #FCE8E9 0%, #FFD1D4 100%)', fg: '#D70015' },
-  { bg: 'linear-gradient(135deg, #F0F0F3 0%, #D8DAE5 100%)', fg: '#3A3A3C' },
-  { bg: 'linear-gradient(135deg, #E8F5F4 0%, #C2E8E5 100%)', fg: '#00796B' }
-]
-const placeholder = computed(() => PALETTES[(Number(project.value?.id) || 0) % PALETTES.length])
+// 占位配色统一来自 utils/placeholder —— 卡片、相关推荐、详情页三处必须同源，
+// 否则同一个项目在不同页面会显示不同颜色的封面
+const placeholder = computed(() => coverPalette(project.value?.id))
 
 // 规格条用短日期
 const createdShort = computed(() => {

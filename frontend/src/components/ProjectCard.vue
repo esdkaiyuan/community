@@ -95,10 +95,13 @@
               <template v-else>{{ (project.creator?.username || '友').slice(0, 1).toUpperCase() }}</template>
             </span>
             <span class="truncate text-xs text-ink-mid">{{ project.creator?.username || '匿名共创者' }}</span>
+            <!-- 相对时间：设计稿里卡片要素之一，也让「本周热门」的排序有据可依 -->
+            <span v-if="createdText" class="shrink-0 text-[11px] text-ink-dim">· {{ createdText }}</span>
           </router-link>
           <div v-else class="flex min-w-0 items-center gap-2">
             <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sand text-[10px] font-bold text-ink-dim">友</span>
             <span class="truncate text-xs text-ink-mid">匿名共创者</span>
+            <span v-if="createdText" class="shrink-0 text-[11px] text-ink-dim">· {{ createdText }}</span>
           </div>
 
           <!-- 数据 -->
@@ -149,20 +152,23 @@
       >
         <path d="M19 21 12 16.4 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
       </svg>
-      <!-- 就地编辑：仅「我发布的项目」这类自己持有者列表开启（editable），
-           桌面悬停出现、触屏常显。DOM 顺序在收藏按钮之后，
-           既有断言里的 card.locator('button').first 仍命中收藏按钮 -->
-      <router-link
-        v-if="showEdit"
-        :to="`/project/${project.id}/edit`"
-        class="absolute right-12 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--glass-badge)] text-ink-mid shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 hover:text-pine sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
-        title="编辑项目"
-        aria-label="编辑项目"
-        data-test="card-edit"
-      >
-        <AppIcon name="pencil" class="h-3.5 w-3.5" />
-      </router-link>
     </button>
+
+    <!-- 就地编辑：仅「我发布的项目」这类自己持有者列表开启（editable），
+         桌面悬停出现、触屏常显。
+         ⚠️ 必须与收藏按钮**平级**：塞进 <button> 里既是非法嵌套（交互元素不能互相包含），
+         点击又会冒泡到 button 的 @click，导致「点编辑」顺带发一次收藏请求。
+         DOM 顺序仍在收藏按钮之后，既有断言里的 card.locator('button').first 继续命中收藏 -->
+    <router-link
+      v-if="showEdit"
+      :to="`/project/${project.id}/edit`"
+      class="absolute right-12 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--glass-badge)] text-ink-mid shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 hover:text-pine sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+      title="编辑项目"
+      aria-label="编辑项目"
+      data-test="card-edit"
+    >
+      <AppIcon name="pencil" class="h-3.5 w-3.5" />
+    </router-link>
   </article>
 </template>
 
@@ -176,6 +182,7 @@ import { toast } from '@/composables/useToast'
 import { useFavoritePulse } from '@/composables/useFavoritePulse'
 import AppIcon from '@/components/AppIcon.vue'
 import { coverPalette } from '@/utils/placeholder'
+import { relativeTime } from '@/utils/time'
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -197,6 +204,9 @@ const imgFailed = ref(false)
 const favoriteActing = ref(false)
 
 const placeholder = computed(() => coverPalette(props.project.id))
+
+// 列表接口已带 createdAt；老数据缺失时整段不渲染，不留一个空的分隔符
+const createdText = computed(() => relativeTime(props.project.createdAt))
 
 // 只有「自己的列表 + 确实是自己的作品」才给编辑入口
 const showEdit = computed(() => props.editable && props.project.creator?.id === userStore.userId)

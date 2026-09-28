@@ -4,7 +4,7 @@
 覆盖：
 1) 未读徽标显示条数
 2) 面板列出通知，文案含触发者与项目名
-3) 点击通知落到项目详情（评论类带 #comments 锚点）
+3) 点击通知落到项目详情，并深链到触发它的那条评论（?comment=<id>）
 4) 全部标为已读后徽标消失
 
 自给自足：临时账号 A 建项目，临时账号 B 评论 -> A 收到 1 条 comment 通知。
@@ -31,7 +31,9 @@ def main():
     print("临时项目", pid, "用户", a["uid"], b["uid"])
 
     try:
-        api(f"/projects/{pid}/comments", {"content": "这条评论会触发一条站内通知。"}, token=b["token"])
+        created = api(
+            f"/projects/{pid}/comments", {"content": "这条评论会触发一条站内通知。"}, token=b["token"]
+        )["data"]["comment"]
         check("发起人未读数为 1", api("/notifications/unread-count", token=a["token"])["data"]["unread"] == 1)
 
         with sync_playwright() as p:
@@ -57,7 +59,9 @@ def main():
             items.first.click()
             page.wait_for_timeout(1400)
             check(f"点击后落到项目详情（{page.url}）", f"/project/{pid}" in page.url)
-            check("评论类通知带 #comments 锚点", "#comments" in page.url)
+            # 评论通知自 825574d 起改为 ?comment=<id> 深链（前端会翻到那一页并高亮），
+            # 不再是 #comments 锚点——断言必须跟着改，否则永远 FAIL
+            check(f"评论类通知深链到触发它的那条评论（{page.url}）", f"comment={created['id']}" in page.url)
 
             api("/notifications/read", {"all": True}, token=a["token"])
             page.goto(f"{FRONT}/", wait_until="networkidle")

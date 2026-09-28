@@ -8,8 +8,8 @@
 4) 自参与不通知（创建者重复参与被 409 拒绝，且不留下通知）
 5) 退出参与不产生通知
 6) 回归：评论通知照常产生，未读数叠加正确
-7) 前端：顶栏未读徽标、面板文案与列表页文案、点击参与类通知落项目详情（不带 #comments）、
-   点击评论类通知仍落 #comments
+7) 前端：顶栏未读徽标、面板文案与列表页文案、点击参与类通知落项目详情（不带锚点）、
+   点击评论类通知深链到该条评论（?comment=<id>）
 """
 import json
 import subprocess
@@ -154,11 +154,11 @@ def main():
         )
 
         # ============ F. 回归：评论通知照常 ============
-        api(
+        reg_comment = api(
             f"/projects/{pid}/comments",
             {"content": "这个想法很有意思，期待后续的进展。"},
             token=b["token"],
-        )
+        )["data"]["comment"]
         time.sleep(SETTLE)
         check("评论通知照常产生（未读累计到 3）", unread_of(owner["token"]) == 3)
 
@@ -216,13 +216,16 @@ def main():
             page.wait_for_timeout(500)
             page.screenshot(path="docs/screenshots/participate-notif-page-dark.png")
 
-            # 评论类通知仍带 #comments 锚点
+            # 评论类通知深链到该条评论（自 825574d 起不再用 #comments 锚点）
             page.emulate_media(color_scheme="light")
             comment_row = page.locator("[data-test='notif-row']").filter(has_text="评论了你的项目")
             check("通知页有评论通知（回归）", comment_row.count() == 1)
             comment_row.first.click()
             page.wait_for_timeout(1400)
-            check("评论类通知仍带 #comments 锚点", "#comments" in page.url)
+            check(
+                f"评论类通知深链到该条评论（{page.url}）",
+                f"comment={reg_comment['id']}" in page.url,
+            )
 
             browser.close()
     finally:
