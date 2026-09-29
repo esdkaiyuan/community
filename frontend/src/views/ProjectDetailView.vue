@@ -110,10 +110,14 @@
         <div class="min-w-0">
           <h1 class="text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">{{ project.title }}</h1>
 
-          <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-dim">
+          <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-dim" data-test="detail-meta">
             <span v-if="project.categoryName" class="chip">{{ project.categoryName }}</span>
-            <span>发布于 {{ formatDate(project.createdAt) }}</span>
-            <span v-if="project.viewCount">{{ project.viewCount }} 次浏览</span>
+            <!-- 这里刻意用「相对时间」而不是绝对日期：精确日期已经由右侧规格条的
+                 「发布日期」承担，同一屏里再放一个绝对日期等于同一件事说两遍。
+                 相对时间回答的是另一个问题——「这项目还新鲜吗」，且与卡片上的
+                 「· 3 天前」是同一套口径。超过 30 天 relativeTime 会自己退回绝对日期。 -->
+            <span>发布于 {{ relativeTime(project.createdAt) }}</span>
+            <!-- 「N 次浏览」不在这里重复出现：右侧规格条已经有「浏览次数」 -->
           </div>
 
           <div v-if="project.tags?.length" class="mt-4 flex flex-wrap gap-2">
@@ -162,11 +166,11 @@
                 <p class="text-2xl font-semibold tabular-nums text-ink">{{ project.likeCount }}</p>
                 <p class="mt-0.5 text-xs text-ink-mid">收获点赞</p>
               </div>
-              <div class="bg-cream py-3.5 text-center">
+              <div class="bg-cream py-3.5 text-center" data-test="detail-views">
                 <p class="text-2xl font-semibold tabular-nums text-ink">{{ project.viewCount ?? 0 }}</p>
                 <p class="mt-0.5 text-xs text-ink-mid">浏览次数</p>
               </div>
-              <div class="bg-cream py-3.5 text-center">
+              <div class="bg-cream py-3.5 text-center" data-test="detail-created">
                 <p class="text-2xl font-semibold tabular-nums text-ink">{{ createdShort }}</p>
                 <p class="mt-0.5 text-xs text-ink-mid">发布日期</p>
               </div>
@@ -291,6 +295,7 @@ import CommentSection from '@/components/CommentSection.vue'
 import ProjectParticipants from '@/components/ProjectParticipants.vue'
 import RelatedProjects from '@/components/RelatedProjects.vue'
 import { coverPalette } from '@/utils/placeholder'
+import { relativeTime } from '@/utils/time'
 
 const route = useRoute()
 const router = useRouter()
@@ -341,11 +346,13 @@ const isOwner = computed(
 // 否则同一个项目在不同页面会显示不同颜色的封面
 const placeholder = computed(() => coverPalette(project.value?.id))
 
-// 规格条用短日期
+// 规格条用短日期。跨年的项目必须带年份——只写「5 月 9 日」会让人以为是今年，
+// 而库里确实躺着 2026-05 的种子数据。当年内省略年份，保持苹果参数表的克制。
 const createdShort = computed(() => {
   if (!project.value?.createdAt) return '—'
   const d = new Date(project.value.createdAt)
-  return `${d.getMonth() + 1} 月 ${d.getDate()} 日`
+  const md = `${d.getMonth() + 1} 月 ${d.getDate()} 日`
+  return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()} 年 ${md}`
 })
 
 // 滚过封面后浮现顶部玻璃操作条（apple.com 产品页式）
@@ -355,12 +362,6 @@ const onScroll = () => {
 }
 onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
 onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
-
-const formatDate = (str) => {
-  if (!str) return ''
-  const d = new Date(str)
-  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`
-}
 
 const requireLogin = () => {
   if (userStore.isLoggedIn) return true

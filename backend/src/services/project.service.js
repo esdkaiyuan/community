@@ -341,8 +341,14 @@ exports.listRelatedProjects = async (id, { limit = 3 } = {}) => {
 exports.getProjectDetail = async (id, currentUserId) => {
   const project = await getProjectOr404(id)
 
-  // 浏览量异步累加，不阻塞响应
-  Project.update({ view_count: project.view_count + 1 }, { where: { id } }).catch(() => {})
+  // 浏览量异步累加，不阻塞响应。
+  // ⚠️ 必须用 SQL 层自增（literal），不能写成 `project.view_count + 1`：
+  // 后者是「先读内存里的旧值、再把旧值 +1 写回」，两个并发请求会读到同一个旧值、
+  // 各自写回同一个结果，**只 +1（丢更新）**。浏览量天然是高频并发写，这个竞态很容易踩到。
+  Project.update(
+    { view_count: sequelize.literal('view_count + 1') },
+    { where: { id } }
+  ).catch(() => {})
 
   const [participantRows, participantTotal, liked, participated, favorited] = await Promise.all([
     ProjectParticipant.findAll({

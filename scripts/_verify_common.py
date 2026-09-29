@@ -191,4 +191,15 @@ def finish():
     print("console errors:", len(console_errors))
     for e in console_errors[:5]:
         print(" -", e)
+
+    # 429 = 撞到自己后端的限流，不是应用 bug，但它会让**整轮结果都不可信**
+    # （后续请求全被拒 → 页面拿不到数据 → 断言与 console 一起变红，看起来像大面积回归）。
+    # 不静默过滤掉（那会掩盖真问题），而是明确告诉操作者这轮不算数、怎么恢复。
+    if any("429" in str(e) for e in console_errors):
+        print()
+        print("!! 检测到 429（接口限流）—— 本轮结果不可信，这不是应用 bug。")
+        print("!! 原因是 authLimiter（注册/登录 30 次/15 分钟）或 apiLimiter（全局 600 次/15 分钟）被打满。")
+        print("!! 处理：重启后端即可清零（express-rate-limit 用内存计数）；全量回归请分批跑，")
+        print("!!      全站巡检 audit_frontend_ui.py 请求量大，务必单独跑。")
+
     sys.exit(1 if (assert_fails or console_errors) else 0)
