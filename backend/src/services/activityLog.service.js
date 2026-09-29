@@ -20,11 +20,19 @@ const ACTIONS = Object.freeze({
   PROJECT_UPDATE: 'project.update',
   PROJECT_DELETE: 'project.delete',
   COMMENT_CREATE: 'comment.create',
-  COMMENT_DELETE: 'comment.delete'
+  COMMENT_DELETE: 'comment.delete',
+  USER_REGISTER: 'user.register',
+  USER_PROFILE_UPDATE: 'user.profile.update'
 })
 const ACTION_VALUES = Object.freeze(Object.values(ACTIONS))
 
-const TARGET_TYPES = Object.freeze(['project', 'comment'])
+// 有意**不记**的动作，以及理由（免得后来者以为是漏了）：
+//   - 点赞 / 取消点赞、收藏 / 取消收藏、参与 / 退出：高频、可反复切换、且不产生内容。
+//     记进来只会让日志被噪音淹没（刷一次首页就能造出几十行），真正的取证价值接近零。
+//   - 通知已读：既非内容也非状态变更，只是读游标。
+// 如果哪天要做「异常行为检测」，正确的做法是单独一张行为流水表 + 聚合，而不是往审计
+// 日志里灌明细 —— 审计日志要「每条都值得人读一遍」。
+const TARGET_TYPES = Object.freeze(['project', 'comment', 'user'])
 
 // 每个动作允许出现在 detail 里的键（未列出的键一律丢弃）
 const DETAIL_KEYS = Object.freeze({
@@ -32,7 +40,9 @@ const DETAIL_KEYS = Object.freeze({
   [ACTIONS.PROJECT_UPDATE]: ['title', 'changed'],
   [ACTIONS.PROJECT_DELETE]: ['title'],
   [ACTIONS.COMMENT_CREATE]: ['projectTitle', 'preview', 'isReply'],
-  [ACTIONS.COMMENT_DELETE]: ['projectTitle', 'preview']
+  [ACTIONS.COMMENT_DELETE]: ['projectTitle', 'preview'],
+  [ACTIONS.USER_REGISTER]: ['username'],
+  [ACTIONS.USER_PROFILE_UPDATE]: ['changed', 'usernameFrom', 'usernameTo']
 })
 
 const SUMMARY_MAX = 255
@@ -61,10 +71,17 @@ const resolveTargetType = (value) => {
 
 // username 快照：调用方没带就回查一次。日志写入频率很低（发布/编辑/评论），
 // 一次主键查询换来「用户改名或注销后日志仍可追溯」，很划算。
+//
+// 🔥 **回查出来的值同样要过净化** —— 这里曾经是整条净化链的旁路：其余 8 个可写列
+// 都过了 sanitize*，唯独 username 是「从库里读出来直接落库」。而 username 恰好是
+// 唯一由用户直接控制的身份字段，实测注册 `"a\r\nFAKE"` 能通过（只看长度 2~20），
+// 于是 activity_logs.username 里真的躺进了 CRLF（HEX 610D0A46414B45）—— 下游按行
+// 解析的日志系统会凭空多出一条伪造记录。**日志列的完整性不能依赖「上游字段干净」**，
+// 所以两条路径（调用方自带 / 这里回查）统一走 sanitizeLogText。
 const resolveUsername = async (userId) => {
   if (!userId) return null
   const user = await User.findByPk(userId, { attributes: ['username'] })
-  return user ? user.username : null
+  return user ? sanitizeLogText(user.username, USERNAME_MAX) || null : null
 }
 
 /**
@@ -161,6 +178,37 @@ exports.logCommentDeleted = ({ userId, comment, project, req }) =>
     userId,
     summary: `删除评论（项目「${preview(project.title)}」）：${preview(comment.content)}`,
     detail: { projectTitle: project.title, preview: preview(comment.content) },
+    req
+  })
+
+// 注册是审计的「第一行」：后面所有日志靠 user_id 串成一条时间线，起点就是它。
+// 刻意**不记 email**：审计只需 user_id 就能把同一个人的行为串起来，而日志留存 365 天，
+// 多存一份邮箱等于平白扩大 PII 面。要联系人，users 表里有。
+exports.logUserRegistered = ({ userId, user, req }) =>
+  record({
+    action: ACTIONS.USER_REGISTER,
+    targetType: 'user',
+    targetId: userId,
+    userId,
+    summary: `注册账号「${preview(user.username)}」`,
+    detail: { username: user.username },
+    req
+  })
+
+exports.logUserProfileUpdated = ({ userId, changedFields = [], usernameFrom, usernameTo, req }) =>
+  record({
+    action: ACTIONS.USER_PROFILE_UPDATE,
+    targetType: 'user',
+    targetId: userId,
+    userId,
+    summary:
+      `更新个人资料（改动了 ${changedFields.join('、') || '无'}）` +
+      // 改名单独拎出来说——它是这一行日志存在的核心理由
+      (usernameFrom ? `：用户名「${preview(usernameFrom)}」→「${preview(usernameTo)}」` : ''),
+    // 🔥 用户名是**唯一被日志自己快照的字段**（activity_logs.username）。改了它，此前所有
+    // 日志行里记的都还是旧名字；没有 from → to，事后就再也解释不清「同一个 user_id 为什么
+    // 有两个名字」。bio / avatar 只记「改没改」，不存值：日志是留痕不是内容备份。
+    detail: { changed: changedFields, usernameFrom, usernameTo },
     req
   })
 

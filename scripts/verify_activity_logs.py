@@ -1,11 +1,15 @@
 """操作日志（审计留痕）端到端验证。
 
-覆盖四件事：
-  A~E  五条写路径（发布 / 编辑 / 删除项目、发表 / 删除评论）是否真的落库，
+覆盖五件事：
+  A~E  五条内容写路径（发布 / 编辑 / 删除项目、发表 / 删除评论）是否真的落库，
        并且**落库的内容是净化过的**（CRLF 伪造、ANSI、RLO、NUL、超长）
   F    只读接口 GET /logs/me：仅本人可见、筛选、分页、非法筛选报 400、未登录 401
   G~H  设计断言：日志表**不挂外键**，所以删除项目 / 硬删用户之后证据仍在
   I    动作白名单：未知 action 被拒绝且不抛异常（走 node 子进程直接调服务）
+  J    留存清理脚本（真跑进程，断言退出码 + 真实副作用）
+  K    **username 列不再是被净化链遗忘的那一列**：直接改库造一条脏数据（绕开服务层），
+       再触发一次写日志，断言日志列没被污染 —— 验的是「日志完整性不依赖上游字段干净」
+  L    身份字段归一化（注册与改名共用一个口径）+ 注册 / 资料变更的审计留痕
 
 跑法：在仓库根目录执行  python scripts/verify_activity_logs.py
 """
@@ -19,6 +23,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from _verify_common import (  # noqa: E402
+    PASSWORD,
+    TS,
     api,
     api_status,
     check,
@@ -43,6 +49,17 @@ NODE = (
 UIDS = []  # 传给 cleanup_users；H 段会把已删除的用户从中摘掉
 ALL_UIDS = []  # 只增不减：日志清理按它来，否则「已删用户」的日志永远清不掉
 PIDS = []
+
+# 服务层白名单的全部取值（journal 里出现白名单外的动作 = 有人在绕过 record()）
+KNOWN_ACTIONS = (
+    "project.create",
+    "project.update",
+    "project.delete",
+    "comment.create",
+    "comment.delete",
+    "user.register",
+    "user.profile.update",
+)
 
 # 载荷：把四类注入面塞进一个标题里
 CRLF_TITLE = "注入标题\r\n[FATAL][auth] admin 登录成功"
@@ -188,8 +205,7 @@ def main():
     check("返回条数与库内该用户的条数一致", data["total"] == db_b)
     check("日志按时间倒序（最新的在前）", [x["id"] for x in data["logs"]] == sorted([x["id"] for x in data["logs"]], reverse=True))
     check("所有条目都属于自己（动作白名单内）",
-          all(x["action"] in ("project.create", "project.update", "project.delete", "comment.create", "comment.delete")
-              for x in data["logs"]))
+          all(x["action"] in KNOWN_ACTIONS for x in data["logs"]))
 
     # 隔离：B 的日志里不该出现 A 对项目的编辑/删除动作
     check("看不到别人的日志（无 project.update 之外的越权数据）",
@@ -241,11 +257,14 @@ def main():
         sql(stmt + ";")
     PIDS.remove(pid)
     survivors = int(sql_one("SELECT COUNT(*) FROM activity_logs WHERE user_id IN (%d, %d)" % (a["uid"], b["uid"])))
-    check("硬删项目行后日志依旧存在（7 条一条不少）", survivors == 7)
+    # 9 条的构成（每一条都对应一次真实写操作，少一条就说明有写路径悄悄不记了）：
+    #   A：user.register + project.create + project.update + project.delete = 4
+    #   B：user.register + 3 条 comment.create + comment.delete           = 5
+    check("硬删项目行后日志依旧存在（9 条一条不少）", survivors == 9)
     sql(f"DELETE FROM users WHERE id = {a['uid']};")
     UIDS.remove(a["uid"])
     still = int(sql_one("SELECT COUNT(*) FROM activity_logs WHERE user_id = %d" % a["uid"]))
-    check("硬删用户后其日志仍然存在（未挂外键、未级联）", still == 3)
+    check("硬删用户后其日志仍然存在（未挂外键、未级联）", still == 4)
     check("被删用户的日志里保留了名称快照", int(sql_one(
         "SELECT COUNT(*) FROM activity_logs WHERE user_id = %d AND username IS NOT NULL" % a["uid"])) == still)
 
@@ -309,6 +328,159 @@ def main():
         cwd=BACKEND, capture_output=True, encoding="utf-8", errors="replace"
     )
     check("非法参数（--days=0）退出码为 2", proc.returncode == 2)
+
+
+    # ---------------- K. 日志 username 列：堵住净化旁路 ----------------
+    print("== K. username 列不再是被净化链遗忘的那一列 ==")
+    # 这一段刻意**绕开服务层**去验：新代码已在注册 / 改名时归一化，正常路径下脏用户名
+    # 根本进不了库。所以直接改库造一条「历史遗留 / 绕过服务写进来」的脏数据，再触发一次
+    # 写日志 —— 验的是防御纵深本身：**日志列的完整性不能依赖上游字段干净**。
+    # 用 UNHEX 构造而不是写 'a\r\nFAKE'：MySQL 字符串字面量会解释反斜杠转义，从 Python 里
+    # 拼进去要过两层转义，极易绕晕；HEX 没有歧义。
+    kd = register("logKD")
+    UIDS.append(kd["uid"])
+    ALL_UIDS.append(kd["uid"])
+    sql(f"UPDATE users SET username = UNHEX('610D0A46414B45') WHERE id = {kd['uid']};")  # a\r\nFAKE
+    check("脏用户名已写进库（构造成功）",
+          sql_one(f"SELECT HEX(username) FROM users WHERE id = {kd['uid']}") == "610D0A46414B45")
+
+    kd_pid = create_project(kd["token"], "脏用户名探针项目")
+    PIDS.append(kd_pid)
+
+    snap = sql_one(f"SELECT username FROM activity_logs WHERE user_id = {kd['uid']} AND action='project.create'")
+    snap_hex = sql_one(f"SELECT HEX(username) FROM activity_logs WHERE user_id = {kd['uid']} AND action='project.create'")
+    check("日志 username 列里没有换行（CRLF 没跟着进去）",
+          bool(snap_hex) and "0D" not in snap_hex.upper() and "0A" not in snap_hex.upper())
+    check("日志 username 列无任何禁止字符", bool(snap) and not dirty_chars(snap))
+    check("CRLF 被压成空格、原文仍可读（不是整段丢掉）", snap == "a FAKE")
+    check("净化只发生在日志层：库里的账号名依旧是脏的（没顺手改用户数据）",
+          sql_one(f"SELECT HEX(username) FROM users WHERE id = {kd['uid']}") == "610D0A46414B45")
+
+    # ---------------- L. 身份字段归一化（注册与改名共用同一口径） ----------------
+    print("== L. 用户名归一化 ==")
+    seq = [0]
+
+    def reg_raw(uname):
+        """注册一次。**无论断言期望成功还是失败，都把真建出来的账号登记进清理列表** ——
+        期望「被拒」的用例在旧实现下会真的建号（实测泄漏 2 个），只登记成功路径是不够的。"""
+        seq[0] += 1
+        code, body = api_status(
+            "/users/register",
+            {"username": uname, "email": f"norm{TS}x{seq[0]}@example.com", "password": PASSWORD},
+            method="POST",
+        )
+        uid = ((body.get("data") or {}).get("user") or {}).get("id")
+        if uid:
+            UIDS.append(uid)
+            ALL_UIDS.append(uid)
+        return code, body
+
+    def reg_ok(label, uname, expected):
+        code, body = reg_raw(uname)
+        check(f"{label}：注册成功（带脏字符也能建号 = 漏网）", code == 201)
+        # 一律用 .get 取键：旧实现里字段不存在时**这一条变红**，而不是 KeyError 把
+        # 整段后续断言全跳过（那样「红」就只剩一条，看不出覆盖面）
+        check(f"{label}：库里存的是净化后的值 {expected!r}",
+              ((body.get("data") or {}).get("user") or {}).get("username") == expected)
+        check(f"{label}：响应 adjusted 为 true（不做静默修改）", (body.get("data") or {}).get("adjusted") is True)
+
+    reg_ok("CRLF 伪造", "a\r\nFAKE" + TS, "aFAKE" + TS)
+    reg_ok("RLO 方向控制", "b\u202eREV" + TS, "bREV" + TS)
+    reg_ok("emoji 开头", "\U0001F3AF" + TS + "ab", TS + "ab")
+
+    # register 原来完全不 trim、updateProfile 会 trim，同一个值两条路径两种结果
+    code, body = reg_raw("  " + TS + "x ")
+    stored = ((body.get("data") or {}).get("user") or {}).get("username")
+    check("首尾空白被收敛（注册与改名终于一个口径）", code == 201 and stored == TS + "x")
+    check("只去空白不算「非法字符被移除」（adjusted 为 false，不给无意义提示）",
+          code == 201 and (body.get("data") or {}).get("adjusted") is False)
+
+    code, body = reg_raw("\U0001F3AF\U0001F3AF")
+    check("纯 emoji 用户名被拒（剥完不足 2 字，不是存成空名字）", code == 400)
+    check("拒绝文案是中文人话", code == 400 and "用户名" in json.dumps(body, ensure_ascii=False))
+    code, _ = reg_raw("\U0001F3AFa")
+    check("剥完只剩 1 字同样被拒（不静默截断成短名）", code == 400)
+
+    # ---------------- L2. 注册与资料变更的审计留痕 ----------------
+    print("== L2. 注册 / 资料变更留痕 ==")
+    k = register("logK")
+    UIDS.append(k["uid"])
+    ALL_UIDS.append(k["uid"])
+    k_pid = create_project(k["token"], "资料留痕探针项目")
+    PIDS.append(k_pid)
+
+    reg_log = find_log(api("/logs/me", token=k["token"])["data"]["logs"], "user.register") or {}
+    check("注册产生一条 user.register 日志（审计时间线的起点）", bool(reg_log))
+    check("targetType 是 user、targetId 是自己",
+          reg_log.get("targetType") == "user" and reg_log.get("targetId") == k["uid"])
+    check("detail 只记了 username，没有存 email（少存 PII）",
+          sorted((reg_log.get("detail") or {}).keys()) == ["username"])
+    check("注册摘要里带了用户名", k["username"] in (reg_log.get("summary") or ""))
+    check("快照 == 账号真实用户名（两条净化路径口径一致）",
+          sql_one(f"SELECT username FROM activity_logs WHERE user_id = {k['uid']} AND action='user.register'") == k["username"])
+    check("新动作已进只读接口的白名单（按它筛选不再 400）",
+          api_status("/logs/me?action=user.register", token=k["token"])[0] == 200)
+
+    old_name = k["username"]
+    new_name = "改名" + TS
+    code, body = api_status("/users/profile", {"username": new_name + "\U0001F3AF"}, token=k["token"], method="PUT")
+    check("改名成功", code == 200)
+    check("emoji 被剥掉之后才落库",
+          ((body.get("data") or {}).get("user") or {}).get("username") == new_name)
+    plog = find_log(api("/logs/me", token=k["token"])["data"]["logs"], "user.profile.update") or {}
+    pd = plog.get("detail") or {}
+    check("改名产生 user.profile.update 日志", bool(plog))
+    check("changed 恰好是 ['username']（没改 bio / avatar 就不记）", pd.get("changed") == ["username"])
+    check("留下了旧用户名（usernameFrom）", pd.get("usernameFrom") == old_name)
+    check("留下了新用户名（usernameTo）", pd.get("usernameTo") == new_name)
+    check("摘要里读得到「旧 → 新」",
+          old_name in (plog.get("summary") or "") and new_name in (plog.get("summary") or ""))
+    check("这一行自己的 username 快照是改名后的新名（其余历史行仍是旧名，快照语义）",
+          sql_one(f"SELECT username FROM activity_logs WHERE user_id = {k['uid']} AND action='user.profile.update'") == new_name)
+    check("改名前的历史日志仍然是旧名字（快照没被追溯改写）",
+          sql_one(f"SELECT username FROM activity_logs WHERE user_id = {k['uid']} AND action='user.register'") == old_name)
+
+    # usernameFrom 是「保存前从库里读出来的旧值」，同样要过 detail 的净化
+    api_status("/users/profile", {"username": "新名" + TS}, token=kd["token"], method="PUT")
+    kd_from = (find_log(api("/logs/me", token=kd["token"])["data"]["logs"], "user.profile.update") or {})
+    kd_from = (kd_from.get("detail") or {}).get("usernameFrom") or ""
+    check("脏旧值给到 usernameFrom 时也被净化（detail 一样走 sanitizeDetail）",
+          bool(kd_from) and not dirty_chars(kd_from))
+
+    # 只改简介：changed 只记 bio，且不该出现 usernameFrom
+    n_before = int(sql_one(f"SELECT COUNT(*) FROM activity_logs WHERE user_id = {k['uid']} AND action='user.profile.update'"))
+    api_status("/users/profile", {"bio": "改过的简介" + TS}, token=k["token"], method="PUT")
+    n_after = int(sql_one(f"SELECT COUNT(*) FROM activity_logs WHERE user_id = {k['uid']} AND action='user.profile.update'"))
+    bio_log = find_log(api("/logs/me", token=k["token"])["data"]["logs"], "user.profile.update") or {}
+    bd = bio_log.get("detail") or {}
+    check("只改简介也留痕", n_after == n_before + 1)
+    check("changed 恰好是 ['bio']", bd.get("changed") == ["bio"])
+    check("没改名就不写 usernameFrom（不给下游留无意义的空字段）", "usernameFrom" not in bd)
+
+    # 原样提交：前端表单每次都会把三个字段全量回传，不能因此灌满时间线
+    me = api("/users/me", token=k["token"])["data"]
+    before_n = int(sql_one(f"SELECT COUNT(*) FROM activity_logs WHERE user_id = {k['uid']}"))
+    code, _ = api_status(
+        "/users/profile",
+        {"username": me["username"], "avatar": me["avatar"], "bio": me["bio"]},
+        token=k["token"],
+        method="PUT",
+    )
+    after_n = int(sql_one(f"SELECT COUNT(*) FROM activity_logs WHERE user_id = {k['uid']}"))
+    check("原样提交不写日志（否则每次点保存都多一行噪音）", code == 200 and before_n == after_n)
+
+    # 全局兜底：本轮造出的每一行日志，username 列都不能含禁止字符
+    ph = ",".join(str(i) for i in ALL_UIDS)
+    hex_lines = [
+        h
+        for h in sql_one(
+            f"SELECT HEX(username) FROM activity_logs WHERE user_id IN ({ph}) AND username IS NOT NULL ORDER BY id"
+        ).splitlines()
+        if h
+    ]
+    decoded = [bytes.fromhex(h).decode("utf-8", "replace") for h in hex_lines]
+    check("本轮全部日志行的 username 列都无禁止字符",
+          bool(decoded) and all(not dirty_chars(x) for x in decoded))
 
 
 def cleanup():

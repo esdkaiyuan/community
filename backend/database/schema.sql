@@ -162,9 +162,9 @@ CREATE TABLE IF NOT EXISTS project_comments (
 CREATE TABLE IF NOT EXISTS activity_logs (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     user_id INT UNSIGNED DEFAULT NULL COMMENT '操作者ID（无外键）',
-    username VARCHAR(50) DEFAULT NULL COMMENT '操作者名称快照',
+    username VARCHAR(50) DEFAULT NULL COMMENT '操作者名称快照（已净化：单行、无控制字符）',
     action VARCHAR(32) NOT NULL COMMENT '动作标识（project.create 等，服务层白名单约束）',
-    target_type VARCHAR(20) NOT NULL COMMENT '目标类型：project / comment',
+    target_type VARCHAR(20) NOT NULL COMMENT '目标类型：project / comment / user',
     target_id INT UNSIGNED DEFAULT NULL COMMENT '目标ID',
     project_id INT UNSIGNED DEFAULT NULL COMMENT '所属项目ID',
     summary VARCHAR(255) NOT NULL COMMENT '单行摘要（已净化，无换行与控制字符）',

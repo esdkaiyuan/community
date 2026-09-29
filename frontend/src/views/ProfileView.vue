@@ -243,6 +243,7 @@ import { getProjects } from '@/api/project'
 import { getMyComments, getMyFavorites, getMyStats, updateProfile } from '@/api/user'
 import { toast } from '@/composables/useToast'
 import { relativeTime } from '@/utils/time'
+import { stripEmoji } from '@/utils/text'
 import ProjectCard from '@/components/ProjectCard.vue'
 import ProjectCardSkeleton from '@/components/ProjectCardSkeleton.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -282,6 +283,10 @@ const openEdit = () => {
 
 const handleSave = async () => {
   if (saving.value) return
+  // 与 ProjectForm / 注册页同一约定：提交前剥掉用户名与简介里的 emoji。
+  // 服务端还会再归一化一遍（并去掉控制字符），这里先做是为了让改动在表单里可见。
+  editForm.username = stripEmoji(editForm.username)
+  editForm.bio = stripEmoji(editForm.bio)
   saving.value = true
   try {
     await updateProfile({

@@ -29,7 +29,7 @@ const ActivityLog = sequelize.define(
     username: {
       type: DataTypes.STRING(50),
       allowNull: true,
-      comment: '操作者名称快照'
+      comment: '操作者名称快照（已净化：单行、无控制字符）'
     },
     action: {
       type: DataTypes.STRING(32),
@@ -39,7 +39,7 @@ const ActivityLog = sequelize.define(
     target_type: {
       type: DataTypes.STRING(20),
       allowNull: false,
-      comment: '目标类型：project / comment'
+      comment: '目标类型：project / comment / user'
     },
     target_id: {
       type: DataTypes.INTEGER.UNSIGNED,

@@ -108,6 +108,7 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { toast } from '@/composables/useToast'
+import { stripEmoji } from '@/utils/text'
 import AppIcon from '@/components/AppIcon.vue'
 
 const router = useRouter()
@@ -140,6 +141,10 @@ const validate = () => {
 }
 
 const handleSubmit = async () => {
+  // 全站仅允许矢量图标：提交前移除用户名里的 emoji（与 ProjectForm 同一约定）。
+  // 服务端会做同样的归一化，这里先做一次是为了让用户**在表单里就看见**自己被改成了什么，
+  // 而不是提交成功后悄悄换掉一个名字。
+  form.username = stripEmoji(form.username)
   if (!validate() || submitting.value) return
   submitting.value = true
   try {
