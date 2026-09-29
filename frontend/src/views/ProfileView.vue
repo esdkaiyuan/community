@@ -42,6 +42,23 @@
       </div>
     </div>
 
+    <!-- 账号安全入口：安全提醒与操作记录都收在那一页。
+         放在个人中心是因为这是用户会主动来找它的地方（顶栏用户菜单里也有一个）。 -->
+    <router-link
+      to="/security"
+      data-test="profile-security-entry"
+      class="mt-6 flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-sand"
+    >
+      <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pine-soft text-pine-deep">
+        <AppIcon name="shield" class="h-[18px] w-[18px]" />
+      </span>
+      <span class="min-w-0 flex-1">
+        <span class="block text-sm font-medium text-ink">账号安全</span>
+        <span class="block text-xs text-ink-dim">查看针对你账号的失败尝试，以及你自己的操作记录</span>
+      </span>
+      <AppIcon name="chevronRight" class="h-4 w-4 shrink-0 text-ink-dim" />
+    </router-link>
+
     <!-- 我发布的项目 -->
     <div class="mt-10">
       <div class="mb-5 flex items-center justify-between">
@@ -247,6 +264,7 @@ import { stripEmoji } from '@/utils/text'
 import ProjectCard from '@/components/ProjectCard.vue'
 import ProjectCardSkeleton from '@/components/ProjectCardSkeleton.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import AppIcon from '@/components/AppIcon.vue'
 
 const userStore = useUserStore()
 const user = computed(() => userStore.userInfo)

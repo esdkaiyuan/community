@@ -118,6 +118,7 @@ def main():
             ("/profile", "个人中心"),
             ("/publish", "发布项目"),
             ("/notifications", "通知"),
+            ("/security", "账号安全"),
             (f"/project/{pid}/edit", "编辑项目"),
         ]:
             take(page, path, f"未登录访问{label}", shot=None)
@@ -137,6 +138,7 @@ def main():
             ("/", "首页（登录态）", False, None),
             ("/profile", "个人中心", False, "audit-profile-light.png"),
             ("/notifications", "通知页", False, "audit-notifications-light.png"),
+            ("/security", "账号安全页", False, "audit-security-light.png"),
             ("/publish", "发布页", False, None),
             (f"/project/{pid}/edit", "编辑页", False, None),
             (f"/user/{owner['uid']}", "自己看自己的主页", False, None),
@@ -237,6 +239,7 @@ def main():
                 ("/", "首页", "home"),
                 (f"/project/{pid}", "详情页", "detail"),
                 ("/profile", "个人中心", "profile"),
+                ("/security", "账号安全", "security"),
             ]:
                 # 各档宽度都注入登录态，避免受限页被重定向而测不到真实布局
                 inject_login(page, owner["token"], owner["user"])

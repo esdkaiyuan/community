@@ -56,6 +56,15 @@ const routes = [
     meta: { title: '通知', requiresAuth: true }
   },
   {
+    // 账号安全：两个只读视图（安全提醒 / 我的操作）。
+    // 数据全部来自 /logs/me 与 /logs/me/security，两条接口都只认「当前登录用户」，
+    // 所以这一页天然不存在「越权看别人」的可能，requiresAuth 即可。
+    path: '/security',
+    name: 'Security',
+    component: () => import('@/views/SecurityView.vue'),
+    meta: { title: '账号安全', requiresAuth: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue'),

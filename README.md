@@ -100,6 +100,7 @@ npm run dev
 - [x] 操作日志（发布 / 编辑 / 删除项目、发表 / 删除评论、注册 / 改资料全量留痕，写入前统一净化）
 - [x] 用户资料字段归一化（用户名 / 简介剥 emoji 与控制字符，注册与改名共用一个口径）
 - [x] 安全事件（登录失败 / 注册被拒 / 令牌无效留痕，账号脱敏 + 按来源聚合，绝不记密码）
+- [x] 账号安全页（`/security`）—— 把「针对我的失败尝试」与「我的操作」搬上界面，含类型筛选与聚合次数
 
 ### 待完善的功能
 
@@ -282,6 +283,27 @@ python scripts/verify_activity_logs.py    # 端到端：真实注入载荷落库
 （本仓库是 Express 4，async 中间件的 reject **不会**自动交给 errorHandler）——
 `middleware/auth.js` 为此单独套了一层 try/catch。
 
+### 前端页面（`/security`）
+
+两条只读接口在界面上合成了**一页两个视图**（顶栏用户菜单「账号安全」，或个人中心里的入口进）：
+
+| 视图 | 数据源 | 回答的问题 |
+| --- | --- | --- |
+| 安全提醒 | `GET /logs/me/security` | 谁在打我账号的主意 |
+| 我的操作 | `GET /logs/me` | 我自己做过什么 |
+
+⚠️ 页面上刻意**只列两类事件**做筛选（登录 / 注册），不放 `auth.token.rejected`：伪造令牌的尝试
+在写事件时拿不到可信身份，`target_user_id` 是 NULL，而 `listMine` 按 `target_user_id = 我` 过滤 ——
+它**永远**查不到这类行。给它一个筛选项，就等于给用户一个**永远筛出空列表的假入口**。
+这条口径由 `verify_security_page.py` 直接断言（**每个筛选 chip 都必须真能筛出行来**），
+并且顺带断言前端词表的键集合覆盖后端白名单。
+
+列表行**不重复动作名**：后端的 `summary` 本来就以动词开头（`发布项目「X」`），再摆一个「发布项目」
+的 chip 就是在同一行里说两遍 —— 所以动作名只出现在筛选 chip 里，列表行靠图标 + 句子表达。
+
+`frontend/src/utils/audit.js` 是「枚举值 → 中文」的词表（前端唯一口径）。它必须覆盖后端白名单：
+值写错**不会报错**，只会静默落到兜底文案「异常尝试」，于是整类事件显示错都不会有人发现。
+
 ### 读取与留存
 
 ```bash
@@ -297,6 +319,7 @@ GET /api/logs/me/security?page=1&pageSize=20&event=auth.login.rejected
 ```bash
 cd backend && npm run security:check         # 白名单 / 脱敏 / 聚合键 / 绝不记密码（纯函数，59 项）
 python scripts/verify_security_events.py     # 端到端：真实失败尝试落库后逐条断言（89 项）
+python scripts/verify_security_page.py       # 前端页：渲染 / 筛选（无假入口）/ 空状态 / 脱敏不上屏（60 项）
 ```
 
 两条最有价值的断言：**5 个并发失败尝试一次都没丢**（`occurrences` 必须是 SQL 层原子自增，而不是
@@ -338,7 +361,7 @@ const sortOrder = Object.prototype.hasOwnProperty.call(SORT_MAP, sort) ? SORT_MA
 python scripts/audit_backend_api.py
 ```
 
-「坏输入 × 全端点」矩阵（约 970 项断言），与 `scripts/audit_frontend_ui.py` 互补：
+「坏输入 × 全端点」矩阵（1000 项断言），与 `scripts/audit_frontend_ui.py` 互补：
 前端巡检管「页面长得对不对」，它管「接口在坏输入下会不会把 500 甩给用户」。五条不变量：
 
 1. 任何**用户可控输入**都不得产生 5xx —— 能预见的坏输入必须是 4xx；
@@ -445,7 +468,10 @@ community/
 ## 下一步计划
 
 - [ ] 图片裁剪与压缩
-- [ ] 安全事件目前只有后端与接口（`/logs/me/security`），还没有前端页面
+- [ ] 「单个标签超长」目前是静默截断而非明确拒绝（属产品决策，尚未定）
+- [ ] `view_count` 是否按用户 / 会话去重以防刷量
+- [ ] `scripts/verify_comments.py` 是早期留下的截图冒烟脚本：**不含任何断言**，且硬编码了种子项目 19。
+      应改写成真断言或删除 —— 一个不测东西的「验证脚本」比没有更糟，它会让人误以为这块有覆盖
 - [ ] 把 `scripts/verify_*.py` 接入 CI
 - [ ] 单元测试与覆盖率
 - [ ] 移动端交互细节继续打磨
