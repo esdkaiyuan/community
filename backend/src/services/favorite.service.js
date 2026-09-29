@@ -1,10 +1,11 @@
 const { Category, User, ProjectFavorite, Project } = require('../models')
+const { clampInt, MAX_PAGE } = require('../utils/pagination')
 const { toClientProject } = require('./project.service')
 
 // 我的收藏：按收藏时间倒序（收藏关系分页，再取项目详情）
 exports.listFavorites = async ({ userId, page = 1, pageSize = 12 }) => {
-  page = Math.max(1, parseInt(page, 10) || 1)
-  const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 12))
+  page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
+  const limit = clampInt(pageSize, { max: 50, fallback: 12 })
   const offset = (page - 1) * limit
 
   const { rows, count } = await ProjectFavorite.findAndCountAll({

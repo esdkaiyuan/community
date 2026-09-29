@@ -1,4 +1,5 @@
 const { Notification, User, Project, Comment } = require('../models')
+const { clampInt, MAX_PAGE } = require('../utils/pagination')
 
 // 通知文案所需的最小关联
 const ACTOR_ATTRS = ['id', 'username', 'avatar']
@@ -32,8 +33,8 @@ exports.notifyOnce = ({ userId, type, actorId, projectId, commentId = null }) =>
 }
 
 exports.list = async ({ userId, page = 1, pageSize = 15, unreadOnly = false }) => {
-  page = Math.max(1, parseInt(page, 10) || 1)
-  const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 15))
+  page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
+  const limit = clampInt(pageSize, { max: 50, fallback: 15 })
   const offset = (page - 1) * limit
 
   const where = { user_id: userId }

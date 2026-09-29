@@ -7,6 +7,7 @@ const { toClientUser } = require('./user.service')
 const notificationService = require('./notification.service')
 const coverService = require('./cover.service')
 const activityLogService = require('./activityLog.service')
+const { clampInt, MAX_PAGE } = require('../utils/pagination')
 
 // 数据库行 -> 前端数据形状（camelCase）
 const toClientProject = (p, extra = {}) => {
@@ -155,8 +156,8 @@ exports.listProjects = async ({
   favoritedBy,
   currentUserId
 }) => {
-  page = Math.max(1, parseInt(page, 10) || 1)
-  const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 12))
+  page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
+  const limit = clampInt(pageSize, { max: 50, fallback: 12 })
   const offset = (page - 1) * limit
 
   const where = {}
@@ -214,6 +215,13 @@ exports.listProjects = async ({
   // 而且分数只在「按它排序」时才有解释意义（卡片据此显示「本周 N」徽标）
   const isTrending = sort === 'trending'
 
+  // SORT_MAP[sort] 不能直接取：sort 是用户输入，`?sort=__proto__` 会命中原型链上的
+  // Object.prototype（truthy，绕过了 `|| 默认值` 的兜底），塞给 Sequelize 直接 500。
+  // 用 hasOwnProperty 收口到「自有键」，任何坏值一律退回默认排序。
+  const sortOrder = Object.prototype.hasOwnProperty.call(SORT_MAP, sort)
+    ? SORT_MAP[sort]
+    : SORT_MAP.latest
+
   const { count, rows } = await Project.findAndCountAll({
     where,
     include: [
@@ -225,7 +233,7 @@ exports.listProjects = async ({
           attributes: { include: [[sequelize.literal(TREND_SCORE_SQL), 'trendScore']] },
           order: [sequelize.literal('trendScore DESC'), ['created_at', 'DESC']]
         }
-      : { order: SORT_MAP[sort] || SORT_MAP.latest }),
+      : { order: sortOrder }),
     limit,
     offset,
     distinct: true
@@ -254,7 +262,7 @@ exports.listProjects = async ({
 // 标签是 projects.tags 里的 JSON 数组（无独立表），这里全量聚合出「热门标签」
 // 数据量小、也无索引可用，直接拉非空行在内存里计数；随项目增长可改为定时物化
 exports.listPopularTags = async ({ limit = 12 } = {}) => {
-  const max = Math.min(30, Math.max(1, parseInt(limit, 10) || 12))
+  const max = clampInt(limit, { max: 30, fallback: 12 })
 
   const rows = await Project.findAll({
     attributes: ['tags'],
@@ -287,7 +295,7 @@ const RELATED_POOL = 60 // 候选池上限：够排序即可，不必把整表�
 
 exports.listRelatedProjects = async (id, { limit = 3 } = {}) => {
   const project = await getProjectOr404(id)
-  const max = Math.min(12, Math.max(1, parseInt(limit, 10) || 3))
+  const max = clampInt(limit, { max: 12, fallback: 3 })
 
   // 原样大小写用于 SQL 收窄（JSON_CONTAINS 大小写敏感），小写副本只用于比对
   const tags = (Array.isArray(project.tags) ? project.tags : [])
@@ -397,8 +405,8 @@ exports.getProjectDetail = async (id, currentUserId) => {
 
 exports.listParticipants = async (id, { page = 1, pageSize = 24 } = {}) => {
   await getProjectOr404(id)
-  page = Math.max(1, parseInt(page, 10) || 1)
-  const limit = Math.min(60, Math.max(1, parseInt(pageSize, 10) || 24))
+  page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
+  const limit = clampInt(pageSize, { max: 60, fallback: 24 })
   const offset = (page - 1) * limit
 
   const { count, rows } = await ProjectParticipant.findAndCountAll({

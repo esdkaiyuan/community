@@ -193,6 +193,53 @@ cd backend && npm run logs:check          # 净化规则的纯函数自检（61 
 python scripts/verify_activity_logs.py    # 端到端：真实注入载荷落库后逐条断言（68 项）
 ```
 
+## 接口健壮性（横向巡检）
+
+所有接口共用一套「用户可控输入」的收口规则，并有一个脚本横向体检。
+
+### 分页与取数上限
+
+凡是要进 SQL `LIMIT` / `OFFSET` 的数字（`page` / `pageSize` / `limit`）都走
+`backend/src/utils/pagination.js` 的 `clampInt`，**上界只在这一处定义**：
+
+```js
+const limit = clampInt(pageSize, { max: 50, fallback: 12 })
+page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
+```
+
+为什么必须收口：`?page=99999999999999999999` 会让 `(page - 1) * limit` 越过
+`Number.MAX_SAFE_INTEGER`，被序列化成 `1.2e+22` 这种科学计数法拼进 SQL，数据库报语法错 →
+用户收到 500。收口之前这行代码在 6 个 service 里各写了一遍，**8 处全都漏了 `page` 的上界**。
+
+### 排序参数只认自有键
+
+`?sort=` 只允许命中白名单里的键：
+
+```js
+// ❌ SORT_MAP[sort]：?sort=__proto__ 会命中原型链上的 Object.prototype，
+//    它是 truthy，绕过了 `|| 默认值` 的兜底，塞给 Sequelize 直接 500
+// ✅ 用 hasOwnProperty 收口到自有键，坏值一律退回默认排序
+const sortOrder = Object.prototype.hasOwnProperty.call(SORT_MAP, sort) ? SORT_MAP[sort] : SORT_MAP.latest
+```
+
+### 横向巡检
+
+```bash
+python scripts/audit_backend_api.py
+```
+
+「坏输入 × 全端点」矩阵（约 970 项断言），与 `scripts/audit_frontend_ui.py` 互补：
+前端巡检管「页面长得对不对」，它管「接口在坏输入下会不会把 500 甩给用户」。五条不变量：
+
+1. 任何**用户可控输入**都不得产生 5xx —— 能预见的坏输入必须是 4xx；
+2. 所有响应恒为 `{code, message, data?}`，且 `code === HTTP 状态码`；
+3. 所有 4xx 的 `message` 必须是中文人话，不含英文技术原文；
+4. 受保护端点无 token / 坏 token 一律 401（不是 500，也不是 200）；
+5. 方法不匹配 / 路由不存在一律 404（不是 500）。
+
+⚠️ 请求量较大，**请单独跑**，不要与其它验证脚本并跑 —— 否则会撞全局限流（600 次 / 15 分钟）把结果染红。
+撞了重启后端即可清零（`express-rate-limit` 用内存计数）。
+
 ## 常见问题
 
 ### 1. 后端启动失败

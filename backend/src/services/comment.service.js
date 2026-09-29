@@ -4,6 +4,7 @@ const ApiError = require('../utils/ApiError')
 const { stripEmoji, hasEmoji } = require('../utils/textSanitize')
 const notificationService = require('./notification.service')
 const activityLogService = require('./activityLog.service')
+const { clampInt, MAX_PAGE } = require('../utils/pagination')
 
 const MAX_CONTENT_LEN = 500
 
@@ -27,8 +28,8 @@ const toClientComment = (comment, extra = {}) => {
 const withUser = { model: User, as: 'user', attributes: ['id', 'username', 'avatar'] }
 
 exports.listComments = async ({ projectId, page = 1, pageSize = 20, currentUserId }) => {
-  page = Math.max(1, parseInt(page, 10) || 1)
-  const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 20))
+  page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
+  const limit = clampInt(pageSize, { max: 50, fallback: 20 })
   const offset = (page - 1) * limit
 
   const project = await Project.findByPk(projectId)
@@ -98,7 +99,7 @@ exports.listComments = async ({ projectId, page = 1, pageSize = 20, currentUserI
 // 列表是「根评论分页 + 回复挂在根下」，所以回复要按它父级的位置算；
 // 前端据此把「加载更多」连续点到那一页，再滚动高亮 —— 否则深链只能命中第一页
 exports.locateComment = async ({ projectId, commentId, pageSize = 10 }) => {
-  const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 10))
+  const limit = clampInt(pageSize, { max: 50, fallback: 10 })
   const comment = await Comment.findByPk(commentId)
   // 评论被删 / 不属于这个项目时（defaultScope 已过滤 status=0）一律当不存在
   if (!comment || Number(comment.project_id) !== Number(projectId)) {

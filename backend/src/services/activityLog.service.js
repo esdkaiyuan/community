@@ -8,6 +8,7 @@
 //   3. **异常不外抛**：日志写失败绝不能把用户的发布/评论带崩。这里吞掉异常，
 //      但必须打 error 日志留痕 —— 静默失败等于审计缺口。
 const { ActivityLog, User } = require('../models')
+const { clampInt, MAX_PAGE } = require('../utils/pagination')
 const ApiError = require('../utils/ApiError')
 const createLogger = require('../utils/logger')
 const { sanitizeLogText, sanitizeDetail, sanitizeIp, sanitizeUserAgent } = require('../utils/logSanitize')
@@ -179,8 +180,8 @@ const toClientLog = (row) => ({
 })
 
 exports.listMine = async ({ userId, page = 1, pageSize = 20, action, projectId }) => {
-  page = Math.max(1, parseInt(page, 10) || 1)
-  const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 20))
+  page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
+  const limit = clampInt(pageSize, { max: 50, fallback: 20 })
 
   const where = { user_id: userId }
 

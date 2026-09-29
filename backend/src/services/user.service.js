@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs')
 const { Op } = require('sequelize')
 const { User, Comment, Project, ProjectParticipant, ProjectFavorite, sequelize } = require('../models')
 const { generateToken } = require('../utils/jwt')
+const { clampInt, MAX_PAGE } = require('../utils/pagination')
 const ApiError = require('../utils/ApiError')
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -103,8 +104,8 @@ exports.updateProfile = async (userId, { username, avatar, bio }) => {
 
 // 我发表的评论（含所属项目，供个人中心「我参与的讨论」）
 exports.getMyComments = async (userId, { page = 1, pageSize = 10 } = {}) => {
-  page = Math.max(1, parseInt(page, 10) || 1)
-  const limit = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 10))
+  page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
+  const limit = clampInt(pageSize, { max: 50, fallback: 10 })
   const offset = (page - 1) * limit
 
   const { rows, count } = await Comment.findAndCountAll({
