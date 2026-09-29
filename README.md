@@ -99,6 +99,7 @@ npm run dev
 - [x] 标签归一化与相关推荐
 - [x] 操作日志（发布 / 编辑 / 删除项目、发表 / 删除评论、注册 / 改资料全量留痕，写入前统一净化）
 - [x] 用户资料字段归一化（用户名 / 简介剥 emoji 与控制字符，注册与改名共用一个口径）
+- [x] 安全事件（登录失败 / 注册被拒 / 令牌无效留痕，账号脱敏 + 按来源聚合，绝不记密码）
 
 ### 待完善的功能
 
@@ -224,13 +225,13 @@ npm run logs:prune:dry   # 干跑：只报告超出留存期的条数与动作�
 npm run logs:prune       # 真删（等价于 node scripts/prune-activity-logs.js --apply）
 ```
 
-留存期默认 365 天，可用 `--days=N` 覆盖。生产环境已在 `ecosystem.config.js` 注册 PM2 定时任务，
-每天凌晨 4:00 执行。
+留存期默认 365 天，可用 `--days=N` 覆盖，**两张日志表一起清**。生产环境已在
+`ecosystem.config.js` 注册 PM2 定时任务，每天凌晨 4:00 执行。
 
 ### 验证
 
 ```bash
-cd backend && npm run logs:check          # 净化规则的纯函数自检（61 项）
+cd backend && npm run logs:check          # 净化规则的纯函数自检（59 项）
 python scripts/verify_activity_logs.py    # 端到端：真实注入载荷落库后逐条断言（108 项）
 ```
 
@@ -241,6 +242,66 @@ python scripts/verify_activity_logs.py    # 端到端：真实注入载荷落库
   进不了库，只靠接口测是测不到这一层的。
 - **响应字段一律用 `.get()` 取**：旧实现里字段不存在时那一条**变红**，而不是 `KeyError` 把后面
   的断言全跳过。本轮修复前跑一遍得到 **74 OK / 34 FAIL**，修后 **108 OK / 0 FAIL**。
+
+## 安全事件（被拒的尝试）
+
+审计日志只覆盖**做成了什么**。可攻击者留下的痕迹恰恰全在**没做成**的那一侧：撞库、账号枚举、
+伪造令牌。这类事件存在表 `security_events`，与 `activity_logs` **刻意分成两张表**：
+
+| | `activity_logs` | `security_events` |
+| --- | --- | --- |
+| 记什么 | 谁**做成了**什么 | 有人**尝试但没成功** |
+| 身份 | 一定有（`user_id`） | 大多没有（未登录 / 密码错 / 令牌伪造） |
+| 那一列的语义 | 操作者 | **被瞄准的账号**（`target_user_id`） |
+| 谁能读 | 用户自己（`/logs/me`） | 只看针对自己账号的（`/logs/me/security`） |
+| 一行代表 | 一次操作 | 「同一来源在窗口内对同一目标失败了 N 次」 |
+
+| 事件 | 触发点 | 记下什么 |
+| --- | --- | --- |
+| `auth.login.rejected` | 登录失败（密码错 / 账号不存在） | 被瞄准的账号（若确实存在）、脱敏账号、IP、UA、来源接口 |
+| `auth.register.rejected` | 注册被拒（校验不过 / 撞名 / 撞邮箱） | 尝试的用户名（脱敏）、撞上的账号（若撞名） |
+| `auth.token.rejected` | 带了 token 却验不过（签名 / 格式错） | 被打的接口 + 来源 |
+
+**为什么不记密码、账号还要脱敏**：日志留存 365 天，密码（任何形态：明文 / 长度 / 哈希）进一次库
+就是一笔永久的负债；账号也只留脱敏形态（`z***@e***.com` / `a***`）。写入是**按白名单字段显式取值**，
+不是遍历传入的对象 —— 调用方多传 `password` / `body` 也进不来，
+`backend/scripts/check-security-log.js` 里有专门钉这件事的断言。
+
+**为什么必须聚合**：暴力破解的本质就是「同一来源对同一目标反复失败」。一条一次会瞬间把表刷成噪音
+洪水，真正有信息量的「第一次」反而被淹掉。所以按 `sha256(event|ip|account|targetUserId|path)` 聚合，
+窗口（10 分钟）内重复只把 `occurrences + 1` 并刷新 `last_seen_at` —— 读出来是「这个 IP 在 10 分钟里
+对 `z***@e***.com` 试了 47 次」。`targetUserId` **必须**在键里：脱敏一定会碰撞
+（`secA…@example.com` 与 `secB…@example.com` 都变成 `s***@e***.com`），少了它两个账号会被并成一行，
+而且行里的 `target_user_id` 会被覆盖成后一个，**日志会指错人** —— 比没记更糟。这是实测抓到的真 bug。
+
+**哪些不记（同等重要）**：没带 token（未登录，正常）、token 过期（会话到期，正常）、
+`optionalAuth` 的静默退化（公开页面上一个旧 token 会让每次浏览都触发一次）。记了就是日志洪水 ——
+所以判据是「签名 / 格式对不上」才记，用 jsonwebtoken 的**错误类型**判断，不要 match message 文本。
+
+**为什么留痕只 await 不抛**：写日志失败绝不能把本该是 401 的响应变成 500，更不能把请求挂住
+（本仓库是 Express 4，async 中间件的 reject **不会**自动交给 errorHandler）——
+`middleware/auth.js` 为此单独套了一层 try/catch。
+
+### 读取与留存
+
+```bash
+# 只看针对自己账号的被拒尝试（同样不接受任何 userId 参数）
+GET /api/logs/me/security?page=1&pageSize=20&event=auth.login.rejected
+```
+
+`npm run logs:prune*` 会**同时**清 `activity_logs` 与 `security_events`：两张表的留存策略本来就是
+同一个，分成两个脚本早晚会漏掉一个。
+
+### 验证
+
+```bash
+cd backend && npm run security:check         # 白名单 / 脱敏 / 聚合键 / 绝不记密码（纯函数，59 项）
+python scripts/verify_security_events.py     # 端到端：真实失败尝试落库后逐条断言（89 项）
+```
+
+两条最有价值的断言：**5 个并发失败尝试一次都没丢**（`occurrences` 必须是 SQL 层原子自增，而不是
+「读出来 +1 再写回」），以及**「缺 token / 过期 token / optionalAuth 一次都没写」**——
+负向断言和正向同等重要，它们是挡住日志洪水的那道闸。
 
 ## 接口健壮性（横向巡检）
 
@@ -334,7 +395,7 @@ python scripts/audit_backend_api.py
 
 ### 后端
 - Node.js
-- Express 5
+- Express 4
 - MySQL 8
 - Sequelize
 - JWT
@@ -365,7 +426,7 @@ community/
 │   │   ├── routes/       # 路由
 │   │   ├── utils/        # 工具函数（含上传文件的安全路径校验）
 │   │   └── middleware/   # 中间件（鉴权 / 限流 / 上传）
-│   ├── scripts/          # 运维脚本（prune-uploads.js 孤儿封面清扫）
+│   ├── scripts/          # 运维脚本（封面清扫 / 日志留存清理 / 净化规则自检）
 │   ├── uploads/          # 用户上传的封面（运行时数据，不进仓库）
 │   └── server.js
 ├── scripts/               # Playwright + urllib 端到端验证脚本
@@ -384,6 +445,7 @@ community/
 ## 下一步计划
 
 - [ ] 图片裁剪与压缩
+- [ ] 安全事件目前只有后端与接口（`/logs/me/security`），还没有前端页面
 - [ ] 把 `scripts/verify_*.py` 接入 CI
 - [ ] 单元测试与覆盖率
 - [ ] 移动端交互细节继续打磨

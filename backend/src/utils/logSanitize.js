@@ -115,9 +115,45 @@ const sanitizeIp = (ip) => (typeof ip === 'string' && ip.length <= 45 && isIP(ip
 // UA 是不可信请求头，只做净化与截断，不做格式校验（合法 UA 本来就五花八门）
 const sanitizeUserAgent = (ua) => sanitizeLogText(ua, 255)
 
+/**
+ * 账号标识脱敏（安全事件专用）。
+ *
+ * 安全事件的价值是「看得出同一来源在反复尝试同一个账号」，不是「把别人输错的邮箱
+ * 完整抄一份存 365 天」。所以这里保留极少量特征：
+ *   邮箱  → `z***@e***.com`（首字符 + 域名首字符 + 顶级域，其余全部遮掉）
+ *   其它  → `a***`（只留首字符）
+ *
+ * ⚠️ **会碰撞**（`zhang@x.com` 与 `zhao@x.com` 都变成 `z***@x***.com`）。这是有意
+ * 的取舍，不是疏漏：账号确实存在时另有 `target_user_id` 做精确身份；账号不存在时
+ * 碰撞的唯一后果是「同一 IP 对几个陌生账号的尝试被并成一条」，对安全判断无害 ——
+ * 而如果为此存明文邮箱，代价是长期留存他人的 PII。
+ *
+ * @param {*} input 原始账号（邮箱 / 用户名）
+ * @returns {string|null} 脱敏后的短标识；净化后为空则返回 null
+ */
+const maskAccount = (input) => {
+  // 先走同一套净化：注入串、控制字符、零宽、超长都不会经由这条路径绕进日志
+  const text = sanitizeLogText(input, 120)
+  if (!text) return null
+
+  const at = text.lastIndexOf('@')
+  if (at <= 0 || at === text.length - 1) {
+    // 不是邮箱形态：只留首字符
+    return text.length <= 1 ? text : `${text[0]}***`
+  }
+
+  const local = text.slice(0, at)
+  const domain = text.slice(at + 1)
+  // 顶级域保留：`.com` / `.cn` 这种信息量低，但能让运维一眼看出「打的是哪一类站点」
+  const dot = domain.lastIndexOf('.')
+  const tld = dot > 0 ? domain.slice(dot) : ''
+  return `${local[0]}***@${domain[0]}***${tld}`
+}
+
 module.exports = {
   sanitizeLogText,
   sanitizeDetail,
   sanitizeIp,
-  sanitizeUserAgent
+  sanitizeUserAgent,
+  maskAccount
 }

@@ -9,7 +9,8 @@ exports.register = asyncHandler(async (req, res) => {
 })
 
 exports.login = asyncHandler(async (req, res) => {
-  const data = await userService.login(req.body)
+  // 与 register 一样透传 req：登录失败要留安全事件（ip / ua 都从 req 取）
+  const data = await userService.login(req.body, req)
   ok(res, data, '登录成功')
 })
 

@@ -1,12 +1,14 @@
 /**
- * 按留存期清理操作日志。
+ * 按留存期清理「日志类」表。
  *
- * 为什么需要它：activity_logs 只写不删，是唯一会无限增长的业务表。
- * 一条日志几十字节到几百字节，日常量级很小，但「永不清理」等于给运维埋一颗
- * 定时炸弹 —— 半年后没人敢动这张表，也没人知道它为什么这么大。
+ * 为什么需要它：activity_logs 与 security_events 都是只写不删的表。一条记录几十字节到
+ * 几百字节，日常量级很小，但「永不清理」等于给运维埋一颗定时炸弹 —— 半年后没人敢动
+ * 这两张表，也没人知道它们为什么这么大。
  *
- * 留存期默认 365 天（审计通常要求覆盖一个完整年度的对账周期），可通过
- * --days=N 覆盖。**默认只报告不删除**，要真删必须显式加 --apply。
+ * 两张表放在同一个入口，是因为它们的留存策略本来就是同一个（审计通常要求覆盖一个
+ * 完整年度的对账周期）。分成两个脚本的话，将来改留存期一定会漏掉其中一个。
+ *
+ * 留存期默认 365 天，可通过 --days=N 覆盖。**默认只报告不删除**，要真删必须显式加 --apply。
  *
  * 用法（在 backend/ 下）：
  *   node scripts/prune-activity-logs.js                 # 干跑，只报告将要删除的条数
@@ -19,7 +21,7 @@ const path = require('node:path')
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') })
 
 const { Op } = require('sequelize')
-const { ActivityLog, sequelize } = require('../src/models')
+const { ActivityLog, SecurityEvent, sequelize } = require('../src/models')
 
 const DEFAULT_DAYS = 365
 
@@ -39,30 +41,63 @@ if (!Number.isFinite(days) || days < 1) {
 
 const fmt = (d) => d.toISOString().slice(0, 19).replace('T', ' ')
 
-async function main() {
-  const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000)
-
+// 报告 + 返回超期条数。干跑与真删共用这一段，避免两条路径各算一遍算岔。
+async function reportActivityLogs(cutoff) {
   const total = await ActivityLog.count()
   const expired = await ActivityLog.count({ where: { created_at: { [Op.lt]: cutoff } } })
-
   console.log(`操作日志留存期: ${days} 天，截止时间: ${fmt(cutoff)} UTC`)
   console.log(`总计 ${total} 条 | 超出留存期 ${expired} 条`)
 
-  if (!expired) {
-    console.log('\n没有超出留存期的日志。')
-    return
+  if (expired) {
+    // 按动作分布报一下，避免操作者对着一个数字不知道删的是什么
+    const rows = await ActivityLog.findAll({
+      attributes: ['action', [sequelize.fn('COUNT', sequelize.col('id')), 'n']],
+      where: { created_at: { [Op.lt]: cutoff } },
+      group: ['action'],
+      raw: true
+    })
+    console.log('将要删除的操作日志按动作分布：')
+    for (const row of rows) {
+      console.log(`  - ${row.action}: ${row.n}`)
+    }
   }
+  return expired
+}
 
-  // 按动作分布报一下，避免操作者对着一个数字不知道删的是什么
-  const rows = await ActivityLog.findAll({
-    attributes: ['action', [sequelize.fn('COUNT', sequelize.col('id')), 'n']],
-    where: { created_at: { [Op.lt]: cutoff } },
-    group: ['action'],
-    raw: true
-  })
-  console.log('\n将要删除的日志按动作分布：')
-  for (const row of rows) {
-    console.log(`  - ${row.action}: ${row.n}`)
+async function reportSecurityEvents(cutoff) {
+  const total = await SecurityEvent.count()
+  const expired = await SecurityEvent.count({ where: { created_at: { [Op.lt]: cutoff } } })
+  console.log(`\n安全事件留存期: ${days} 天`)
+  console.log(`总计 ${total} 条 | 超出留存期 ${expired} 条`)
+
+  if (expired) {
+    const rows = await SecurityEvent.findAll({
+      attributes: [
+        'event',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'n'],
+        [sequelize.fn('SUM', sequelize.col('occurrences')), 'occ']
+      ],
+      where: { created_at: { [Op.lt]: cutoff } },
+      group: ['event'],
+      raw: true
+    })
+    console.log('将要删除的安全事件按类型分布（occ = 其中聚合了多少次尝试）：')
+    for (const row of rows) {
+      console.log(`  - ${row.event}: ${row.n} 条 / ${row.occ} 次`)
+    }
+  }
+  return expired
+}
+
+async function main() {
+  const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000)
+
+  const expiredLogs = await reportActivityLogs(cutoff)
+  const expiredEvents = await reportSecurityEvents(cutoff)
+
+  if (!expiredLogs && !expiredEvents) {
+    console.log('\n两张表都没有超出留存期的记录。')
+    return
   }
 
   if (!apply) {
@@ -70,8 +105,9 @@ async function main() {
     return
   }
 
-  const removed = await ActivityLog.destroy({ where: { created_at: { [Op.lt]: cutoff } } })
-  console.log(`\n已删除 ${removed} 条日志。`)
+  const removedLogs = await ActivityLog.destroy({ where: { created_at: { [Op.lt]: cutoff } } })
+  const removedEvents = await SecurityEvent.destroy({ where: { created_at: { [Op.lt]: cutoff } } })
+  console.log(`\n已删除操作日志 ${removedLogs} 条、安全事件 ${removedEvents} 条。`)
 }
 
 main()

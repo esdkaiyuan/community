@@ -6,6 +6,7 @@ const { clampInt, MAX_PAGE } = require('../utils/pagination')
 const { stripEmoji, stripControlChars } = require('../utils/textSanitize')
 const ApiError = require('../utils/ApiError')
 const activityLogService = require('./activityLog.service')
+const securityEventService = require('./securityEvent.service')
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -74,41 +75,72 @@ const toClientUser = (user) => ({
 })
 
 exports.register = async ({ username, email, password }, req) => {
-  if (!username || !email || !password) {
-    throw ApiError.badRequest('用户名、邮箱和密码为必填项')
-  }
-  // 归一化在长度校验之前：`"🎯🎯"` 这类「看着 2 个字符、剥完全没了」的名字要在这里被拒
-  const { value: name, adjusted } = normalizeUsername(username)
-  if (!EMAIL_RE.test(email)) {
-    throw ApiError.badRequest('邮箱格式不正确')
-  }
-  if (password.length < 6) {
-    throw ApiError.badRequest('密码至少 6 位')
-  }
+  try {
+    if (!username || !email || !password) {
+      throw ApiError.badRequest('用户名、邮箱和密码为必填项')
+    }
+    // 归一化在长度校验之前：`"🎯🎯"` 这类「看着 2 个字符、剥完全没了」的名字要在这里被拒
+    const { value: name, adjusted } = normalizeUsername(username)
+    if (!EMAIL_RE.test(email)) {
+      throw ApiError.badRequest('邮箱格式不正确')
+    }
+    if (password.length < 6) {
+      throw ApiError.badRequest('密码至少 6 位')
+    }
 
-  const existing = await User.findOne({ where: { [Op.or]: [{ username: name }, { email }] } })
-  if (existing) {
-    throw ApiError.conflict('用户名或邮箱已被注册')
+    const existing = await User.findOne({ where: { [Op.or]: [{ username: name }, { email }] } })
+    if (existing) {
+      const conflict = ApiError.conflict('用户名或邮箱已被注册')
+      // 挂一个非响应字段：安全事件想知道「撞上的是哪个账号」（账号枚举的命中记录），
+      // 但对外文案必须保持模糊（否则注册接口就成了查号器）。响应序列化只取
+      // statusCode / message，多挂一个属性不会漏给用户。
+      conflict.targetUserId = existing.id
+      throw conflict
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10)
+    const user = await User.create({ username: name, email, password_hash: passwordHash })
+    const token = generateToken(user.id)
+
+    // 注册是审计时间线的起点（后面所有日志靠 user_id 串起来），必须留痕。
+    // 写入失败只 warn，绝不把注册带崩 —— 见 activityLog.service 的约定。
+    await activityLogService.logUserRegistered({ userId: user.id, user, req })
+
+    return { user: toClientUser(user), token, adjusted }
+  } catch (error) {
+    // 走成功的路径在上面 return 掉了，能落到这里的都是「被拒」。
+    // 被拒的注册同样要留痕：撞库、账号枚举、批量注册试探全靠这一条线索。
+    // ⚠️ 只记 4xx：5xx 是我们自己的 bug，不是攻击信号，记进安全事件会误导取证。
+    // ⚠️ 传进去的只有 username（脱敏后入库），**没有 password** —— 见本模块顶部的约定。
+    if (error.statusCode >= 400 && error.statusCode < 500) {
+      await securityEventService.logRegisterRejected({
+        account: username,
+        targetUserId: error.targetUserId,
+        reason: error.message,
+        req
+      })
+    }
+    throw error
   }
-
-  const passwordHash = await bcrypt.hash(password, 10)
-  const user = await User.create({ username: name, email, password_hash: passwordHash })
-  const token = generateToken(user.id)
-
-  // 注册是审计时间线的起点（后面所有日志靠 user_id 串起来），必须留痕。
-  // 写入失败只 warn，绝不把注册带崩 —— 见 activityLog.service 的约定。
-  await activityLogService.logUserRegistered({ userId: user.id, user, req })
-
-  return { user: toClientUser(user), token, adjusted }
 }
 
-exports.login = async ({ email, password }) => {
+exports.login = async ({ email, password }, req) => {
   if (!email || !password) {
+    await securityEventService.logLoginRejected({ account: email, reason: '邮箱和密码为必填项', req })
     throw ApiError.badRequest('邮箱和密码为必填项')
   }
 
   const user = await User.findOne({ where: { email } })
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+    // 登录失败是本表最重要的信号：它才是「暴力破解 / 撞库」的直接证据。
+    // 账号存在时记下 target_user_id（「有人在打这个账号」），不存在时只留脱敏标识。
+    // 对外文案刻意不区分这两种情况（防账号枚举），日志里也保持同一口径。
+    await securityEventService.logLoginRejected({
+      account: email,
+      targetUserId: user ? user.id : null,
+      reason: '邮箱或密码错误',
+      req
+    })
     throw ApiError.unauthorized('邮箱或密码错误')
   }
 

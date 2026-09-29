@@ -191,11 +191,89 @@ def cleanup_users(uids):
     placeholders = ",".join(str(i) for i in uids)
     # 同上：activity_logs 没有外键，删用户不会带走它，必须自己来
     sql(f"DELETE FROM activity_logs WHERE user_id IN ({placeholders});")
+    # 安全事件同理（且「被瞄准的账号」是另一个列名 target_user_id，不是 user_id）
+    sql(f"DELETE FROM security_events WHERE target_user_id IN ({placeholders});")
     sql(f"DELETE FROM users WHERE id IN ({placeholders});")
+
+
+# 本机所有验证流量都来自 localhost。安全事件（security_events）的来源标识就是 IP，
+# 所以按 IP 清是**精确**的 —— 线上真实用户不会从这些地址打进来。
+LOCAL_IPS = "('127.0.0.1','::1','::ffff:127.0.0.1')"
+
+
+def cleanup_security_events():
+    """清掉本机验证产生的安全事件。
+
+    ⚠️ security_events 与 activity_logs 同一个病：**不挂外键**，删用户 / 删项目都带不走它。
+    而且它比 activity_logs 更容易漏 —— 不是「谁造的数」写进去的，是**任何一次被拒的
+    登录 / 注册 / 坏 token** 都会写一行，包括巡检脚本里成百上千条坏输入探测。
+    所以：**凡是会触发 401 / 400（注册登录路径）的脚本，finally 里都要调这个。**
+    它还有聚合：同一 (事件, IP, 账号, 路径) 在 10 分钟窗口内会**更新既有行**而不是新增，
+    所以「按 id 快照删」靠不住（可能是更新了快照之前就存在的行）—— 按 IP 清才是干净的。
+    """
+    sql(f"DELETE FROM security_events WHERE ip IN {LOCAL_IPS} OR ip IS NULL;")
+
+
+def security_event_rows(where="1"):
+    """读安全事件（用于断言落库内容）。返回 dict 列表，值为字符串，NULL 归一成空串。"""
+    cols = "id, event, reason, COALESCE(target_user_id,''), COALESCE(account,''), COALESCE(ip,''), COALESCE(path,''), COALESCE(method,''), occurrences"
+    raw = sql_one(f"SELECT {cols} FROM security_events WHERE {where} ORDER BY id")
+    rows = []
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        f = line.split("\t")
+        rows.append(
+            {
+                "id": int(f[0]),
+                "event": f[1],
+                "reason": f[2],
+                "target_user_id": f[3],
+                "account": f[4],
+                "ip": f[5],
+                "path": f[6],
+                "method": f[7],
+                "occurrences": int(f[8]),
+            }
+        )
+    return rows
+
+
+def count_dirty_security_text():
+    """全表扫「不该出现的字节」：CR / LF / ESC / NUL / TAB。
+
+    不能在 Python 侧按行解析着找 —— 真要是有 CR/LF，`splitlines()` 会先把它吃掉，
+    反而测不出来。所以交给 SQL 判：用 CHAR(n) 构造字符，不需要在命令里塞真实控制符。
+    """
+    cols = ["event", "reason", "account", "ip", "user_agent", "path", "method"]
+    conds = [f"{c} LIKE CONCAT('%', CHAR({code}), '%')" for c in cols for code in (13, 10, 27, 0, 9)]
+    return int(sql_one("SELECT COUNT(*) FROM security_events WHERE " + " OR ".join(conds)))
+
 
 
 def finish():
     """打印汇总；有断言失败或 console 错误则以退出码 1 结束"""
+    # 收尾兜底：清掉本机验证产生的安全事件。
+    #
+    # 为什么放在这里（而不是让每个脚本自己记得清）：security_events 有**三条**泄漏路径，
+    # 而且只有第一条是「谁造的数」写进去的：
+    #   ① 显式造的安全事件；
+    #   ② 任何一次被拒的登录 / 注册（登录页输错密码的用例、重名注册的用例…）；
+    #   ③ **巡检脚本的坏输入探测**（audit_backend_api 的「坏输入 × 全端点」矩阵里，
+    #      注册/登录/坏 token 那些用例全是这一类，一次跑几百条）。
+    # 上一轮的教训是「新增一张不挂外键的表，6 个既有脚本跑完沉了 23 行」—— 靠每个调用点
+    # 自己记得清是不可靠的。finish() 是每个脚本都会走的唯一收口，放这里才结构性地成立。
+    # 只清本机来源：线上真实用户不会从 127.0.0.1 / ::1 打进来。
+    try:
+        removed = sql_one(
+            f"SELECT COUNT(*) FROM security_events WHERE ip IN {LOCAL_IPS} OR ip IS NULL"
+        )
+        if removed not in ("0", ""):
+            sql(f"DELETE FROM security_events WHERE ip IN {LOCAL_IPS} OR ip IS NULL;")
+            print(f"sweep: 已清理本机来源的安全事件 {removed} 行")
+    except Exception as err:  # noqa: BLE001 - 兜底清理失败不该改变本轮结论
+        print(f"sweep: 安全事件兜底清理失败（不影响本轮结论）: {err}")
+
     print("assert failed:", len(assert_fails))
     for f in assert_fails:
         print(" -", f)

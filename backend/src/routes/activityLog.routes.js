@@ -11,4 +11,8 @@ router.use(auth)
 
 router.get('/me', activityLogController.getMyLogs)
 
+// 针对我账号的被拒尝试（安全事件）。语义与 /me 不同：那边是我做成了什么，
+// 这边是别人对我没做成的尝试；实现上走另一张表（security_events，含聚合列）。
+router.get('/me/security', activityLogController.getMySecurityEvents)
+
 module.exports = router

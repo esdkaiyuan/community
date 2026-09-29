@@ -176,3 +176,37 @@ CREATE TABLE IF NOT EXISTS activity_logs (
     INDEX idx_project_time (project_id, created_at),
     INDEX idx_action_time (action, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
+
+-- 安全事件表（被拒的尝试：登录失败、注册被拒、令牌无效）
+-- 与 activity_logs 刻意分开：那边记「谁做成了什么」（有身份、可逐条读），
+-- 这边记「有人尝试但没成功」（大多没有身份），合表会让用户自己的时间线被攻击噪音灌满。
+-- 同样**不建外键**。三条硬约束：
+--   1. 绝不记密码（任何形态）；
+--   2. account 列只存**脱敏**后的账号标识，不存明文邮箱；
+--   3. 按 fingerprint + 时间窗口**聚合**（occurrences / last_seen_at），
+--      否则「同一来源反复失败」这一本质特征会变成海量重复行。
+-- 写入入口唯一：backend/src/services/securityEvent.service.js
+CREATE TABLE IF NOT EXISTS security_events (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    event VARCHAR(40) NOT NULL COMMENT '事件标识（auth.login.rejected 等，服务层白名单约束）',
+    reason VARCHAR(120) NOT NULL COMMENT '被拒原因（系统文案，已净化）',
+    target_user_id INT UNSIGNED DEFAULT NULL COMMENT '被尝试的目标账号ID（仅当账号存在）',
+    account VARCHAR(80) DEFAULT NULL COMMENT '被尝试的账号标识（已脱敏，不存明文）',
+    ip VARCHAR(45) DEFAULT NULL COMMENT '来源IP',
+    user_agent VARCHAR(255) DEFAULT NULL COMMENT '客户端标识（已净化并截断）',
+    path VARCHAR(120) DEFAULT NULL COMMENT '接口路径（不含 query）',
+    method VARCHAR(10) DEFAULT NULL COMMENT 'HTTP 方法',
+    fingerprint VARCHAR(64) NOT NULL COMMENT '聚合键 sha256(event|ip|account|targetUserId|path)',
+    occurrences INT UNSIGNED NOT NULL DEFAULT 1 COMMENT '窗口内被合并的尝试次数',
+    -- ⚠️ 必须是 TIMESTAMP 而不是 DATETIME：Sequelize 把连接会话时区固定成 +00:00，
+    -- 于是它写进去的 DATETIME 是**裸 UTC 值**，而 created_at（TIMESTAMP）是时区感知的 ——
+    -- 在 mysql CLI（会话 +08:00）里看同一行，两列会差 8 小时，连 SQL 里直接比较都会得出
+    -- 错误结论。这坑是实测踩到的（验证脚本的「last_seen_at 不早于 created_at」断言报错）。
+    -- 统一成 TIMESTAMP，任何会话里两列都自洽。
+    last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近一次发生时间（窗口按它计算）',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_fingerprint_time (fingerprint, last_seen_at),
+    INDEX idx_event_time (event, created_at),
+    INDEX idx_ip_time (ip, created_at),
+    INDEX idx_target_time (target_user_id, last_seen_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='安全事件表（被拒的尝试，已聚合）';
