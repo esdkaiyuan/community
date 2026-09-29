@@ -181,7 +181,7 @@
       >
         <AppIcon name="image" class="h-6 w-6" />
         <span class="font-medium">点击选择图片，或拖到这里</span>
-        <span class="text-xs text-ink-dim">支持 JPG / PNG / WebP / GIF，不超过 5MB</span>
+        <span class="text-xs text-ink-dim">支持 JPG / PNG / WebP / GIF，大图先自动压缩再上传</span>
       </button>
 
       <input
@@ -246,6 +246,7 @@ import { getCategories } from '@/api/category'
 import { categoryIcon } from '@/utils/categoryIcon'
 import { stripEmoji } from '@/utils/text'
 import { TAG_MAX_COUNT, TAG_MAX_LENGTH, DEFAULT_TAG_SUGGESTIONS, addTagToList, cleanTag, toTagList } from '@/utils/tags'
+import { compressImage, formatBytes } from '@/utils/imageCompress'
 import AppIcon from '@/components/AppIcon.vue'
 import { toast } from '@/composables/useToast'
 
@@ -301,22 +302,34 @@ const onDrop = (e) => {
 }
 
 const handleFile = async (file) => {
-  // 本地先拦一道：类型/体积不对就当场说清楚，别让用户白等一次 5MB 上传
+  // 类型先拦一道：这个压不回来，当场说清楚
   if (!COVER_ACCEPT.includes(file.type)) {
     toast('只支持 JPG / PNG / WebP / GIF 格式的图片', 'error')
-    return
-  }
-  if (file.size > COVER_MAX_BYTES) {
-    toast('图片不能超过 5MB，请压缩后再上传', 'error')
     return
   }
 
   uploading.value = true
   try {
-    const res = await uploadCover(file)
+    // 大图先在本机压一遍再上传。手机原图动辄 6~10MB，旧流程把用户挡在 5MB 上限外、
+    // 只能自己去找工具压 —— 这一步替他们做掉。
+    // 压缩是「尽力而为」：解不出来（冷门格式 / 损坏文件）就原样传，交给下面那行体积校验。
+    const { file: prepared, compressed, originalBytes } = await compressImage(file)
+
+    // 体积校验挪到压缩**之后**：压完还超限才算真的超限。
+    // （GIF 不参与压缩，走的就是这一条 —— 动图被重编码成静帧比超限被拒更糟）
+    if (prepared.size > COVER_MAX_BYTES) {
+      toast('图片不能超过 5MB，请压缩后再上传', 'error')
+      return
+    }
+
+    const res = await uploadCover(prepared)
     form.coverImage = res.data.url
     coverBroken.value = false
-    toast('封面已上传')
+    toast(
+      compressed
+        ? `封面已上传（已自动压缩 ${formatBytes(originalBytes)} → ${formatBytes(prepared.size)}）`
+        : '封面已上传'
+    )
   } catch {
     // 服务端拒绝的原因（魔数不符 / 超限）已由拦截器提示
   } finally {
