@@ -29,6 +29,18 @@ const errorHandler = (err, req, res, _next) => {
     log.error('数据库错误:', err.original?.message || err.message)
   }
 
+  // body-parser 的报错（JSON 语法错、请求体超限）状态码本身是对的（400/413），
+  // 但 message 是英文技术原文，而前端对 4xx 是**原样显示**给用户的 ——
+  // 不翻译的话用户会看到 "Unexpected token , in JSON at position 19"。
+  // 按 err.type 判断（比 match message 文本可靠）。
+  if (err.type === 'entity.parse.failed') {
+    statusCode = 400
+    message = '请求内容不是合法的 JSON'
+  } else if (err.type === 'entity.too.large') {
+    statusCode = 413
+    message = '提交的内容太大了，请精简后再试'
+  }
+
   if (statusCode >= 500) {
     log.error(`${req.method} ${req.originalUrl} ->`, err.stack || err.message)
   } else {

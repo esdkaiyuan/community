@@ -6,6 +6,13 @@ const ApiError = require('../utils/ApiError')
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+// 资料字段上界。bio 与前端 textarea 的 maxlength 对齐（200 字符）；
+// avatar 没有前端 maxlength —— 那是**有意**的：给 URL 输入框加 maxlength 会把
+// 粘贴进来的长链接静默截断，变成一条坏链接，还不如让服务端明确报错。
+// 这里的 255 是 users.avatar 列（VARCHAR(255)）的容量，属于「DB 存不下就必须拦」的那类校验。
+const BIO_MAX_LENGTH = 200
+const AVATAR_MAX_LENGTH = 255
+
 const toClientUser = (user) => ({
   id: user.id,
   username: user.username,
@@ -75,8 +82,20 @@ exports.updateProfile = async (userId, { username, avatar, bio }) => {
     }
     user.username = name
   }
-  if (avatar !== undefined) user.avatar = avatar
-  if (bio !== undefined) user.bio = bio
+  if (avatar !== undefined) {
+    const link = String(avatar ?? '').trim()
+    if (link.length > AVATAR_MAX_LENGTH) {
+      throw ApiError.badRequest(`头像链接最长 ${AVATAR_MAX_LENGTH} 个字符`)
+    }
+    user.avatar = link
+  }
+  if (bio !== undefined) {
+    const text = String(bio ?? '').trim()
+    if (text.length > BIO_MAX_LENGTH) {
+      throw ApiError.badRequest(`个人简介最多 ${BIO_MAX_LENGTH} 个字符`)
+    }
+    user.bio = text
+  }
 
   await user.save()
   return toClientUser(user)

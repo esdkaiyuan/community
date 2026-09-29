@@ -92,6 +92,15 @@ const SORT_MAP = {
 const TAG_MAX_COUNT = 5
 const TAG_MAX_LENGTH = 12
 
+// 文本上界：同样与前端输入框的 maxlength 对齐（标题 60 / 介绍 2000）。
+// 这两条不能省 —— 缺了它们，超长输入会一路走到 MySQL 列宽限制
+// （title 是 VARCHAR(200)、description 是 TEXT），抛 1406「Data too long」，
+// 经 errorHandler 变成用户完全看不懂的 500「数据存储异常」。
+// 取值同时满足两个条件：不严于前端承诺（否则前端能填、提交必失败），
+// 又远在列容量之内（60 ≪ 200 字符；2000 字符 × 最多 4 字节 ≪ 65535 字节）。
+const TITLE_MAX_LENGTH = 60
+const DESCRIPTION_MAX_LENGTH = 2000
+
 // 标签归一化：剥 emoji → 收敛空白 → 截断 → 去重（大小写不敏感，避免「开源」与「开源 」被算成两个标签）
 // 前端已做一遍，这里是服务端的最后一道闸：直接调 API 也要得到干净的 tags
 const normalizeTags = (tags) => {
@@ -412,9 +421,15 @@ exports.createProject = async ({ title, description, coverImage, categoryId, tag
   const cleanTitle = stripEmoji(String(title ?? '')).trim()
   if (!cleanTitle) throw ApiError.badRequest('标题为必填项')
   if (cleanTitle.length < 4) throw ApiError.badRequest('标题至少 4 个字符')
+  if (cleanTitle.length > TITLE_MAX_LENGTH) {
+    throw ApiError.badRequest(`标题最多 ${TITLE_MAX_LENGTH} 个字符`)
+  }
   const cleanDescription = stripEmoji(String(description ?? '')).trim()
   if (cleanDescription.length < 20) {
     throw ApiError.badRequest('项目介绍至少 20 个字符')
+  }
+  if (cleanDescription.length > DESCRIPTION_MAX_LENGTH) {
+    throw ApiError.badRequest(`项目介绍最多 ${DESCRIPTION_MAX_LENGTH} 个字符`)
   }
   await assertCategoryExists(categoryId)
 
@@ -447,11 +462,17 @@ exports.updateProject = async (id, userId, { title, description, coverImage, cat
   if (title !== undefined) {
     const cleanTitle = stripEmoji(String(title)).trim()
     if (cleanTitle.length < 4) throw ApiError.badRequest('标题至少 4 个字符')
+    if (cleanTitle.length > TITLE_MAX_LENGTH) {
+      throw ApiError.badRequest(`标题最多 ${TITLE_MAX_LENGTH} 个字符`)
+    }
     project.title = cleanTitle
   }
   if (description !== undefined) {
     const cleanDescription = stripEmoji(String(description)).trim()
     if (cleanDescription.length < 20) throw ApiError.badRequest('项目介绍至少 20 个字符')
+    if (cleanDescription.length > DESCRIPTION_MAX_LENGTH) {
+      throw ApiError.badRequest(`项目介绍最多 ${DESCRIPTION_MAX_LENGTH} 个字符`)
+    }
     project.description = cleanDescription
   }
   if (coverImage !== undefined) project.cover_image = coverImage || null
