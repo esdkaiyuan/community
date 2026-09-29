@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs')
 const { Op } = require('sequelize')
-const { User, Comment, Project, ProjectParticipant, ProjectLike, ProjectFavorite, sequelize } = require('../models')
+const { User, Comment, Project, ProjectParticipant, ProjectFavorite, sequelize } = require('../models')
 const { generateToken } = require('../utils/jwt')
 const ApiError = require('../utils/ApiError')
 

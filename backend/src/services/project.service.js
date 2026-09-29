@@ -5,6 +5,7 @@ const ApiError = require('../utils/ApiError')
 const { stripEmoji } = require('../utils/textSanitize')
 const { toClientUser } = require('./user.service')
 const notificationService = require('./notification.service')
+const coverService = require('./cover.service')
 
 // 数据库行 -> 前端数据形状（camelCase）
 const toClientProject = (p, extra = {}) => {
@@ -439,6 +440,10 @@ exports.updateProject = async (id, userId, { title, description, coverImage, cat
   const project = await getProjectOr404(id)
   if (project.creator_id !== userId) throw ApiError.forbidden('无权修改此项目')
 
+  // 换封面 / 清空封面时，旧的上传文件会变成没人引用的孤儿。先留一份旧值，
+  // 等保存成功后再回收（失败时不动磁盘，避免「改了没生效却把图删了」）。
+  const previousCover = project.cover_image
+
   if (title !== undefined) {
     const cleanTitle = stripEmoji(String(title)).trim()
     if (cleanTitle.length < 4) throw ApiError.badRequest('标题至少 4 个字符')
@@ -455,6 +460,12 @@ exports.updateProject = async (id, userId, { title, description, coverImage, cat
   if (tags !== undefined && Array.isArray(tags)) project.tags = normalizeTags(tags)
 
   await project.save()
+
+  // 回收放在 save 之后：回收本身失败不影响本次编辑的结果，也不该让接口报错
+  if (coverImage !== undefined && previousCover && previousCover !== project.cover_image) {
+    await coverService.releaseCover(previousCover, id).catch(() => {})
+  }
+
   return toClientProject(project)
 }
 

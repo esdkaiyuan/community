@@ -7,13 +7,15 @@
 后端既没有 multer 也没有静态服务，所有封面请求全是 404。
 本脚本防的就是这个功能再次悄无声息地消失。
 
-覆盖五层：
+覆盖七层：
   A. 鉴权与成功路径：未登录 401 / 上传 200 / 返回相对路径 / 服务端重命名 / 静态可访问
   B. 校验边界：非图片 MIME、伪造魔数（文本改名 .png）、超过 5MB、字段名错
      —— 并且**被拒后磁盘上不留垃圾文件**
   C. 静态服务安全：不存在的文件 404、路径穿越拿不到仓库里的文件
   D. 与项目数据的联动：创建时带封面 / 编辑更换 / 编辑清空（传空串必须真的清空）
   E. 前端交互：上传区 → 选文件出预览 → 外链入口 → 移除后回到上传区 → 零 console 错误
+  F. 旧文件回收：换封面 / 换成外链 / 清空时回收旧文件；共享引用不误删；哨兵文件不受影响
+  G. 孤儿清扫脚本：干跑只报告不删、--apply 才删、被引用的封面绝不碰
 
 用法（必须从仓库根目录跑）：python scripts/verify_cover_upload.py
 """
@@ -21,6 +23,7 @@ import json
 import mimetypes
 import os
 import struct
+import subprocess
 import sys
 import time
 import urllib.error
@@ -47,12 +50,46 @@ PIDS = []
 UIDS = []
 # 本轮上传产生的物理文件，结束时逐个删除（绝不整目录清空——那里可能有真实用户上传）
 UPLOADED = []
+# 脚本手工造的文件（哨兵 / 孤儿样本），同样在本轮结束时清掉
+HANDMADE = []
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-UPLOAD_DIR = os.path.join(REPO, "backend", "uploads", "projects")
+BACKEND = os.path.join(REPO, "backend")
+UPLOAD_DIR = os.path.join(BACKEND, "uploads", "projects")
 TMP = os.path.join(os.environ.get("TEMP", "/tmp"), "_cover_verify")
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+
+
+def path_of(url):
+    """站内封面 URL -> 磁盘路径（用于断言文件到底在不在）"""
+    return os.path.join(UPLOAD_DIR, url.rsplit("/", 1)[-1])
+
+
+def exists(url):
+    return os.path.exists(path_of(url))
+
+
+def prune(*args):
+    """跑一次清扫脚本，返回 (exitcode, stdout)"""
+    proc = subprocess.run(
+        ["node", "scripts/prune-uploads.js", *args],
+        cwd=BACKEND,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+
+
+def stale_file(name, days=2):
+    """在磁盘上造一个「命名合法但没人引用、且已过宽限期」的孤儿文件"""
+    p = os.path.join(UPLOAD_DIR, name)
+    with open(p, "wb") as f:
+        f.write(PNG_MAGIC + b"orphan")
+    old = time.time() - days * 86400
+    os.utime(p, (old, old))
+    return name
 
 
 # ---------------------------------------------------------------- 测试素材
@@ -226,6 +263,85 @@ def main():
     api(f"/projects/{pid}", {"coverImage": ""}, token=token, method="PUT")
     check("传空串能真正清空封面（而不是被忽略）", not api(f"/projects/{pid}", token=token)["data"]["coverImage"])
 
+    print("\n== F. 换 / 清封面时回收旧文件 ==")
+    # 哨兵：命名合法、内容无所谓、时间新鲜。全程任何人都不该碰它 ——
+    # 回收逻辑必须做到「只删自己那张旧图」，而不是顺手清目录
+    sentinel_name = "1700000000123-5e171e100000.png"
+    with open(os.path.join(UPLOAD_DIR, sentinel_name), "wb") as f:
+        f.write(PNG_MAGIC + b"sentinel")
+    HANDMADE.append(sentinel_name)
+
+    status, body = upload(token, ok_png)
+    a = body["data"]["url"]
+    UPLOADED.append(a.rsplit("/", 1)[-1])
+    api(f"/projects/{pid}", {"coverImage": a}, token=token, method="PUT")
+    check("挂上第一张封面后文件确实在磁盘上", exists(a))
+
+    status, body = upload(token, ok_png)
+    b = body["data"]["url"]
+    UPLOADED.append(b.rsplit("/", 1)[-1])
+    api(f"/projects/{pid}", {"coverImage": b}, token=token, method="PUT")
+    check("换封面后新文件已落盘", exists(b))
+    check("换封面后旧文件被回收（以前这些会永久堆积，把磁盘吃满）", not exists(a))
+
+    # 换成站外链接：站内那张旧图同样失去引用，应回收；外链本身不是磁盘上的东西
+    ext = "https://example.com/some-cover.png"
+    api(f"/projects/{pid}", {"coverImage": ext}, token=token, method="PUT")
+    check("换成站外链接后，原站内文件被回收", not exists(b))
+    check(
+        "站外链接被原样保存（不被本地化或改写）",
+        api(f"/projects/{pid}", token=token)["data"]["coverImage"] == ext,
+    )
+
+    # 共享引用保护：同一张图被两个项目引用时，改掉其中一个不能把图删了
+    status, body = upload(token, ok_png)
+    c = body["data"]["url"]
+    UPLOADED.append(c.rsplit("/", 1)[-1])
+    pid2 = api(
+        "/projects",
+        {
+            "title": "封面共享引用验证项目",
+            "description": "用于验证同一张封面被两个项目引用时不会被误删，验证结束即完整清理。",
+            "categoryId": 1,
+            "coverImage": c,
+        },
+        token=token,
+    )["data"]["id"]
+    PIDS.append(pid2)
+    api(f"/projects/{pid}", {"coverImage": c}, token=token, method="PUT")
+
+    api(f"/projects/{pid}", {"coverImage": ""}, token=token, method="PUT")
+    check("其中一个项目清空后，仍被另一个引用的图不会被删", exists(c))
+
+    api(f"/projects/{pid2}", {"coverImage": ""}, token=token, method="PUT")
+    check("最后一个引用也清空后，图才被真正回收", not exists(c))
+
+    check("哨兵文件全程未被误删（回收只针对自己那张旧图）", exists(sentinel_name))
+
+    print("\n== G. 孤儿清扫脚本（捡回「上传了但没提交」的漏网文件）==")
+    status, body = upload(token, ok_png)
+    e = body["data"]["url"]
+    UPLOADED.append(e.rsplit("/", 1)[-1])
+    api(f"/projects/{pid}", {"coverImage": e}, token=token, method="PUT")
+    e_name = e.rsplit("/", 1)[-1]
+
+    old_orphan = stale_file("1700000000100-deadbeef0001.png", days=2)
+    fresh_orphan = stale_file("1700000000101-deadbeef0002.png", days=0)
+    HANDMADE.extend([old_orphan, fresh_orphan])
+
+    code, out = prune()
+    check("清扫脚本干跑正常退出（exit 0）", code == 0)
+    check("过了宽限期的孤儿被列为候选", old_orphan in out)
+    check("未过宽限期的未引用文件不被列为候选（避开「正在填表单」的竞态）", fresh_orphan not in out)
+    check("被项目引用的封面不会被当成孤儿", e_name not in out)
+    check("干跑不删除任何文件", exists(e) and os.path.exists(path_of("/uploads/projects/" + old_orphan)))
+
+    code, out = prune("--min-age-hours=1", "--apply")
+    check("加 --apply 才真的删（exit 0）", code == 0)
+    check("过期孤儿被删除", not os.path.exists(path_of("/uploads/projects/" + old_orphan)))
+    check("宽限期内（1h）的新鲜文件即使加了 --apply 也不动", os.path.exists(path_of("/uploads/projects/" + fresh_orphan)))
+    check("被引用的封面在清扫后安然无恙", exists(e))
+
     print("\n== E. 前端交互 ==")
     from playwright.sync_api import sync_playwright
 
@@ -293,14 +409,15 @@ if __name__ == "__main__":
             cleanup_project(pid)
         if UIDS:
             cleanup_users(UIDS)
-        # 只删本轮自己上传的文件，绝不整目录清空
+        # 只删本轮自己上传/自己造的文件，绝不整目录清空
         removed = 0
-        for name in UPLOADED:
+        targets = list(UPLOADED) + list(HANDMADE)
+        for name in targets:
             try:
                 os.remove(os.path.join(UPLOAD_DIR, name))
                 removed += 1
             except OSError:
                 pass
         left = dir_count()
-        print(f"已清理临时数据（上传文件删除 {removed}/{len(UPLOADED)}，目录剩余 {left} 个）")
+        print(f"已清理临时数据（上传文件删除 {removed}/{len(targets)}，目录剩余 {left} 个）")
     finish()

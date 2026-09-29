@@ -8,6 +8,8 @@
     "dev": "nodemon server.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "uploads:prune": "node scripts/prune-uploads.js --apply",
+    "uploads:prune:dry": "node scripts/prune-uploads.js",
     "format": "prettier --write server.js src"
   },
   "dependencies": {

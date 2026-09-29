@@ -21,6 +21,25 @@ module.exports = {
       cron_restart: '0 0 * * *',
       kill_timeout: 5000,
       listen_timeout: 10000
+    },
+    {
+      // 每天凌晨 3:30 清扫上传目录里的孤儿封面（选了图但没提交的那类）。
+      // autorestart:false —— 脚本跑完即退出，靠 cron_restart 每天唤醒一次；
+      // 这是 PM2 跑定时任务的标准姿势，比单开一份 crontab 更好维护。
+      name: 'community-uploads-prune',
+      script: './scripts/prune-uploads.js',
+      args: '--apply',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      watch: false,
+      cron_restart: '30 3 * * *',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: './logs/prune.err.log',
+      out_file: './logs/prune.out.log',
+      merge_logs: true
     }
   ]
 }
