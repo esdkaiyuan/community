@@ -82,6 +82,21 @@ def unread_of(token):
     return api("/notifications/unread-count", token=token)["data"]["unread"]
 
 
+def wait_unread(token, expect, timeout=6.0):
+    """轮询未读数直到等于 expect 或超时。
+
+    通知是 fire-and-forget 写入的，固定 `sleep(SETTLE)` 在机器负载高时跟不上，
+    单次即时读会偶发拿到旧值造成假失败。_verify_common.wait_unread 是同一套逻辑，
+    本脚本因为自带 api() 而保留本地版本。
+    """
+    deadline = time.time() + timeout
+    value = unread_of(token)
+    while value != expect and time.time() < deadline:
+        time.sleep(0.25)
+        value = unread_of(token)
+    return value
+
+
 def main():
     def register(suffix):
         reg = api(
@@ -123,11 +138,10 @@ def main():
         # ============ C. 去重：退出再加入 ============
         api(f"/projects/{pid}/participate", None, token=b["token"], method="DELETE")
         time.sleep(SETTLE)
-        check("退出参与不产生通知", unread_of(owner["token"]) == 1)
+        check("退出参与不产生通知", wait_unread(owner["token"], 1) == 1)
 
         api(f"/projects/{pid}/participate", {}, token=b["token"])
-        time.sleep(SETTLE)
-        check("同一人再次参与不重复通知", unread_of(owner["token"]) == 1)
+        check("同一人再次参与不重复通知", wait_unread(owner["token"], 1) == 1)
         check(
             "通知表里该 actor 仅有 1 条 participate",
             sql_one(
@@ -138,8 +152,7 @@ def main():
 
         # ============ D. 另一位参与者各自一条 ============
         api(f"/projects/{pid}/participate", {}, token=c["token"])
-        time.sleep(SETTLE)
-        check("另一位伙伴参与产生第二条", unread_of(owner["token"]) == 2)
+        check("另一位伙伴参与产生第二条", wait_unread(owner["token"], 2) == 2)
 
         # ============ E. 自参与不通知 ============
         try:

@@ -165,6 +165,14 @@
     @apply mt-1.5 text-xs text-clay;
   }
 
+  /* 封面上传投放区：虚线框 + 拖拽高亮，静止态与 .input 视觉同源 */
+  .upload-drop {
+    @apply flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-sand/40 px-6 py-10 text-sm text-ink-mid transition-all duration-200 hover:border-pine hover:bg-pine-soft/60 hover:text-ink;
+  }
+  .upload-drop.is-dragging {
+    @apply border-pine bg-pine-soft text-pine-deep;
+  }
+
   /* 分类筛选圆片（apple.com：灰底填充，无边框） */
   .cat-pill {
     @apply inline-flex items-center gap-1.5 rounded-full bg-sand px-3.5 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-line;

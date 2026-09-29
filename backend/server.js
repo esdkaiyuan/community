@@ -1,5 +1,6 @@
 require('dotenv').config()
 
+const path = require('node:path')
 const env = require('./src/config/env')
 const createLogger = require('./src/utils/logger')
 const express = require('express')
@@ -25,6 +26,19 @@ app.use(
 )
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: true }))
+
+// 用户上传的封面：静态直出。
+// 生产环境一般由 Nginx / CDN 承担这一层，但本机开发必须由 Express 提供，
+// 否则 /uploads/* 会落进 notFound 变成 404（历史上就是这么丢的）。
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, 'uploads'), {
+    maxAge: '7d',
+    immutable: true,
+    index: false,
+    dotfiles: 'deny'
+  })
+)
 
 // 业务路由（全局限流）
 app.use('/api', apiLimiter, routes)

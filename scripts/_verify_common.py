@@ -110,6 +110,21 @@ def attach(page):
     return page
 
 
+def wait_unread(token, expect, timeout=6.0):
+    """轮询某用户的未读数，直到等于 expect 或超时，返回最终值。
+
+    通知是 fire-and-forget 写入的：接口返回**不代表**通知已入库。固定 `sleep(SETTLE)`
+    在机器负载高时（同机跑 eslint / vite build / 其它验证脚本）会不够用，单次即时读
+    会偶发拿到旧值，断言就假失败一次（实测踩过）。凡断言未读数一律走这里。
+    """
+    deadline = time.time() + timeout
+    value = api("/notifications/unread-count", token=token)["data"]["unread"]
+    while value != expect and time.time() < deadline:
+        time.sleep(0.25)
+        value = api("/notifications/unread-count", token=token)["data"]["unread"]
+    return value
+
+
 def inject_login(page, token, user):
     """登录态注入：必须先落到同源页面，localStorage 才写得进去"""
     page.goto(f"{FRONT}/login", wait_until="networkidle")

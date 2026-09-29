@@ -21,6 +21,12 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true
+      },
+      // 用户上传的封面由后端静态直出：不代理的话请求会落到 Vite 自己身上，
+      // 拿到 index.html 的 HTML 而不是图片（历史上封面的 404 就是这么来的）
+      '/uploads': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
       }
     }
   }

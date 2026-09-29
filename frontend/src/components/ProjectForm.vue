@@ -117,15 +117,16 @@
 
     <!-- 封面 -->
     <div>
-      <label class="form-label" for="cover">封面图片链接 <span class="text-xs font-normal text-ink-dim">（选填）</span></label>
-      <input
-        id="cover"
-        v-model.trim="form.coverImage"
-        type="url"
-        class="input"
-        placeholder="https://example.com/cover.jpg"
-      />
-      <div v-if="form.coverImage" class="mt-3 overflow-hidden rounded-xl border border-line">
+      <label class="form-label">
+        封面图片 <span class="text-xs font-normal text-ink-dim">（选填）</span>
+      </label>
+
+      <!-- 已有封面：预览 + 就地更换 / 移除 -->
+      <div
+        v-if="form.coverImage"
+        class="group relative overflow-hidden rounded-xl border border-line"
+        data-test="cover-preview"
+      >
         <img
           :src="form.coverImage"
           alt="封面预览"
@@ -133,9 +134,90 @@
           @error="coverBroken = true"
           @load="coverBroken = false"
         />
+
+        <div
+          v-if="uploading"
+          class="absolute inset-0 flex items-center justify-center gap-2 bg-black/55 text-white"
+          data-test="cover-uploading"
+        >
+          <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" class="opacity-25" />
+            <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+          </svg>
+          <span class="text-sm">上传中…</span>
+        </div>
+
+        <div v-else class="absolute right-3 top-3 flex gap-2">
+          <button
+            type="button"
+            class="rounded-full bg-[color:var(--glass-badge)] px-3 py-1.5 text-xs font-medium text-ink shadow-sm backdrop-blur-md transition-colors hover:text-pine"
+            data-test="cover-replace"
+            @click="pickFile"
+          >
+            更换
+          </button>
+          <button
+            type="button"
+            class="rounded-full bg-[color:var(--glass-badge)] px-3 py-1.5 text-xs font-medium text-ink shadow-sm backdrop-blur-md transition-colors hover:text-clay"
+            data-test="cover-remove"
+            @click="removeCover"
+          >
+            移除
+          </button>
+        </div>
       </div>
-      <p v-if="coverBroken && form.coverImage" class="form-error">图片链接无法加载，保存后将显示默认封面</p>
-      <p v-else class="mt-1.5 text-xs text-ink-dim">不填也没关系，我们会为你生成一个漂亮的默认封面。</p>
+
+      <!-- 还没有封面：点击选择或直接拖拽 -->
+      <button
+        v-else
+        type="button"
+        class="upload-drop"
+        :class="{ 'is-dragging': dragging }"
+        data-test="cover-drop"
+        @click="pickFile"
+        @dragover.prevent="dragging = true"
+        @dragleave.prevent="dragging = false"
+        @drop.prevent="onDrop"
+      >
+        <AppIcon name="image" class="h-6 w-6" />
+        <span class="font-medium">点击选择图片，或拖到这里</span>
+        <span class="text-xs text-ink-dim">支持 JPG / PNG / WebP / GIF，不超过 5MB</span>
+      </button>
+
+      <input
+        ref="fileInput"
+        type="file"
+        class="hidden"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        data-test="cover-input"
+        @change="onFileChange"
+      />
+
+      <p v-if="coverBroken && form.coverImage && !uploading" class="form-error" data-test="cover-broken">
+        图片无法加载，保存后将显示默认封面
+      </p>
+      <p v-else-if="!form.coverImage" class="mt-1.5 text-xs text-ink-dim">
+        不填也没关系，我们会为你生成一个漂亮的默认封面。
+      </p>
+
+      <!-- 外链兜底：不想上传文件的人可以直接粘一个图片地址 -->
+      <button
+        type="button"
+        class="mt-2 text-xs text-ink-dim transition-colors hover:text-ink"
+        data-test="cover-toggle-url"
+        @click="showUrlInput = !showUrlInput"
+      >
+        {{ showUrlInput ? '收起链接输入' : '或粘贴一个图片链接' }}
+      </button>
+      <input
+        v-if="showUrlInput"
+        id="cover"
+        v-model.trim="form.coverImage"
+        type="url"
+        class="input mt-2"
+        placeholder="https://example.com/cover.jpg"
+        data-test="cover-url"
+      />
     </div>
 
     <!-- 提交 -->
@@ -143,7 +225,7 @@
       <button type="button" class="btn-ghost" @click="handleCancel">
         {{ isEdit ? '放弃修改' : '取消' }}
       </button>
-      <button type="submit" class="btn-primary !px-8 !py-3" :disabled="submitting" data-test="submit-project">
+      <button type="submit" class="btn-primary !px-8 !py-3" :disabled="submitting || uploading" data-test="submit-project">
         <svg v-if="submitting" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" class="opacity-25" />
           <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
@@ -159,6 +241,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { createProject, updateProject, getProjectTags } from '@/api/project'
+import { uploadCover, COVER_ACCEPT, COVER_MAX_BYTES } from '@/api/upload'
 import { getCategories } from '@/api/category'
 import { categoryIcon } from '@/utils/categoryIcon'
 import { stripEmoji } from '@/utils/text'
@@ -189,6 +272,63 @@ const errors = reactive({ title: '', description: '', categoryId: '' })
 const tagInput = ref('')
 const coverBroken = ref(false)
 const submitting = ref(false)
+
+// ---- 封面上传 ----
+const fileInput = ref(null)
+const uploading = ref(false)
+const dragging = ref(false)
+// 编辑态回填的是外链（而不是本站上传的 /uploads/...）时，直接把链接输入框展开，
+// 否则用户看到封面却找不到改它的地方
+const isUploadedCover = (url) => !!url && url.startsWith('/uploads/')
+const showUrlInput = ref(!!props.project?.coverImage && !isUploadedCover(props.project.coverImage))
+
+const pickFile = () => {
+  if (uploading.value) return
+  fileInput.value?.click()
+}
+
+// 清空 input.value：同一个文件连选两次也要能再次触发 change（否则浏览器不发第二次事件）
+const onFileChange = (e) => {
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  if (file) handleFile(file)
+}
+
+const onDrop = (e) => {
+  dragging.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (file) handleFile(file)
+}
+
+const handleFile = async (file) => {
+  // 本地先拦一道：类型/体积不对就当场说清楚，别让用户白等一次 5MB 上传
+  if (!COVER_ACCEPT.includes(file.type)) {
+    toast('只支持 JPG / PNG / WebP / GIF 格式的图片', 'error')
+    return
+  }
+  if (file.size > COVER_MAX_BYTES) {
+    toast('图片不能超过 5MB，请压缩后再上传', 'error')
+    return
+  }
+
+  uploading.value = true
+  try {
+    const res = await uploadCover(file)
+    form.coverImage = res.data.url
+    coverBroken.value = false
+    toast('封面已上传')
+  } catch {
+    // 服务端拒绝的原因（魔数不符 / 超限）已由拦截器提示
+  } finally {
+    uploading.value = false
+  }
+}
+
+const removeCover = () => {
+  form.coverImage = ''
+  coverBroken.value = false
+  if (fileInput.value) fileInput.value.value = ''
+}
 
 const submitText = computed(() => {
   if (submitting.value) return isEdit.value ? '保存中…' : '发布中…'
@@ -254,7 +394,8 @@ const handleCancel = () => {
 
 const handleSubmit = async () => {
   addTagFromInput() // 提交前收纳未回车的标签
-  if (!validate() || submitting.value) return
+  // 封面上传还没落地就提交，会存下一个空封面 —— 等它传完再说
+  if (uploading.value || !validate() || submitting.value) return
 
   // 全站仅允许矢量图标：提交前移除标题与介绍中的 emoji
   const cleanedTitle = stripEmoji(form.title)

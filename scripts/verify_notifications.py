@@ -22,6 +22,7 @@ from _verify_common import (
     inject_login,
     register,
     sql_one,
+    wait_unread,
 )
 
 
@@ -34,7 +35,7 @@ def main():
         created = api(
             f"/projects/{pid}/comments", {"content": "这条评论会触发一条站内通知。"}, token=b["token"]
         )["data"]["comment"]
-        check("发起人未读数为 1", api("/notifications/unread-count", token=a["token"])["data"]["unread"] == 1)
+        check("发起人未读数为 1", wait_unread(a["token"], 1) == 1)
 
         with sync_playwright() as p:
             browser = p.chromium.launch()

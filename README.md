@@ -63,11 +63,11 @@ cd frontend
 npm run dev
 ```
 
-前端服务将运行在 http://localhost:3000
+前端服务将运行在 http://localhost:3001
 
 ### 5. 访问应用
 
-打开浏览器访问 http://localhost:3000
+打开浏览器访问 http://localhost:3001
 
 ## 功能说明
 
@@ -75,31 +75,36 @@ npm run dev
 
 ✅ **前端功能**
 - [x] 首页 - 项目列表展示（卡片形式）
-- [x] 顶部导航栏 - Logo、搜索框、登录/注册
+- [x] 顶部导航栏 - Logo、搜索框、登录/注册、消息通知入口
 - [x] 左侧边栏 - 分类筛选
-- [x] 项目卡片 - 封面、标题、描述、参与人数、点赞数
+- [x] 项目卡片 - 封面、标题、描述、参与人数、点赞数、就地收藏
 - [x] 登录/注册页面
-- [x] 发布项目页面
-- [x] 项目详情页面（基础版）
-- [x] 响应式布局
+- [x] 发布 / 编辑项目页面（含封面图片上传：点击或拖拽，支持外链兜底）
+- [x] 项目详情页面（含评论与回复、点赞、参与）
+- [x] 公开主页 - 「TA 发布的 / TA 参与的」，可下钻到广场筛选视图
+- [x] 搜索、标签筛选、排序（最新 / 最热 / 本周活跃）
+- [x] 通知中心（含深链直达某条评论）
+- [x] 响应式布局 + 深浅色主题
+- [x] 统一错误提示与表单内联校验
 
 ✅ **后端功能**
 - [x] 用户认证（JWT）
 - [x] 用户注册/登录
-- [x] 项目 CRUD
+- [x] 项目 CRUD（含封面 URL 持久化）
+- [x] 封面图片上传（类型/体积/魔数三重校验 + 静态直出）
 - [x] 分类列表
-- [x] 点赞功能
-- [x] 参与功能
+- [x] 点赞 / 收藏 / 参与功能
+- [x] 评论与回复
+- [x] 站内通知（参与 / 评论 / 点赞 / 收藏 / 回复）
+- [x] 标签归一化与相关推荐
 
 ### 待完善的功能
 
 ⏳ **需要进一步完善**
-- [ ] 数据库连接测试和优化
-- [ ] 项目详情页完整功能
-- [ ] 搜索和筛选功能优化
-- [ ] 图片上传功能
-- [ ] 评论功能
-- [ ] 实时通知
+- [ ] 上传文件的清理策略（更换/删除封面后旧文件会留在 `backend/uploads/`，目前靠运维手动清）
+- [ ] 图片裁剪 / 压缩（当前只做体积上限校验）
+- [ ] 自动化测试接入 CI（`scripts/` 下的验证脚本目前靠手动执行）
+- [ ] 单元测试
 
 ## 常见问题
 
@@ -126,52 +131,59 @@ npm run dev
 
 ### 4. 端口被占用
 
-**问题**: `Port 3000 is already in use`
+**问题**: `Port 3001 is already in use`
 
 **解决**: 
 - 修改 `frontend/vite.config.js` 中的 `server.port`
 - 或者关闭占用端口的进程
 
+> 注意：Vite 默认监听 `localhost`（本机可能解析到 IPv6 的 `::1`）。用 `127.0.0.1:3001` 访问可能连不上，请用 `localhost:3001`。
+
 ## 技术栈
 
 ### 前端
-- Vue 3 (Composition API)
-- Element Plus
+- Vue 3 (Composition API + `<script setup>`)
 - Vite
+- Tailwind CSS 4（设计令牌走 CSS 变量，深浅色自动翻转）
 - Pinia
 - Vue Router 4
 - Axios
-- SCSS
 
 ### 后端
 - Node.js
-- Express
-- MySQL
+- Express 5
+- MySQL 8
 - Sequelize
 - JWT
 - bcryptjs
+- multer（封面图片上传，含文件魔数校验）
 
 ## 项目结构
 
 ```
 community/
-├── frontend/              # Vue3 前端
+├── frontend/              # Vue3 前端（:3001）
 │   ├── src/
-│   │   ├── api/          # API 接口
+│   │   ├── api/          # API 接口封装
 │   │   ├── components/   # 公共组件
 │   │   ├── views/        # 页面视图
+│   │   ├── composables/  # 组合式函数
 │   │   ├── router/       # 路由配置
-│   │   ├── store/        # 状态管理
-│   │   └── styles/       # 全局样式
-│   └── ...
-├── backend/               # Node.js 后端
+│   │   ├── store/        # Pinia 状态管理
+│   │   ├── utils/        # 工具函数
+│   │   └── style.css     # 全局样式 + 设计令牌
+│   └── vite.config.js
+├── backend/               # Node.js 后端（:5000）
 │   ├── src/
 │   │   ├── config/       # 配置文件
-│   │   ├── controllers/  # 控制器
+│   │   ├── controllers/  # 控制器（薄，只做参数搬运）
+│   │   ├── services/     # 业务逻辑与 SQL
 │   │   ├── models/       # 数据模型
 │   │   ├── routes/       # 路由
-│   │   └── middleware/   # 中间件
-│   └── ...
+│   │   └── middleware/   # 中间件（鉴权 / 限流 / 上传）
+│   ├── uploads/          # 用户上传的封面（运行时数据，不进仓库）
+│   └── server.js
+├── scripts/               # Playwright + urllib 端到端验证脚本
 └── database/              # 数据库脚本
     ├── schema.sql        # 表结构
     └── seed.sql          # 种子数据
@@ -186,12 +198,11 @@ community/
 
 ## 下一步计划
 
-- [ ] 完善项目详情页
-- [ ] 添加图片上传功能
-- [ ] 实现评论系统
-- [ ] 添加消息通知
-- [ ] 优化移动端体验
-- [ ] 添加单元测试
+- [ ] 上传目录的孤儿文件清理（更换封面后旧文件不自动删除）
+- [ ] 图片裁剪与压缩
+- [ ] 把 `scripts/verify_*.py` 接入 CI
+- [ ] 单元测试与覆盖率
+- [ ] 移动端交互细节继续打磨
 
 ## 联系方式
 
