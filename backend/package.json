@@ -10,6 +10,9 @@
     "lint:fix": "eslint . --fix",
     "uploads:prune": "node scripts/prune-uploads.js --apply",
     "uploads:prune:dry": "node scripts/prune-uploads.js",
+    "logs:prune": "node scripts/prune-activity-logs.js --apply",
+    "logs:prune:dry": "node scripts/prune-activity-logs.js",
+    "logs:check": "node scripts/check-log-sanitize.js",
     "format": "prettier --write server.js src"
   },
   "dependencies": {

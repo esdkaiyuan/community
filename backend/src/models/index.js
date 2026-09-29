@@ -10,6 +10,7 @@ const Comment = require('./Comment')
 const CommentLike = require('./CommentLike')
 const Notification = require('./Notification')
 const ProjectFavorite = require('./ProjectFavorite')
+const ActivityLog = require('./ActivityLog')
 
 module.exports = {
   sequelize,
@@ -23,5 +24,6 @@ module.exports = {
   Comment,
   CommentLike,
   Notification,
-  ProjectFavorite
+  ProjectFavorite,
+  ActivityLog
 }

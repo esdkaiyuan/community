@@ -3,6 +3,7 @@ const { Comment, Project, User, CommentLike } = require('../models')
 const ApiError = require('../utils/ApiError')
 const { stripEmoji, hasEmoji } = require('../utils/textSanitize')
 const notificationService = require('./notification.service')
+const activityLogService = require('./activityLog.service')
 
 const MAX_CONTENT_LEN = 500
 
@@ -129,7 +130,7 @@ exports.locateComment = async ({ projectId, commentId, pageSize = 10 }) => {
   }
 }
 
-exports.createComment = async ({ projectId, content, userId, parentId }) => {
+exports.createComment = async ({ projectId, content, userId, parentId, req }) => {
   const project = await Project.findByPk(projectId)
   if (!project) throw ApiError.notFound('项目不存在')
 
@@ -171,6 +172,15 @@ exports.createComment = async ({ projectId, content, userId, parentId }) => {
 
   const full = await Comment.findByPk(comment.id, { include: [withUser] })
 
+  // 操作日志：内容用的是**净化后**的文本（cleaned），与库里存的一致
+  await activityLogService.logCommentCreated({
+    userId,
+    comment,
+    project,
+    isReply: rootId !== null,
+    req
+  })
+
   return {
     comment: toClientComment(full, { canDelete: true, liked: false, replyCount: 0, replies: [] }),
     hadEmoji: hasEmoji(content),
@@ -178,7 +188,7 @@ exports.createComment = async ({ projectId, content, userId, parentId }) => {
   }
 }
 
-exports.deleteComment = async ({ projectId, commentId, userId }) => {
+exports.deleteComment = async ({ projectId, commentId, userId, req }) => {
   const project = await Project.findByPk(projectId)
   if (!project) throw ApiError.notFound('项目不存在')
 
@@ -194,11 +204,20 @@ exports.deleteComment = async ({ projectId, commentId, userId }) => {
 
   // 删除根评论时，回复由外键 ON DELETE CASCADE 级联清理
   const replyCount = await Comment.count({ where: { parent_id: comment.id } })
+  // 日志摘要要留下「被删的是哪条」，所以先把内容摘出来（destroy 之后就取不到了）
+  const removedSnapshot = { id: comment.id, content: comment.content }
   await comment.destroy()
 
   const removed = 1 + replyCount
   project.comment_count = Math.max(0, project.comment_count - removed)
   await project.save()
+
+  await activityLogService.logCommentDeleted({
+    userId,
+    comment: removedSnapshot,
+    project,
+    req
+  })
 
   return { commentCount: project.comment_count }
 }

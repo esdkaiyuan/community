@@ -97,6 +97,7 @@ npm run dev
 - [x] 评论与回复
 - [x] 站内通知（参与 / 评论 / 点赞 / 收藏 / 回复）
 - [x] 标签归一化与相关推荐
+- [x] 操作日志（发布 / 编辑 / 删除项目、发表 / 删除评论全量留痕，写入前统一净化）
 
 ### 待完善的功能
 
@@ -125,6 +126,72 @@ npm run uploads:prune       # 真删（等价于 node scripts/prune-uploads.js -
 
 生产环境已在 `backend/ecosystem.config.js` 里注册了一个 PM2 定时任务，每天凌晨 3:30 自动执行清扫，
 不需要额外配置 crontab。
+
+## 操作日志（审计留痕）
+
+凡是「用户产生内容」的写操作都会自动落一条日志，存到数据库表 `activity_logs`：
+
+| 动作 | 触发点 |
+| --- | --- |
+| `project.create` | 发布项目 |
+| `project.update` | 编辑项目（**只记真正改动的字段**，空 PUT 不产生日志） |
+| `project.delete` | 删除项目 |
+| `comment.create` | 发表评论 / 回复（`detail.isReply` 区分） |
+| `comment.delete` | 删除评论 |
+
+每条日志记下：操作者（id + **名称快照**）、动作、目标、所属项目、一行摘要、结构化附加、来源 IP、UA、时间。
+
+**为什么日志表刻意不建外键**：本仓库的删除链路是 `users → projects → project_comments` 一路
+`ON DELETE CASCADE`。日志是证据，必须比它描述的对象活得久 —— 一旦挂上外键，注销一个账号就会把
+证据链一起抹掉，而那恰恰是最需要留痕的场景。所以只存 id + 名称快照。代价是可能出现「孤儿日志」，
+这对审计来说是特性不是缺陷。推论：**清理测试数据时必须显式删 `activity_logs`**，级联收拾不了它。
+
+### 防注入规则
+
+用户能写进标题和评论的任何字符，最终都会进日志表。所以写入前统一走
+`backend/src/utils/logSanitize.js`，四类注入面一次性处理：
+
+1. **日志伪造（CRLF 注入）**：正文里塞 `\r\n[ERROR] …` 就能在下游日志系统里凭空多出一条记录。
+   `\r` `\n` `U+2028` `U+2029` 一律压成空格 → 每条摘要永远是单行。
+2. **控制字符与终端转义**：ANSI CSI 序列（`\x1b[31m`）整体摘除，`\x00`–`\x1f` / `\x7f`–`\x9f` 全部移除。
+3. **Unicode 方向控制**：`U+202E`（RLO）能让文本反向显示、零宽字符能在看不见处粘连文本，一并移除。
+4. **存储放大**：单条用户内容最多留 **60 字**预览，超长截断并在末尾加 `…`（不静默丢弃）；
+   摘要整体上限 255 字。日志是留痕，不是内容备份。
+
+另外三条结构性约束，都在服务层（`backend/src/services/activityLog.service.js`）强制：
+
+- **动作白名单**：只认上表五个动作，未知 `action` 直接拒绝（不静默入库）。
+- **detail 键白名单**：`sanitizeDetail` 是「按白名单取键」而不是「遍历传入对象」，
+  所以任意键（含 `__proto__` 这类原型污染载荷）天然进不来；嵌套对象一律丢弃。
+- **失败不外抛**：日志写失败只打 error 日志，绝不让用户的发布 / 评论失败。
+
+前端渲染约定：**日志只做纯文本渲染，禁止 `v-html`**。这是刻意不剥离 `<` `>` 的原因 ——
+共创社区里用户真的会讨论标签写法，改写成 `&lt;` 既让审计失真又会被二次转义。
+
+### 读取与留存
+
+```bash
+# 只查自己的操作记录（不接受任何 userId 参数；本项目暂无角色体系，不提供看他人日志的接口）
+GET /api/logs/me?page=1&pageSize=20&action=comment.create&projectId=12
+```
+
+日志只写不删，是唯一会无限增长的业务表，所以配了留存期清理：
+
+```bash
+cd backend
+npm run logs:prune:dry   # 干跑：只报告超出留存期的条数与动作分布
+npm run logs:prune       # 真删（等价于 node scripts/prune-activity-logs.js --apply）
+```
+
+留存期默认 365 天，可用 `--days=N` 覆盖。生产环境已在 `ecosystem.config.js` 注册 PM2 定时任务，
+每天凌晨 4:00 执行。
+
+### 验证
+
+```bash
+cd backend && npm run logs:check          # 净化规则的纯函数自检（61 项）
+python scripts/verify_activity_logs.py    # 端到端：真实注入载荷落库后逐条断言（68 项）
+```
 
 ## 常见问题
 

@@ -40,6 +40,25 @@ module.exports = {
       error_file: './logs/prune.err.log',
       out_file: './logs/prune.out.log',
       merge_logs: true
+    },
+    {
+      // 每天凌晨 4:00 按留存期清理操作日志（默认 365 天）。
+      // 同样用 autorestart:false + cron_restart 唤醒 —— 每个 app 有自己的
+      // cron_restart，互不影响，所以可以和上面的上传清扫各挂各的。
+      name: 'community-logs-prune',
+      script: './scripts/prune-activity-logs.js',
+      args: '--apply',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      watch: false,
+      cron_restart: '0 4 * * *',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: './logs/prune-logs.err.log',
+      out_file: './logs/prune-logs.out.log',
+      merge_logs: true
     }
   ]
 }

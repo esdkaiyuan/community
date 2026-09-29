@@ -184,6 +184,8 @@ def main():
 
             browser.close()
     finally:
+        # activity_logs 刻意不挂外键，级联收拾不到，必须显式清（否则每跑一轮留一批日志垃圾）
+        sql(f"DELETE FROM activity_logs WHERE user_id = {uid};")
         sql(f"DELETE FROM users WHERE id = {uid};")
         print("已清理临时用户:", uid)
 

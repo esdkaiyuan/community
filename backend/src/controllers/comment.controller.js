@@ -27,7 +27,8 @@ exports.createComment = asyncHandler(async (req, res) => {
     projectId: req.params.id,
     content: req.body.content,
     parentId: req.body.parentId,
-    userId: req.user.userId
+    userId: req.user.userId,
+    req
   })
   created(res, data, data.hadEmoji ? '评论发布成功（表情符号已自动移除）' : '评论发布成功')
 })
@@ -36,7 +37,8 @@ exports.deleteComment = asyncHandler(async (req, res) => {
   const data = await commentService.deleteComment({
     projectId: req.params.id,
     commentId: req.params.commentId,
-    userId: req.user.userId
+    userId: req.user.userId,
+    req
   })
   ok(res, data, '评论已删除')
 })

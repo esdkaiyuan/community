@@ -1,11 +1,16 @@
 -- ============================================================
 -- 共创社区平台 数据库结构
 -- 与 backend/src/models 中的 Sequelize 模型定义保持一致
+--
+-- ⚠️ 库名以 backend/.env 的 DB_NAME 为准（当前为 co_creation_esdk）。
+-- 下面两行的默认值只在「全新环境从零初始化」时用于建库；已部署的环境请勿
+-- 直接整文件执行，否则会新建出一个空库：
+--   mysql -u<用户> -p <库名> < database/schema.sql   # 或按需摘取单条 DDL
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS community_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS co_creation_esdk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE community_platform;
+USE co_creation_esdk;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
@@ -147,3 +152,27 @@ CREATE TABLE IF NOT EXISTS project_comments (
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- 操作日志表（审计留痕：发布内容、编辑、删除、评论等写操作）
+-- 刻意**不建外键**：日志必须比它描述的对象活得久。本仓库的删除链路是
+-- users -> projects -> project_comments 一路 ON DELETE CASCADE，一旦这里挂外键，
+-- 注销账号就会把证据一并删掉 —— 偏偏那是最需要留痕的场景。
+-- 因此只存 id + 名称快照，代价是可能出现「孤儿日志」，这对审计来说是特性。
+-- 文本字段的净化规则见 backend/src/utils/logSanitize.js（防 CRLF 伪造/控制字符/超长）。
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    user_id INT UNSIGNED DEFAULT NULL COMMENT '操作者ID（无外键）',
+    username VARCHAR(50) DEFAULT NULL COMMENT '操作者名称快照',
+    action VARCHAR(32) NOT NULL COMMENT '动作标识（project.create 等，服务层白名单约束）',
+    target_type VARCHAR(20) NOT NULL COMMENT '目标类型：project / comment',
+    target_id INT UNSIGNED DEFAULT NULL COMMENT '目标ID',
+    project_id INT UNSIGNED DEFAULT NULL COMMENT '所属项目ID',
+    summary VARCHAR(255) NOT NULL COMMENT '单行摘要（已净化，无换行与控制字符）',
+    detail JSON DEFAULT NULL COMMENT '结构化附加信息（键受白名单约束）',
+    ip VARCHAR(45) DEFAULT NULL COMMENT '来源IP',
+    user_agent VARCHAR(255) DEFAULT NULL COMMENT '客户端标识（已净化并截断）',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_time (user_id, created_at),
+    INDEX idx_project_time (project_id, created_at),
+    INDEX idx_action_time (action, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';

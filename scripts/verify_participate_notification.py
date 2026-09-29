@@ -248,6 +248,9 @@ def main():
         sql(f"DELETE FROM project_participants WHERE project_id = {pid};")
         sql(f"DELETE FROM project_likes WHERE project_id = {pid};")
         sql(f"DELETE FROM projects WHERE id = {pid};")
+        # activity_logs 刻意不挂外键：级联删不掉，按项目与按用户各清一次
+        sql(f"DELETE FROM activity_logs WHERE project_id = {pid};")
+        sql(f"DELETE FROM activity_logs WHERE user_id IN ({','.join(str(i) for i in uids)});")
         sql(f"DELETE FROM users WHERE id IN ({','.join(str(i) for i in uids)});")
         print("已清理，项目残留:", sql_one(f"SELECT COUNT(*) FROM projects WHERE id = {pid}"))
         print("通知残留:", sql_one(f"SELECT COUNT(*) FROM notifications WHERE project_id = {pid}"))

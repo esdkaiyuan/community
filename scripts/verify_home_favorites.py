@@ -165,6 +165,8 @@ def main():
 
             browser.close()
     finally:
+        # activity_logs 刻意不挂外键，级联收拾不到，必须显式清
+        sql(f"DELETE FROM activity_logs WHERE user_id = {uid};")
         sql(f"DELETE FROM users WHERE id = {uid};")
         print("已清理临时用户:", uid)
 
@@ -190,6 +192,8 @@ def main():
             print("截图:", OUT_EMPTY)
             browser.close()
     finally:
+        # activity_logs 刻意不挂外键，级联收拾不到，必须显式清
+        sql(f"DELETE FROM activity_logs WHERE user_id = {euid};")
         sql(f"DELETE FROM users WHERE id = {euid};")
         print("已清理空状态用户:", euid)
 

@@ -6,6 +6,7 @@ const { stripEmoji } = require('../utils/textSanitize')
 const { toClientUser } = require('./user.service')
 const notificationService = require('./notification.service')
 const coverService = require('./cover.service')
+const activityLogService = require('./activityLog.service')
 
 // 数据库行 -> 前端数据形状（camelCase）
 const toClientProject = (p, extra = {}) => {
@@ -417,7 +418,7 @@ exports.listParticipants = async (id, { page = 1, pageSize = 24 } = {}) => {
   }
 }
 
-exports.createProject = async ({ title, description, coverImage, categoryId, tags, creatorId }) => {
+exports.createProject = async ({ title, description, coverImage, categoryId, tags, creatorId, req }) => {
   const cleanTitle = stripEmoji(String(title ?? '')).trim()
   if (!cleanTitle) throw ApiError.badRequest('标题为必填项')
   if (cleanTitle.length < 4) throw ApiError.badRequest('标题至少 4 个字符')
@@ -448,16 +449,30 @@ exports.createProject = async ({ title, description, coverImage, categoryId, tag
   project.participant_count = 1
   await project.save()
 
+  // 操作日志：写在业务全部成功之后。record() 内部吞异常，
+  // 所以「日志写失败」不会变成用户的发布失败。
+  await activityLogService.logProjectCreated({ creatorId, project, req })
+
   return toClientProject(project)
 }
 
-exports.updateProject = async (id, userId, { title, description, coverImage, categoryId, tags }) => {
+exports.updateProject = async (id, userId, { title, description, coverImage, categoryId, tags }, req) => {
   const project = await getProjectOr404(id)
   if (project.creator_id !== userId) throw ApiError.forbidden('无权修改此项目')
 
   // 换封面 / 清空封面时，旧的上传文件会变成没人引用的孤儿。先留一份旧值，
   // 等保存成功后再回收（失败时不动磁盘，避免「改了没生效却把图删了」）。
   const previousCover = project.cover_image
+
+  // 变更前快照：保存后用它 diff 出「这次究竟改了什么」。比在每个赋值分支里手动
+  // push 稳 —— 将来加字段时不会漏记。
+  const before = {
+    title: project.title,
+    description: project.description,
+    cover_image: project.cover_image,
+    category_id: project.category_id,
+    tags: JSON.stringify(project.tags)
+  }
 
   if (title !== undefined) {
     const cleanTitle = stripEmoji(String(title)).trim()
@@ -487,13 +502,25 @@ exports.updateProject = async (id, userId, { title, description, coverImage, cat
     await coverService.releaseCover(previousCover, id).catch(() => {})
   }
 
+  // 只有真改动了才留痕：空 PUT（什么都没变）写一条「改动了 无」只是噪音。
+  // 字段名是代码里写死的常量，不来自用户输入。
+  const changedFields = ['title', 'description', 'cover_image', 'category_id', 'tags'].filter((key) => {
+    const now = key === 'tags' ? JSON.stringify(project.tags) : project[key]
+    return String(before[key]) !== String(now)
+  })
+  if (changedFields.length) {
+    await activityLogService.logProjectUpdated({ userId, project, changedFields, req })
+  }
+
   return toClientProject(project)
 }
 
-exports.deleteProject = async (id, userId) => {
+exports.deleteProject = async (id, userId, req) => {
   const project = await getProjectOr404(id)
   if (project.creator_id !== userId) throw ApiError.forbidden('无权删除此项目')
   await project.destroy()
+  // 日志在删除之后写：项目已软删除，日志表刻意不挂外键，所以留着不受影响
+  await activityLogService.logProjectDeleted({ userId, project, req })
 }
 
 exports.likeProject = async (id, userId) => {

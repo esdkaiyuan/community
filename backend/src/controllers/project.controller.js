@@ -36,18 +36,20 @@ exports.getProjectRelated = asyncHandler(async (req, res) => {
   ok(res, data, '获取相关项目成功')
 })
 
+// 注意 `req` 放在展开之后：先铺 req.body 再覆盖，客户端就算在 body 里塞一个
+// `req` 字段也顶不掉真身（否则能伪造日志里的来源 IP / UA）
 exports.createProject = asyncHandler(async (req, res) => {
-  const data = await projectService.createProject({ ...req.body, creatorId: req.user.userId })
+  const data = await projectService.createProject({ ...req.body, creatorId: req.user.userId, req })
   created(res, data, '项目创建成功')
 })
 
 exports.updateProject = asyncHandler(async (req, res) => {
-  const data = await projectService.updateProject(req.params.id, req.user.userId, req.body)
+  const data = await projectService.updateProject(req.params.id, req.user.userId, req.body, req)
   ok(res, data, '项目更新成功')
 })
 
 exports.deleteProject = asyncHandler(async (req, res) => {
-  await projectService.deleteProject(req.params.id, req.user.userId)
+  await projectService.deleteProject(req.params.id, req.user.userId, req)
   ok(res, null, '项目删除成功')
 })
 

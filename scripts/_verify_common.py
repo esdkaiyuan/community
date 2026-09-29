@@ -170,17 +170,28 @@ def cleanup_project(pid, uids=()):
     comment_likes 只有 comment_id、没有 project_id，必须走子查询才能按项目清。
     顺序：评论点赞 -> 通知/评论/收藏/点赞/参与 -> 项目 -> 用户。
     先清中间表避免级联链路超限，最后删用户避免被 projects.creator_id 外键挡住。
+
+    ⚠️ activity_logs 必须显式删：它**刻意不挂外键**（审计日志要活得比对象久），
+    所以 MySQL 级联收拾不到它。漏了这一句，每跑一轮脚本就沉淀一批日志垃圾
+    —— 实测 6 个脚本跑完留了 23 行。
     """
     sql(f"DELETE FROM comment_likes WHERE comment_id IN (SELECT id FROM project_comments WHERE project_id = {pid});")
     for table in ("notifications", "project_comments", "project_favorites", "project_likes", "project_participants"):
         sql(f"DELETE FROM {table} WHERE project_id = {pid};")
+    sql(f"DELETE FROM activity_logs WHERE project_id = {pid};")
     sql(f"DELETE FROM projects WHERE id = {pid};")
     if uids:
         cleanup_users(uids)
 
 
 def cleanup_users(uids):
-    sql("DELETE FROM users WHERE id IN (%s);" % ",".join(str(i) for i in uids))
+    uids = list(uids)
+    if not uids:
+        return
+    placeholders = ",".join(str(i) for i in uids)
+    # 同上：activity_logs 没有外键，删用户不会带走它，必须自己来
+    sql(f"DELETE FROM activity_logs WHERE user_id IN ({placeholders});")
+    sql(f"DELETE FROM users WHERE id IN ({placeholders});")
 
 
 def finish():

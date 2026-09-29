@@ -272,6 +272,9 @@ def main():
         sql(f"DELETE FROM project_participants WHERE project_id = {pid};")
         sql(f"DELETE FROM project_likes WHERE project_id = {pid};")
         sql(f"DELETE FROM projects WHERE id = {pid};")
+        # activity_logs 刻意不挂外键：级联删不掉，按项目与按用户各清一次
+        sql(f"DELETE FROM activity_logs WHERE project_id = {pid};")
+        sql(f"DELETE FROM activity_logs WHERE user_id IN ({','.join(str(i) for i in uids)});")
         sql(f"DELETE FROM users WHERE id IN ({','.join(str(i) for i in uids)});")
         left = sql_one(f"SELECT COUNT(*) FROM projects WHERE id = {pid}")
         print("已清理临时项目与用户，项目残留:", left)
@@ -295,7 +298,9 @@ if __name__ == "__main__":
             sql(f"DELETE FROM project_participants WHERE project_id = {pid};")
             sql(f"DELETE FROM project_likes WHERE project_id = {pid};")
             sql(f"DELETE FROM projects WHERE id = {pid};")
+            sql(f"DELETE FROM activity_logs WHERE project_id = {pid};")
         if UIDS:
+            sql(f"DELETE FROM activity_logs WHERE user_id IN ({','.join(str(i) for i in UIDS)});")
             sql(f"DELETE FROM users WHERE id IN ({','.join(str(i) for i in UIDS)});")
             print("兜底清理完成，剩余临时用户:",
                   sql_one(f"SELECT COUNT(*) FROM users WHERE id IN ({','.join(str(i) for i in UIDS)})"))
