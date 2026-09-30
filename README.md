@@ -632,7 +632,11 @@ community/
   双击缩放防线（touch-action: manipulation）、iOS 聚焦缩放防线（小屏输入 16px）
 - [x] ~~深色模式逐页走查~~ 已落地：写死 hex 全部收敛到设计令牌（点赞/徽章红 → clay、
   success 绿新增 --c-green 双主题令牌），逐页 console/溢出/令牌色值断言入 `verify_dark_mode.py`
-- [ ] 评论富文本与 @ 提及
+- [x] ~~评论 @ 提及~~ 已落地：解析（@ 到标点/空白止、2-20 字符、静默忽略不存在的名字、
+  作者自排除）→ mention 通知（独立于评论/回复，带 commentId 深链）→ 评论高亮
+  （后端整库识别口径下发 mentionNames，前端零 v-html 纯插值）→ 行尾 @ 补全浮层；
+  富文本排版另立一轮（涉及 XSS 白名单）
+- [ ] 评论富文本排版（粗体/代码块，sanitize 白名单）
 
 ## 深色模式逐页走查
 
@@ -647,6 +651,23 @@ community/
 - 验证：`scripts/verify_dark_mode.py` —— 断言全部「钉死到具体令牌」（读
   getComputedStyle 与令牌期望值全等比较，不用「看起来像深色」的主观谓词）；
   深色逐页 console 零错误 + 无横向溢出；深浅两主题对照（红证 5 条全落病灶处）
+
+## 评论 @ 提及
+
+评论里 `@用户名` 可以点名用户：被提及的人收到独立于评论/回复的 `mention` 通知
+（带 commentId 深链到那条评论），正文里的 @名字 渲染成高亮。
+
+- **识别口径**（唯一事实：`backend/src/services/comment.service.js` 的
+  `extractMentionNames` / `resolveMentions`）：@ 到空白或常见标点为止，2-20 字符；
+  查不到的用户名**静默忽略**（@ 错名字不拦评论发布）；作者 @ 自己不通知
+- **高亮口径**：后端 listComments 顶层下发 `mentionNames`（整页候选名一次查库、
+  只有真实存在的用户名才进集合），前端 `CommentContent.vue` 纯文本插值高亮
+  （无 v-html，XSS 面 = 0）——两端同口径，不会假高亮
+- **补全**：输入框行尾输入 `@` 弹出候选浮层（本页评论作者去重、排除自己、片段过滤），
+  点选插入；句中 @ 不弹浮层但打全名仍会被识别（textarea 无 caret 检测的轻量近似）
+- 通知 ENUM 扩展：`notifications.type` 加 `'mention'`（模型 / schema.sql / 线上表三处同步）
+- 验证：`scripts/verify_mentions.py` 18 项（解析/通知/排除/深链/高亮/文案/补全/过滤）
+  + 回归 verify_comments 41 项、verify_notifications、单测 49 项
 
 ## 移动端触控细节
 

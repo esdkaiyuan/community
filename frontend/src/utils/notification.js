@@ -3,7 +3,8 @@ const TEXT_MAP = {
   comment: '评论了你的项目',
   reply: '回复了你在',
   like: '赞了你在',
-  participate: '参与了你的项目'
+  participate: '参与了你的项目',
+  mention: '在评论中提及了你'
 }
 
 export const notificationText = (type) => TEXT_MAP[type] || '与你互动于'

@@ -22,11 +22,28 @@
             rows="3"
             maxlength="500"
             data-test="comment-input"
-            placeholder="分享你的想法与建议…"
+            placeholder="分享你的想法，@用户名 可提及他人"
             class="w-full resize-none rounded-lg border-0 bg-transparent p-0 text-[15px] leading-relaxed text-ink placeholder:text-ink-dim/70 focus:outline-none"
           ></textarea>
           <div class="mt-3 flex items-center justify-between border-t border-line pt-3">
-            <span class="text-xs tabular-nums text-ink-dim" data-test="comment-counter">{{ draft.length }}/500</span>
+            <!-- @ 提及候选：行尾输入 @ 时出现，点选补全 -->
+        <div
+          v-if="rootCandidates.length"
+          data-test="mention-pop"
+          class="mb-2 overflow-hidden rounded-xl border border-line bg-cream shadow-toast"
+        >
+          <button
+            v-for="u in rootCandidates"
+            :key="u.id"
+            type="button"
+            data-test="mention-option"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-sand"
+            @click="pickMention(u.username)"
+          >
+            <span class="font-medium">@{{ u.username }}</span>
+          </button>
+        </div>
+        <span class="text-xs tabular-nums text-ink-dim" data-test="comment-counter">{{ draft.length }}/500</span>
             <button
               class="btn-primary !px-5 !py-1.5 text-sm"
               data-test="comment-submit"
@@ -103,7 +120,7 @@
                 </button>
               </div>
             </div>
-            <p class="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed text-ink-mid">{{ c.content }}</p>
+            <p class="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed text-ink-mid"><CommentContent :content="c.content" :mention-names="mentionNames" /></p>
           </div>
         </div>
 
@@ -135,7 +152,7 @@
                   </button>
                 </div>
               </div>
-              <p class="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink-mid">{{ r.content }}</p>
+              <p class="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink-mid"><CommentContent :content="r.content" :mention-names="mentionNames" /></p>
             </div>
           </div>
         </div>
@@ -195,6 +212,8 @@ import { hasEmoji, stripEmoji } from '@/utils/text'
 import { relativeTime } from '@/utils/time'
 import { toast } from '@/composables/useToast'
 import AppIcon from '@/components/AppIcon.vue'
+import CommentContent from '@/components/CommentContent.vue'
+import { useMentionHint } from '@/composables/useMentionHint'
 
 // 头像：与全站一致的字母回退（函数式组件，避免嵌套列表重复模板）
 const Avatar = (props) => {
@@ -247,6 +266,8 @@ const userStore = useUserStore()
 
 const comments = ref([])
 const total = ref(0)
+// 本页真实存在的 @ 用户名（后端 listComments 顶层字段，高亮唯一口径）
+const mentionNames = ref([])
 const page = ref(1)
 const PAGE_SIZE = 10
 const loading = ref(true)
@@ -268,6 +289,38 @@ const flashId = ref(null)
 const rootTotal = ref(0)
 const hasMore = computed(() => comments.value.length < rootTotal.value)
 
+// ---------- @ 提及补全 ----------
+// 行尾 @ 触发候选（textarea 无 caret 检测的轻量近似；句中 @ 打全名仍会被后端识别）
+const { token: mentionToken } = useMentionHint(draft)
+// 候选：本页评论的作者去重（真实说过话的人优先），排除自己
+const mentionCandidates = computed(() => {
+  const seen = new Set()
+  const list = []
+  for (const c of comments.value) {
+    for (const u of [c.user, ...(c.replies || []).map((r) => r.user)]) {
+      if (u?.username && !seen.has(u.username)) {
+        seen.add(u.username)
+        list.push(u)
+      }
+    }
+  }
+  return list.filter((u) => u.id !== userStore.userId)
+})
+const rootCandidates = computed(() =>
+  mentionToken.value == null
+    ? []
+    : mentionCandidates.value
+        .filter((u) => u.username.toLowerCase().includes(mentionToken.value.toLowerCase()))
+        .slice(0, 6)
+)
+const pickMention = (username) => {
+  draft.value = String(draft.value || '').replace(
+    /@([^\s@，。！？；、：,.;:!?"'（）【】《》<>{}()]{0,20})$/,
+    `@${username} `
+  )
+  mentionToken.value = null
+}
+
 // 提交前净化：与后端同一套规则，全站仅允许矢量图标
 const sanitize = (text) => {
   if (!hasEmoji(text)) return { content: text, hadEmoji: false }
@@ -279,6 +332,7 @@ const applyRes = (res) => {
   comments.value.push(...res.data.comments)
   total.value = res.data.total
   rootTotal.value = res.data.rootTotal ?? res.data.total
+  mentionNames.value = res.data.mentionNames || []
   emit('change', total.value)
 }
 
@@ -316,7 +370,16 @@ const handleSubmit = async () => {
   try {
     const res = await commentApi.createComment(props.projectId, { content })
     comments.value.unshift(res.data.comment)
+    // 刚发布评论里被识别的 @ 用户名并入高亮口径（createComment 响应 mentions，
+    // 与列表口径同源），不用重拉整页列表就能即时高亮
+    for (const m of res.data.mentions || []) {
+      if (!mentionNames.value.includes(m.username)) mentionNames.value.push(m.username)
+    }
     total.value = res.data.commentCount
+    // 刚发布的 @ 提及并入高亮口径（响应 mentions = 后端同一套识别），即时高亮不用重拉列表
+    for (const m of res.data.mentions || []) {
+      if (!mentionNames.value.includes(m.username)) mentionNames.value.push(m.username)
+    }
     emit('change', total.value)
     draft.value = ''
     toast(hadEmoji ? '评论已发布，表情符号已自动移除' : '评论已发布')

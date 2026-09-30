@@ -24,7 +24,8 @@ const Notification = sequelize.define(
       comment: '触发者'
     },
     type: {
-      type: DataTypes.ENUM('comment', 'reply', 'like', 'participate'),
+      // mention：评论内容里 @ 到了用户（见 comment.service 的 extractMentions）
+      type: DataTypes.ENUM('comment', 'reply', 'like', 'participate', 'mention'),
       allowNull: false
     },
     project_id: {

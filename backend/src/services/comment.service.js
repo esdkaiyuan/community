@@ -27,6 +27,35 @@ const toClientComment = (comment, extra = {}) => {
 // 组装带作者信息的评论行
 const withUser = { model: User, as: 'user', attributes: ['id', 'username', 'avatar'] }
 
+// ---------- @ 提及 ----------
+// 提及语法：@ 到空白或常见标点为止。用户名本身可含中文/字母/数字（2-20 字符），
+// 含空格的名字无法被 @ 完整表达（@张 三 只会命中 @张）——识别口径以这里为准，
+// 前端高亮只认响应里的 mentions，不会出现假高亮。
+const MENTION_RE = /@([^\s@，。！？；、：,.;:!?"'（）【】《》<>{}()]+)/g
+
+// 从文本提取候选名：去重 + 长度与用户名上下限对齐（2-20），
+// 超长 token 截断后大概率查不到 -> 静默忽略，不会误伤
+const extractMentionNames = (content) => {
+  const names = new Set()
+  for (const m of String(content || '').matchAll(MENTION_RE)) {
+    const name = m[1].slice(0, 20)
+    if (name.length >= 2) names.add(name)
+  }
+  return [...names]
+}
+
+// 候选名 -> 真实存在的用户（排除作者本人）。查不到的名字静默忽略：
+// @ 错名字不该拦住评论发布；识别结果也是前端高亮的唯一口径
+exports.resolveMentions = async (content, authorUserId) => {
+  const names = extractMentionNames(content)
+  if (!names.length) return []
+  const users = await User.findAll({
+    where: { username: { [Op.in]: names } },
+    attributes: ['id', 'username']
+  })
+  return users.filter((u) => u.id !== authorUserId)
+}
+
 exports.listComments = async ({ projectId, page = 1, pageSize = 20, currentUserId }) => {
   page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
   const limit = clampInt(pageSize, { max: 50, fallback: 20 })
@@ -78,6 +107,18 @@ exports.listComments = async ({ projectId, page = 1, pageSize = 20, currentUserI
   }
   const liked = (id) => likedSet.has(id)
 
+  // @ 提及高亮口径：整页评论（根 + 回复）的候选名一次查库，
+  // 只有真实存在的用户名才进 mentionNames —— 前端高亮与后端识别同口径，不会假高亮
+  const allNames = [...rootRows, ...replyRows].flatMap((r) => extractMentionNames(r.content))
+  const mentionNames = allNames.length
+    ? (
+        await User.findAll({
+          where: { username: { [Op.in]: [...new Set(allNames)] } },
+          attributes: ['username']
+        })
+      ).map((u) => u.username)
+    : []
+
   const total = await Comment.count({ where: { project_id: projectId } })
 
   return {
@@ -90,6 +131,8 @@ exports.listComments = async ({ projectId, page = 1, pageSize = 20, currentUserI
       })
     ),
     total,
+    // 顶层带本页真实存在的 @ 用户名，前端对根评论与回复统一用它高亮
+    mentionNames,
     // 根评论数：分页只翻根评论，「还有没有下一页」必须按它算。
     // 拿 total（含回复）算的话，有回复的项目会出现永远点不完的假「加载更多」
     rootTotal: await Comment.count({ where: { project_id: projectId, parent_id: null } }),
@@ -174,6 +217,19 @@ exports.createComment = async ({ projectId, content, userId, parentId, req }) =>
     commentId: comment.id
   })
 
+  // @ 提及：逐个通知被提及的人。与评论/回复通知独立——同一个人既被回复又被 @
+  // 会收两条，语义不同；notify 内部已挡「自己 @ 自己」
+  const mentions = await exports.resolveMentions(cleaned, userId)
+  for (const mentioned of mentions) {
+    notificationService.notify({
+      userId: mentioned.id,
+      type: 'mention',
+      actorId: userId,
+      projectId: Number(projectId),
+      commentId: comment.id
+    })
+  }
+
   const full = await Comment.findByPk(comment.id, { include: [withUser] })
 
   // 操作日志：内容用的是**净化后**的文本（cleaned），与库里存的一致
@@ -188,6 +244,7 @@ exports.createComment = async ({ projectId, content, userId, parentId, req }) =>
   return {
     comment: toClientComment(full, { canDelete: true, liked: false, replyCount: 0, replies: [] }),
     hadEmoji: hasEmoji(content),
+    mentions: mentions.map((m) => ({ id: m.id, username: m.username })),
     commentCount: project.comment_count
   }
 }

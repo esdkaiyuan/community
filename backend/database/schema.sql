@@ -136,7 +136,8 @@ CREATE TABLE IF NOT EXISTS notifications (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     user_id INT UNSIGNED NOT NULL COMMENT '接收人',
     actor_id INT UNSIGNED NOT NULL COMMENT '触发者',
-    type ENUM('comment','reply','like','participate') NOT NULL,
+    -- mention：评论内容里 @ 到了用户（comment.service 的 extractMentions）
+    type ENUM('comment','reply','like','participate','mention') NOT NULL,
     project_id INT UNSIGNED NOT NULL,
     comment_id INT UNSIGNED DEFAULT NULL,
     is_read TINYINT DEFAULT 0,
