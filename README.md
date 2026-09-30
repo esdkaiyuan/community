@@ -254,6 +254,24 @@ python scripts/verify_project_tags.py      # 30 项：含 13 字 400 / 12 字放
 python scripts/verify_project_edit.py      # 51 项：超长期望已从「截断」翻转为「拒绝」，编辑路径不受影响
 ```
 
+## 浏览量：登录用户终身去重
+
+此前每次详情请求都 +1，同一用户刷新 10 次就 +10，刷量零成本。现按登录用户**终身去重**：
+`project_views(project_id, user_id)` 复合主键表占位，只有真正新插入（首访）才自增浏览量；
+游客无身份不落表，照旧每次 +1。并发首访由主键兜底——8 个并发请求也只有一条 INSERT 能通过，
+恰好 +1（`findOrCreate` 靠唯一键回头重读，不重复自增）。
+
+- 列类型按线上遗留结构用 `INT UNSIGNED`（与 `project_favorites` 同例）；
+  FK 级联：删项目/删用户时去重行随之清理
+- 自增仍走 SQL 层 `literal`，读改写并发丢更新的老坑不回归
+- 去重表故障不阻塞详情响应（退化为不计本次浏览）
+
+### 验证
+
+```bash
+python scripts/verify_view_count.py        # 28 项：计数语义 / 去重矩阵 / 并发首访恰 +1 与游客并发恰 +8 / 404 / 展示层
+```
+
 ## 操作日志（审计留痕）
 
 凡是「用户产生内容」的写操作都会自动落一条日志，存到数据库表 `activity_logs`：
@@ -591,7 +609,6 @@ community/
 
 ## 下一步计划
 
-- [ ] `view_count` 是否按用户 / 会话去重以防刷量
 - [ ] 把 `scripts/verify_*.py` 接入 CI
 - [ ] 单元测试与覆盖率
 - [ ] 移动端交互细节继续打磨

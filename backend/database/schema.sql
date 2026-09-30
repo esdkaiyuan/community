@@ -119,6 +119,18 @@ CREATE TABLE IF NOT EXISTS project_favorites (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='项目收藏表';
 
+-- 项目浏览去重表（登录用户终身去重：同一用户对同一项目只计 1 次浏览量；
+-- (project_id,user_id) 主键兜底并发首访，游客无身份不落此表、照旧每次 +1。
+-- 列类型按线上遗留结构用 INT UNSIGNED，与 project_favorites 同例）
+CREATE TABLE IF NOT EXISTS project_views (
+    project_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (project_id, user_id),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- 站内通知表（评论/回复/点赞触发；相关评论删除时级联清理）
 CREATE TABLE IF NOT EXISTS notifications (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,

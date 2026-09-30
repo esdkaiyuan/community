@@ -7,9 +7,11 @@ README 的功能清单），却**从来没有测试覆盖**。而它踩过一个
 各自写回同一个结果，**只 +1**。实测 8 个并发请求只让计数 +1（丢 7 次），
 也就是说页面上那些「N 次浏览」长期被严重低估，而且不会报任何错。
 
-覆盖四层：
-  A. 计数语义：初始为 0 / 首次访问返回的是「自增前」的值 / 列表读取不自增
-  B. 并发不丢计数：8 个并发详情请求必须让 DB 精确 +8（这一条钉住上面的修复）
+覆盖五层：
+  A. 计数语义：初始为 0 / 首次访问返回的是「自增前」的值 / 列表读取不自增 /
+     登录用户重复访问不再自增（终身去重，project_views 复合主键占位）
+  A2. 去重矩阵：另一登录用户首访 +1 / 重复访问不增 / 游客每次 +1 / 去重表行数与登录用户数一致
+  B. 并发语义：新用户 8 个并发首访恰好 +1（主键兜底并发去重）/ 游客 8 并发精确 +8（literal 不丢更新）
   C. 边界：不存在的项目 404 且不产生计数
   D. 展示层：规格条「浏览次数」与接口一致 / 「N 次浏览」不再与规格条重复 /
      meta 行改显示相对时间 / 跨年项目带年份 / 零 console 错误
@@ -116,22 +118,46 @@ def main():
     time.sleep(0.6)
     check(f"读列表不自增（{before} -> {views_of(pid)}）", views_of(pid) == before)
 
+    # 登录用户终身去重：重复访问不再自增（旧世界每次 +1，这里应变成 4）
     for _ in range(3):
         api(f"/projects/{pid}", token=token)
-    check("再连续访问 3 次后为 4", wait_views(pid, 4) == 4)
+    check("同一用户重复访问 3 次仍为 1（终身去重）", wait_views(pid, 1) == 1)
 
-    print("\n== B. 并发不丢计数（钉住 literal 自增的修复）==")
-    N = 8
-    base = views_of(pid)
-    got = get_detail_concurrently(pid, token, N)
-    check(f"并发 {N} 次请求全部成功", all(isinstance(x, int) for x in got))
-    final = wait_views(pid, base + N)
-    check(f"并发 {N} 次后 DB 精确 +{N}（{base} -> {final}）", final == base + N)
-    # 读改写一旦回退成旧实现，这里几乎必挂：实测旧实现 8 并发只 +1
-    check(f"没有丢更新（实际增量 {final - base}，期望 {N}）", final - base == N)
+    print("\n== A2. 去重矩阵 ==")
+    other = register("viewb")
+    UIDS.append(other["uid"])
+    api(f"/projects/{pid}", token=other["token"])
+    check("另一登录用户首访 +1（1 -> 2）", wait_views(pid, 2) == 2)
+    api(f"/projects/{pid}", token=other["token"])
+    check("第二个用户重复访问不再 +1（仍 2）", wait_views(pid, 2) == 2)
+    api(f"/projects/{pid}")
+    check("游客访问 +1（2 -> 3）", wait_views(pid, 3) == 3)
+    api(f"/projects/{pid}")
+    api(f"/projects/{pid}")
+    check("游客每次都 +1（3 -> 5）", wait_views(pid, 5) == 5)
     check(
-        f"响应里的读数不存在虚报（最大 {max(x for x in got if isinstance(x, int))} <= DB {final}）",
-        all(isinstance(x, int) and x <= final for x in got),
+        "去重表恰好 2 行（每登录用户一行，游客不落表）",
+        sql_one(f"SELECT COUNT(*) FROM project_views WHERE project_id = {pid}") == "2",
+    )
+
+    print("\n== B. 并发语义：并发首访去重、游客不丢计数 ==")
+    N = 8
+    racer = register("viewc")
+    UIDS.append(racer["uid"])
+    base = views_of(pid)
+    got = get_detail_concurrently(pid, racer["token"], N)
+    check(f"新用户并发首访 {N} 次请求全部成功", all(isinstance(x, int) for x in got))
+    # 8 个并发首访只有一条 INSERT 能通过主键去重：恰好 +1
+    final = wait_views(pid, base + 1)
+    check(f"并发首访 {N} 次后 DB 精确 +1（{base} -> {final}，主键兜底并发去重）", final == base + 1)
+    got_g = get_detail_concurrently(pid, None, N)
+    check(f"游客并发 {N} 次请求全部成功", all(isinstance(x, int) for x in got_g))
+    final = wait_views(pid, final + N)
+    check(f"游客并发 {N} 次后 DB 精确 +{N}（literal 自增无丢更新）", final == base + 1 + N)
+    # 游客读改写一旦回退成旧实现，这里几乎必挂：实测旧实现 8 并发只 +1
+    check(
+        f"响应里的读数不存在虚报（最大 {max(x for x in got + got_g if isinstance(x, int))} <= DB {final}）",
+        all(isinstance(x, int) and x <= final for x in got + got_g),
     )
 
     print("\n== C. 边界 ==")

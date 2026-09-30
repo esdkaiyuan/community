@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const sequelize = require('../config/database')
-const { Project, Category, User, ProjectParticipant, ProjectLike, ProjectFavorite } = require('../models')
+const { Project, Category, User, ProjectParticipant, ProjectLike, ProjectFavorite, ProjectView } = require('../models')
 const ApiError = require('../utils/ApiError')
 const { stripEmoji } = require('../utils/textSanitize')
 const { toClientUser } = require('./user.service')
@@ -361,17 +361,39 @@ exports.listRelatedProjects = async (id, { limit = 3 } = {}) => {
     .map((x) => toClientProject(x.row, { relatedReason: x.reason }))
 }
 
+// SQL 层自增浏览量（literal）。
+// ⚠️ 必须用 literal，不能写成 `project.view_count + 1`：
+// 后者是「先读内存里的旧值、再把旧值 +1 写回」，两个并发请求会读到同一个旧值、
+// 各自写回同一个结果，**只 +1（丢更新）**。浏览量天然是高频并发写，这个竞态很容易踩到。
+const bumpViewCount = (projectId) =>
+  Project.update(
+    { view_count: sequelize.literal('view_count + 1') },
+    { where: { id: projectId } }
+  ).catch(() => {})
+
+// 登录用户浏览去重：project_views 复合主键 (project_id, user_id) 占位，
+// 只有真正新插入（created=true）才自增 —— 同一用户终身只 +1，刷新/重访不重复计数。
+// findOrCreate 靠主键兜底并发：并发首访只有一个 created=true，其余回头重读，不会重复自增。
+const recordProjectView = async (projectId, userId) => {
+  try {
+    const [, created] = await ProjectView.findOrCreate({
+      where: { project_id: projectId, user_id: userId }
+    })
+    if (created) bumpViewCount(projectId)
+  } catch {
+    // 去重表故障不阻塞详情响应（退化为不计本次浏览）
+  }
+}
+
 exports.getProjectDetail = async (id, currentUserId) => {
   const project = await getProjectOr404(id)
 
-  // 浏览量异步累加，不阻塞响应。
-  // ⚠️ 必须用 SQL 层自增（literal），不能写成 `project.view_count + 1`：
-  // 后者是「先读内存里的旧值、再把旧值 +1 写回」，两个并发请求会读到同一个旧值、
-  // 各自写回同一个结果，**只 +1（丢更新）**。浏览量天然是高频并发写，这个竞态很容易踩到。
-  Project.update(
-    { view_count: sequelize.literal('view_count + 1') },
-    { where: { id } }
-  ).catch(() => {})
+  // 浏览量异步累加，不阻塞响应。登录用户终身去重，游客每次 +1。
+  if (currentUserId) {
+    recordProjectView(id, currentUserId)
+  } else {
+    bumpViewCount(id)
+  }
 
   const [participantRows, participantTotal, liked, participated, favorited] = await Promise.all([
     ProjectParticipant.findAll({

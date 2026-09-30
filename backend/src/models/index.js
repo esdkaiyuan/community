@@ -10,6 +10,7 @@ const Comment = require('./Comment')
 const CommentLike = require('./CommentLike')
 const Notification = require('./Notification')
 const ProjectFavorite = require('./ProjectFavorite')
+const ProjectView = require('./ProjectView')
 const ActivityLog = require('./ActivityLog')
 const SecurityEvent = require('./SecurityEvent')
 
@@ -26,6 +27,7 @@ module.exports = {
   CommentLike,
   Notification,
   ProjectFavorite,
+  ProjectView,
   ActivityLog,
   SecurityEvent
 }
