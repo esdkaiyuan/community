@@ -50,10 +50,11 @@ const iconMap = {
   info: 'info'
 }
 
-// Apple 系统色：绿 #34C759 / 红 #D70015（clay）/ 蓝 pine
+// Apple 系统色：绿 green（#34C759/#30D158 随主题）/ 红 clay（#D70015/#FF453A）/ 蓝 pine
+// 一律走设计令牌，不写死 hex——深色模式下自动翻转（写死值在第 17 轮深色走查中被抓）
 // 图标用「同色淡底 + 同色描线」，比纯色图标更容易一眼分辨类型，也不刺眼
 const tintMap = {
-  success: 'bg-[#34C759]/10 text-[#34C759]',
+  success: 'bg-green/10 text-green',
   error: 'bg-clay/10 text-clay',
   info: 'bg-pine/10 text-pine'
 }

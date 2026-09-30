@@ -28,6 +28,8 @@ export default {
           soft: 'rgb(var(--c-amber-soft) / <alpha-value>)'
         },
         clay: 'rgb(var(--c-clay) / <alpha-value>)',
+        // 成功绿（iOS systemGreen）：浅 #34C759 / 深 #30D158，跟随主题翻转
+        green: 'rgb(var(--c-green) / <alpha-value>)',
         line: 'rgb(var(--c-line) / <alpha-value>)',
         'line-strong': 'rgb(var(--c-line-strong) / <alpha-value>)'
       },

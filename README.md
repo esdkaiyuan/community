@@ -630,7 +630,23 @@ community/
 
 - [x] ~~移动端交互细节继续打磨~~ 已落地：44px 触屏热区（伪元素扩展，视觉零变化）、
   双击缩放防线（touch-action: manipulation）、iOS 聚焦缩放防线（小屏输入 16px）
-- [ ] 深色模式逐页走查
+- [x] ~~深色模式逐页走查~~ 已落地：写死 hex 全部收敛到设计令牌（点赞/徽章红 → clay、
+  success 绿新增 --c-green 双主题令牌），逐页 console/溢出/令牌色值断言入 `verify_dark_mode.py`
+- [ ] 评论富文本与 @ 提及
+
+## 深色模式逐页走查
+
+深色主题（`prefers-color-scheme: dark` 令牌翻转）此前骨架健全，但组件层有 3 处
+写死 hex 绕过令牌——深色下不随主题翻转。本轮全部收敛：
+
+- **点赞激活红 / 未读徽章红**：`#FF3B30` → `clay` 令牌（深色 #FF453A 即 iOS dark
+  systemRed），同一「红色语义」单令牌——点赞按钮 hover 态本来就是 clay，激活态却是
+  写死值，同组件双口径是漂移的活证
+- **success 提示绿**：新增 `--c-green` 双主题令牌（浅 #34C759 / 深 #30D158，
+  iOS systemGreen），tailwind 注册 `green` 色，ToastHost success 分支改走令牌
+- 验证：`scripts/verify_dark_mode.py` —— 断言全部「钉死到具体令牌」（读
+  getComputedStyle 与令牌期望值全等比较，不用「看起来像深色」的主观谓词）；
+  深色逐页 console 零错误 + 无横向溢出；深浅两主题对照（红证 5 条全落病灶处）
 
 ## 移动端触控细节
 

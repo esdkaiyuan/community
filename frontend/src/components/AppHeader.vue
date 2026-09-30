@@ -54,7 +54,7 @@
             <span
               v-if="unread > 0"
               data-test="unread-badge"
-              class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF3B30] px-1 text-[10px] font-semibold tabular-nums text-white"
+              class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-clay px-1 text-[10px] font-semibold tabular-nums text-white"
             >
               {{ unread > 99 ? '99+' : unread }}
             </span>

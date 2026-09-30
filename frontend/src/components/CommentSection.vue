@@ -215,7 +215,7 @@ const LikeButton = (props, { emit }) =>
     'button',
     {
       class: `relative inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] ${
-        props.liked ? 'text-[#FF3B30]' : 'text-ink-dim hover:bg-clay/10 hover:text-clay'
+        props.liked ? 'text-clay' : 'text-ink-dim hover:bg-clay/10 hover:text-clay'
       }`,
       type: 'button',
       'data-test': 'comment-like',
