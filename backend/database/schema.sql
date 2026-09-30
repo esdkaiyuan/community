@@ -149,6 +149,11 @@ CREATE TABLE IF NOT EXISTS project_comments (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_project (project_id),
     INDEX idx_user (user_id),
+    -- parent_id 的自引用级联外键（删根评论时由 InnoDB 带走其下全部回复）。
+    -- 此前它只存在于线上库（ibfk_3）、本文件漏了：谁拿 schema.sql 重建库，
+    -- 删根评论就会静默留下一批永远不可见却污染 total 分页的孤儿回复。
+    INDEX idx_parent (parent_id),
+    FOREIGN KEY (parent_id) REFERENCES project_comments(id) ON DELETE CASCADE,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

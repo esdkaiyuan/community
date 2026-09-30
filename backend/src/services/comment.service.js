@@ -90,6 +90,9 @@ exports.listComments = async ({ projectId, page = 1, pageSize = 20, currentUserI
       })
     ),
     total,
+    // 根评论数：分页只翻根评论，「还有没有下一页」必须按它算。
+    // 拿 total（含回复）算的话，有回复的项目会出现永远点不完的假「加载更多」
+    rootTotal: await Comment.count({ where: { project_id: projectId, parent_id: null } }),
     page,
     pageSize: limit
   }

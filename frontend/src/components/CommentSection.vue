@@ -21,13 +21,15 @@
             v-model.trim="draft"
             rows="3"
             maxlength="500"
+            data-test="comment-input"
             placeholder="分享你的想法与建议…"
             class="w-full resize-none rounded-lg border-0 bg-transparent p-0 text-[15px] leading-relaxed text-ink placeholder:text-ink-dim/70 focus:outline-none"
           ></textarea>
           <div class="mt-3 flex items-center justify-between border-t border-line pt-3">
-            <span class="text-xs tabular-nums text-ink-dim">{{ draft.length }}/500</span>
+            <span class="text-xs tabular-nums text-ink-dim" data-test="comment-counter">{{ draft.length }}/500</span>
             <button
               class="btn-primary !px-5 !py-1.5 text-sm"
+              data-test="comment-submit"
               :disabled="!draft || submitting"
               @click="handleSubmit"
             >
@@ -43,7 +45,7 @@
       v-else
       class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl2 border border-[color:var(--glass-border)] bg-[color:var(--glass-card)] px-5 py-4 backdrop-blur-xl backdrop-saturate-150"
     >
-      <p class="text-sm text-ink-mid">登录后即可参与讨论</p>
+      <p class="text-sm text-ink-mid" data-test="comment-login-hint">登录后即可参与讨论</p>
       <router-link :to="{ name: 'Login', query: { redirect: route.fullPath } }" class="btn-secondary !py-1.5 text-sm">
         登录
       </router-link>
@@ -91,6 +93,7 @@
                 <button
                   v-if="c.canDelete"
                   class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-ink-dim transition-colors hover:bg-clay/10 hover:text-clay"
+                  data-test="comment-delete"
                   :disabled="removing === c.id"
                   @click="handleDelete(c, null)"
                 >
@@ -259,7 +262,10 @@ const replyDraft = ref('')
 // 正在高亮的评论 id（深链命中时短暂点亮）
 const flashId = ref(null)
 
-const hasMore = computed(() => comments.value.length < total.value)
+// rootTotal = 根评论数（分页只翻根评论）；total 含回复，只给「N 条」展示用。
+// 拿 total 判断 hasMore 的话，有回复的项目会出现一个永远点不完的假「显示更多」按钮
+const rootTotal = ref(0)
+const hasMore = computed(() => comments.value.length < rootTotal.value)
 
 // 提交前净化：与后端同一套规则，全站仅允许矢量图标
 const sanitize = (text) => {
@@ -271,6 +277,7 @@ const sanitize = (text) => {
 const applyRes = (res) => {
   comments.value.push(...res.data.comments)
   total.value = res.data.total
+  rootTotal.value = res.data.rootTotal ?? res.data.total
   emit('change', total.value)
 }
 

@@ -211,6 +211,31 @@ python scripts/verify_cover_crop.py       # 51 项：几何 + 端到端 + 守卫
 ⚠️ 一轮约 7 次上传，而后端 `uploadLimiter` 是 40 次 / 15 分钟；连跑 5 轮左右会开始收到 429
 （症状：某一次上传失败 → 没有封面 → 没有裁剪入口）。重启后端即可清零。
 
+## 评论：假「加载更多」与孤儿回复
+
+评论列表是「根评论分页 + 回复挂在根下」。巡检时探针实测出两个真 bug：
+
+1. **假「加载更多」**：`total` 含回复，分页却只翻根评论。前端拿 `total` 判断还有没有下一页，
+   结果只要有回复，「显示更多评论」永远点不完（点了 N 次后列表已到底，按钮还在）。
+   修复：接口新增 `rootTotal`（只数 `parent_id IS NULL`），前端 `hasMore` 改按它算。
+2. **孤儿回复**：`project_comments` 的自引用级联外键（删根评论带走其下回复）只存在于线上库
+   （`ibfk_3`），`schema.sql` 里漏了 —— 谁拿 schema 重建库，删根评论就会留下一批
+   永远不可见却污染 `total` 分页的孤儿行。修复：schema 补上
+   `FOREIGN KEY (parent_id) REFERENCES project_comments(id) ON DELETE CASCADE`。
+
+### 验证
+
+```bash
+python scripts/verify_comments.py         # 41 项：CRUD / 权限矩阵 / rootTotal 分家 / 级联零孤儿 / 页面交互
+python scripts/verify_replies.py          # 两级结构与展平（7 项）
+python scripts/verify_comment_likes.py    # 点赞（9 项）
+python scripts/verify_comment_deeplink.py # 深链定位（24 项）
+```
+
+`verify_comments.py` 的分页红线值得说明：造 12 根 + 1 回复（`total=13 ≠ rootTotal=12`），
+游客翻完第 2 页后断言按钮消失 —— 旧代码 `12 < 13` 按钮残留，新代码 `12 < 12` 即消失。
+红证方式：把服务端 `rootTotal` 临时换回 `total`，两条分页断言立刻变红。
+
 ## 操作日志（审计留痕）
 
 凡是「用户产生内容」的写操作都会自动落一条日志，存到数据库表 `activity_logs`：
@@ -550,8 +575,6 @@ community/
 
 - [ ] 「单个标签超长」目前是静默截断而非明确拒绝（属产品决策，尚未定）
 - [ ] `view_count` 是否按用户 / 会话去重以防刷量
-- [ ] `scripts/verify_comments.py` 是早期留下的截图冒烟脚本：**不含任何断言**，且硬编码了种子项目 19。
-      应改写成真断言或删除 —— 一个不测东西的「验证脚本」比没有更糟，它会让人误以为这块有覆盖
 - [ ] 把 `scripts/verify_*.py` 接入 CI
 - [ ] 单元测试与覆盖率
 - [ ] 移动端交互细节继续打磨
