@@ -122,8 +122,17 @@
       </label>
 
       <!-- 已有封面：预览 + 就地更换 / 移除 -->
+      <!-- 调整构图：取景框里留下的就是卡片里会显示的（编辑时接管预览区） -->
+      <CoverCropper
+        v-if="cropping"
+        :src="cropSource"
+        :busy="uploading"
+        @done="applyCrop"
+        @cancel="cropping = false"
+      />
+
       <div
-        v-if="form.coverImage"
+        v-else-if="form.coverImage"
         class="group relative overflow-hidden rounded-xl border border-line"
         data-test="cover-preview"
       >
@@ -155,6 +164,16 @@
             @click="pickFile"
           >
             更换
+          </button>
+          <!-- 只有本站上传的封面能裁：外链拉不到、GIF 裁了就成静帧 -->
+          <button
+            v-if="canCrop"
+            type="button"
+            class="rounded-full bg-[color:var(--glass-badge)] px-3 py-1.5 text-xs font-medium text-ink shadow-sm backdrop-blur-md transition-colors hover:text-pine"
+            data-test="cover-crop-open"
+            @click="cropping = true"
+          >
+            调整构图
           </button>
           <button
             type="button"
@@ -247,7 +266,9 @@ import { categoryIcon } from '@/utils/categoryIcon'
 import { stripEmoji } from '@/utils/text'
 import { TAG_MAX_COUNT, TAG_MAX_LENGTH, DEFAULT_TAG_SUGGESTIONS, addTagToList, cleanTag, toTagList } from '@/utils/tags'
 import { compressImage, formatBytes } from '@/utils/imageCompress'
+import { COVER_ASPECT_LABEL } from '@/utils/imageCrop'
 import AppIcon from '@/components/AppIcon.vue'
+import CoverCropper from '@/components/CoverCropper.vue'
 import { toast } from '@/composables/useToast'
 
 const props = defineProps({
@@ -324,6 +345,8 @@ const handleFile = async (file) => {
 
     const res = await uploadCover(prepared)
     form.coverImage = res.data.url
+    // 记下原图，供「调整构图」反复从它出发
+    rawCoverUrl.value = res.data.url
     coverBroken.value = false
     toast(
       compressed
@@ -337,8 +360,47 @@ const handleFile = async (file) => {
   }
 }
 
+// ---- 调整构图 ----
+// 三条同时成立才给裁剪入口：
+//   · 封面必须是本站上传的 —— 外链图跨源会污染 canvas，toBlob 直接抛 SecurityError
+//   · 不能是 GIF —— canvas 只画得出第一帧，裁一次就把动图静默变成静帧
+//   · 图得是能加载的 —— 已经坏掉的图裁出来只会是一张空白
+const cropping = ref(false)
+// 记住「本轮用户亲手传上去的那张原图」。裁完上传会换掉 form.coverImage，
+// 但下一次裁剪必须**仍然从原图出发** —— 否则每调一次就再切一刀，
+// 用户想「往回收一点」时已经收不回来了（被裁掉的像素服务端也拿不回来）。
+// 编辑已有项目时没有原图（rawCoverUrl 为空），那时就只能以当前离线为准。
+const rawCoverUrl = ref('')
+const cropSource = computed(() =>
+  isUploadedCover(form.coverImage) ? rawCoverUrl.value || form.coverImage : ''
+)
+const canCrop = computed(
+  () => !!cropSource.value && !/\.gif(\?|$)/i.test(cropSource.value) && !coverBroken.value
+)
+
+const applyCrop = async ({ file }) => {
+  uploading.value = true
+  try {
+    // 裁完必然比原图小，但这道闸门不靠「必然」—— 服务端也会独立校验体积与文件头
+    if (file.size > COVER_MAX_BYTES) {
+      toast('裁剪后的图片超过 5MB，请换一张', 'error')
+      return
+    }
+    const res = await uploadCover(file)
+    form.coverImage = res.data.url
+    coverBroken.value = false
+    cropping.value = false
+    toast(`封面已按 ${COVER_ASPECT_LABEL} 重新构图`)
+  } catch {
+    // 上传失败时把用户留在裁剪界面，可以直接重试，不必重新选图
+  } finally {
+    uploading.value = false
+  }
+}
+
 const removeCover = () => {
   form.coverImage = ''
+  rawCoverUrl.value = ''
   coverBroken.value = false
   if (fileInput.value) fileInput.value.value = ''
 }
