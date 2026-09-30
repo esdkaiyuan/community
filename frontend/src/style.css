@@ -240,3 +240,24 @@
     background-color: rgb(var(--c-pine-soft) / 0.55);
   }
 }
+
+/* ==== 移动端触控细节 ==== */
+
+/* 防双击缩放：快速连点按钮（收藏 / 点赞）不应触发页面缩放。
+   manipulation 保留平移与滚动，只禁掉双击手势。 */
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+/* iOS Safari：输入类字号 < 16px 时聚焦会自动放大整个页面。
+   小屏（≤640px，与 Tailwind sm 断点一致）统一提到 16px——
+   !important 用于覆盖 utility 字号类（text-sm / text-[15px]），桌面视觉不变。 */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

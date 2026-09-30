@@ -85,14 +85,15 @@
                 <LikeButton :liked="c.liked" :count="c.likeCount" :disabled="liking === c.id" @toggle="toggleLike(c)" />
                 <button
                   v-if="userStore.isLoggedIn"
-                  class="rounded-full px-2 py-1 text-xs text-ink-dim transition-colors hover:bg-pine-soft hover:text-pine-deep"
+                  class="relative rounded-full px-2 py-1 text-xs text-ink-dim transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-pine-soft hover:text-pine-deep"
+                  data-test="comment-reply-btn"
                   @click="toggleReply(c)"
                 >
                   回复
                 </button>
                 <button
                   v-if="c.canDelete"
-                  class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-ink-dim transition-colors hover:bg-clay/10 hover:text-clay"
+                  class="relative inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-ink-dim transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-clay/10 hover:text-clay"
                   data-test="comment-delete"
                   :disabled="removing === c.id"
                   @click="handleDelete(c, null)"
@@ -125,7 +126,7 @@
                   <LikeButton :liked="r.liked" :count="r.likeCount" :disabled="liking === r.id" @toggle="toggleLike(r)" />
                   <button
                     v-if="r.canDelete"
-                    class="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs text-ink-dim transition-colors hover:bg-clay/10 hover:text-clay"
+                    class="relative inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-ink-dim transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-clay/10 hover:text-clay"
                     :disabled="removing === r.id"
                     @click="handleDelete(r, c)"
                   >
@@ -213,7 +214,7 @@ const LikeButton = (props, { emit }) =>
   h(
     'button',
     {
-      class: `inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors ${
+      class: `relative inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] ${
         props.liked ? 'text-[#FF3B30]' : 'text-ink-dim hover:bg-clay/10 hover:text-clay'
       }`,
       type: 'button',

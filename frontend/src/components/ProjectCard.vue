@@ -128,7 +128,8 @@
     <!-- 就地收藏：不进入详情页，桌面悬停出现、触屏常显 -->
     <button
       type="button"
-      class="absolute right-3 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--glass-badge)] shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 disabled:cursor-wait disabled:opacity-70"
+      class="after:absolute after:-inset-2 after:rounded-full after:content-[''] absolute right-3 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--glass-badge)] shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 disabled:cursor-wait disabled:opacity-70"
+      data-test="card-fav"
       :class="[
         project.favorited
           ? 'text-pine'
@@ -162,7 +163,7 @@
     <router-link
       v-if="showEdit"
       :to="`/project/${project.id}/edit`"
-      class="absolute right-12 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--glass-badge)] text-ink-mid shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-110 hover:text-pine sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+      class="absolute right-12 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--glass-badge)] text-ink-mid shadow-sm backdrop-blur-md transition-all duration-200 after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] hover:scale-110 hover:text-pine sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
       title="编辑项目"
       aria-label="编辑项目"
       data-test="card-edit"

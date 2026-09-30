@@ -45,7 +45,7 @@
         <!-- 通知铃铛（已登录） -->
         <div v-if="userStore.isLoggedIn" ref="notifRef" class="relative shrink-0">
           <button
-            class="relative flex h-9 w-9 items-center justify-center rounded-full text-ink transition-colors hover:bg-sand"
+            class="relative flex h-9 w-9 items-center justify-center rounded-full text-ink transition-colors after:absolute after:-inset-1.5 after:rounded-full after:content-[''] hover:bg-sand"
             title="通知"
             aria-label="通知"
             @click="toggleNotif"
@@ -124,7 +124,7 @@
         <!-- 已登录：用户菜单（窄屏只留头像，用户名 / 箭头从 sm 起显示） -->
         <div v-if="userStore.isLoggedIn" ref="menuRef" class="relative shrink-0">
           <button
-            class="flex items-center gap-2 rounded-full border border-line bg-cream py-1.5 pl-1.5 pr-1.5 transition-colors hover:border-pine sm:pr-3"
+            class="relative flex items-center gap-2 rounded-full border border-line bg-cream py-1.5 pl-1.5 pr-1.5 transition-colors after:absolute after:-inset-1 after:rounded-full after:content-[''] hover:border-pine sm:pr-3"
             aria-label="账号菜单"
             :aria-expanded="menuOpen"
             @click="menuOpen = !menuOpen"
