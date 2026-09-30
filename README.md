@@ -636,7 +636,11 @@ community/
   作者自排除）→ mention 通知（独立于评论/回复，带 commentId 深链）→ 评论高亮
   （后端整库识别口径下发 mentionNames，前端零 v-html 纯插值）→ 行尾 @ 补全浮层；
   富文本排版另立一轮（涉及 XSS 白名单）
-- [ ] 评论富文本排版（粗体/代码块，sanitize 白名单）
+- [x] ~~评论富文本排版~~ 已落地：白名单只认 **粗体** / `行内代码` / ``` 围栏三种语法，
+  渲染层纯插值组件（零 v-html，XSS 面 = 0），未闭合定界符原样显示（内容零丢失），
+  代码区不解析其它语法；存储仍是纯文本（后端零改动），解析器 `utils/richText.js`
+  零 import 纯函数可 node 直测，断言入 `verify_rich_text.py`（18 项）
+- [ ] 通知中心筛选与批量已读
 
 ## 深色模式逐页走查
 
@@ -668,6 +672,24 @@ community/
 - 通知 ENUM 扩展：`notifications.type` 加 `'mention'`（模型 / schema.sql / 线上表三处同步）
 - 验证：`scripts/verify_mentions.py` 18 项（解析/通知/排除/深链/高亮/文案/补全/过滤）
   + 回归 verify_comments 41 项、verify_notifications、单测 49 项
+
+## 评论富文本（粗体 / 代码块）
+
+评论区支持轻量排版，语法白名单只有三种：`**粗体**`、`` `行内代码` ``、
+三反引号围栏代码块（可带语言标注，仅作展示）。设计要点：
+
+- **零 XSS**：不引入 HTML、不用 v-html。解析器 `frontend/src/utils/richText.js`
+  把白名单语法切成结构段，由 `CommentContent.vue` 纯插值渲染成 `<strong>` /
+  `<code>` / `<pre>`，XSS 面为 0。
+- **内容零丢失**：未闭合的定界符（`**`、反引号、孤立围栏）一律原样显示，
+  绝不吞字；代码区（行内代码与代码块）不解析其它语法，所见即所存。
+- **存储不变**：评论正文仍是纯文本入库（后端零改动），富文本只在渲染时解析——
+  「sanitize 白名单」的答案是根本不让 HTML 进系统。
+- **与 @ 提及同口径**：@ 高亮与第 18 轮共用 `mentionNames` 唯一口径，
+  文本段与粗体段内都识别；代码区内不点亮。
+- 验证：`scripts/verify_rich_text.py` 18 项 —— N 段把解析器复制成 .mjs 交 node
+  直测真实现（围栏/行内/降级/代码优先），A 段 HEX 字节级断言原样入库 +
+  mention 回归，B 段 Playwright 渲染与降级断言。
 
 ## 移动端触控细节
 
