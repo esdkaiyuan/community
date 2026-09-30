@@ -105,7 +105,6 @@ npm run dev
 ### 待完善的功能
 
 ⏳ **需要进一步完善**
-- [ ] 自动化测试接入 CI（`scripts/` 下的验证脚本目前靠手动执行）
 - [ ] 单元测试
 
 ## 上传文件的清理策略
@@ -515,6 +514,26 @@ python scripts/audit_backend_api.py
 ⚠️ 请求量较大，**请单独跑**，不要与其它验证脚本并跑 —— 否则会撞全局限流（600 次 / 15 分钟）把结果染红。
 撞了重启后端即可清零（`express-rate-limit` 用内存计数）。
 
+## 验证套件与 CI
+
+28 个验证脚本不用一个个手敲：`scripts/run_verify_suite.py` 顺序跑全量并汇总，
+任一失败 exit 1。脚本间自动重启后端清限流（仅当后端由套件自己拉起；复用本机
+现役服务时不动它）。解释器注意：脚本继承**启动套件的 python**，它必须装有
+playwright（本地用带 playwright 的完整路径解释器启动，或设 `VERIFY_PYTHON`）。
+
+```bash
+python scripts/run_verify_suite.py --list              # 28 个脚本清单
+python scripts/run_verify_suite.py --only verify_tags  # 定向跑（.py 可省）
+python scripts/run_verify_suite.py                     # 全量 + 汇总
+```
+
+接入 CI（`.github/workflows/verify.yml`）：push / PR / 手动触发 → 全新 ubuntu +
+MySQL 8.4 service → 建库种子 → `run_verify_suite.py` 全量 → 失败时上传
+`suite-server.log` 与截图现场。凭据双层注入：`DB_*` 给 backend 与 seed.js，
+`VERIFY_*` 给 `_verify_common.py`（本仓库工具层已环境变量化，本地不设变量时
+行为与历史逐字节一致）。首次 CI 全量跑可能暴露个别脚本对种子数据的隐式假设——
+那属于修脚本，不是修 CI。
+
 ## 常见问题
 
 ### 1. 后端启动失败
@@ -609,7 +628,6 @@ community/
 
 ## 下一步计划
 
-- [ ] 把 `scripts/verify_*.py` 接入 CI
 - [ ] 单元测试与覆盖率
 - [ ] 移动端交互细节继续打磨
 

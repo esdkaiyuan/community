@@ -1,0 +1,104 @@
+# verify 套件 CI —— scripts/run_verify_suite.py 的一键云端版
+#
+# 本仓库 28 个验证脚本（verify_*.py + 全站巡检）在本地是「红证→修复→绿」纪律的
+# 执行器；此 workflow 把它们搬进 GitHub Actions：全新 ubuntu + 全新 MySQL，
+# 任何「本机能过、干净环境过不了」的隐式依赖都会在这里现形。
+#
+# 数据库凭据经两层注入：
+#   DB_*        → backend（env.js 读 process.env，dotenv 不覆盖已有变量）与 seed.js
+#   VERIFY_*    → scripts/_verify_common.py（本仓库验证工具层，见其头部注释）
+# 两层指向同一个 service MySQL。
+#
+# 说明：套件对种子数据有轻度依赖（分类 id 1-3 等由 seed.js 提供）；
+# 若某个脚本在 CI 首跑因种子差异翻红，属脚本对数据的隐式假设，修脚本不修 CI。
+
+name: verify-suite
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch: {} # 手动触发入口：改了验证脚本但不想推代码时用
+
+concurrency:
+  group: verify-suite-${{ github.ref }}
+  cancel-in-progress: true # 同分支新提交顶掉旧跑，省分钟数
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90 # 28 个脚本顺序跑（Playwright 占大头），本地实测全量约 40-60 分钟
+
+    services:
+      mysql:
+        image: mysql:8.4 # 与本地开发库同大版本，避免 8.0/8.4 方言差异
+        env:
+          MYSQL_ROOT_PASSWORD: root_ci_only
+          MYSQL_DATABASE: co_creation_esdk
+          MYSQL_USER: co_creation_esdk
+          MYSQL_PASSWORD: ci_verify_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot_ci_only"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      # → backend（含 seed.js）
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: co_creation_esdk
+      DB_PASSWORD: ci_verify_only
+      DB_NAME: co_creation_esdk
+      JWT_SECRET: ci-only-secret-never-for-prod
+      # → scripts/_verify_common.py
+      VERIFY_DB_USER: co_creation_esdk
+      VERIFY_DB_PASS: ci_verify_only
+      VERIFY_DB_NAME: co_creation_esdk
+      VERIFY_MYSQL_CLI: mysql # linux 上 mysql 客户端就在 PATH，无需 Windows 全路径
+      # → 套件运行器（NODE_BIN 留默认 "node"）
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: 安装 Playwright + Chromium（含系统依赖）
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: 安装依赖
+        run: |
+          npm ci --prefix backend
+          npm ci --prefix frontend
+
+      - name: 建库 + 种子数据
+        run: |
+          mysql -h 127.0.0.1 -uco_creation_esdk -pci_verify_only co_creation_esdk < backend/database/schema.sql
+          node backend/database/seed.js
+
+      - name: 跑验证套件（28 个脚本顺序执行）
+        run: python scripts/run_verify_suite.py
+
+      - name: 上传失败现场（仅失败时）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-logs
+          path: |
+            backend/suite-server.log
+            docs/screenshots/
+          if-no-files-found: ignore

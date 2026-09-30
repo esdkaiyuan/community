@@ -14,21 +14,28 @@
 - 数据库凭据与 backend/.env 保持一致（本地开发库）
 """
 import json
+import os
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
 
-BASE = "http://localhost:5000/api"
-FRONT = "http://localhost:3001"
-MYSQL = r"C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe"  # 必须 Windows 路径
+# 环境可注入（接入 CI 用）：本地不设这些变量时默认值与历史行为逐字节一致；
+# CI（GitHub Actions ubuntu）通过 VERIFY_* 覆盖——尤其 mysql 客户端在 linux
+# 上就在 PATH 里，无需 Windows 全路径
+BASE = os.environ.get("VERIFY_API_BASE", "http://localhost:5000/api")
+FRONT = os.environ.get("VERIFY_FRONT_BASE", "http://localhost:3001")
+MYSQL = os.environ.get(
+    "VERIFY_MYSQL_CLI",
+    r"C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe",  # Windows 需全路径
+)
 # ⚠️ 必须带 --default-character-set=utf8mb4：否则 mysql CLI 按 GBK 输出，
 # 结果里一旦有中文（项目标题/标签），Python 侧按 utf-8 解码会抛 UnicodeDecodeError
 MYSQL_CHARSET = "--default-character-set=utf8mb4"
-DB_USER = "co_creation_esdk"
-DB_PASS = "GchzPPQ8sM6Rc2Xn"
-DB_NAME = "co_creation_esdk"
+DB_USER = os.environ.get("VERIFY_DB_USER", "co_creation_esdk")
+DB_PASS = os.environ.get("VERIFY_DB_PASS", "GchzPPQ8sM6Rc2Xn")
+DB_NAME = os.environ.get("VERIFY_DB_NAME", "co_creation_esdk")
 PASSWORD = "test123456"
 
 TS = str(int(time.time()))[-6:]  # 同一轮脚本共用的时间戳后缀，保证临时账号唯一
