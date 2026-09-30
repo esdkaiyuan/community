@@ -103,8 +103,10 @@ const TAG_MAX_LENGTH = 12
 const TITLE_MAX_LENGTH = 60
 const DESCRIPTION_MAX_LENGTH = 2000
 
-// 标签归一化：剥 emoji → 收敛空白 → 截断 → 去重（大小写不敏感，避免「开源」与「开源 」被算成两个标签）
+// 标签归一化：剥 emoji → 收敛空白 → 去重（大小写不敏感，避免「开源」与「开源 」被算成两个标签）
 // 前端已做一遍，这里是服务端的最后一道闸：直接调 API 也要得到干净的 tags
+// 超长不截断而是拒绝：标题/介绍/评论全站都是「超长 400」，唯独标签曾静默 slice ——
+// 15 字标签悄悄变 12 字残体，用户毫无感知。改为明确拒绝（净化后超长才算，与评论同哲学）
 const normalizeTags = (tags) => {
   if (!Array.isArray(tags)) return []
   const result = []
@@ -114,8 +116,10 @@ const normalizeTags = (tags) => {
     const name = stripEmoji(String(raw ?? ''))
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, TAG_MAX_LENGTH)
     if (!name) continue
+    if (name.length > TAG_MAX_LENGTH) {
+      throw ApiError.badRequest(`单个标签最多 ${TAG_MAX_LENGTH} 个字符`)
+    }
     const key = name.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)

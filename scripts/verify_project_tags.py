@@ -15,12 +15,14 @@ from _verify_common import (
     FRONT,
     TS,
     api,
+    api_status,
     attach,
     check,
     cleanup_project,
     cleanup_users,
     create_project,
     finish,
+    inject_login,
     register,
 )
 
@@ -84,10 +86,48 @@ def main():
         detail = api(f"/projects/{p1}")["data"]
         check("详情返回完整标签数组", sorted(detail["tags"]) == sorted([TAG_SHARED, TAG_MINE]))
 
+        # ---------- 超长标签明确拒绝（曾经是静默截断） ----------
+        print("-- 超长标签明确拒绝 --")
+        LONG_TAG = "评" * 13   # 13 字 > 上限 12
+        OK_TAG = "评" * 12     # 恰好 12 字
+        EMOJI_TAG = "🌐" + OK_TAG  # 剥掉 emoji 后恰好 12 字，应放行
+
+        def _post_tags(tags):
+            return api_status("/projects", {
+                "title": f"超长标签验证{TS}{len(tags)}",
+                "description": "这是一条用于自动化验证的临时项目描述，验证结束后会被完整清理。",
+                "categoryId": 1,
+                "tags": tags,
+            }, token=token)
+
+        st, body = _post_tags([LONG_TAG])
+        check("13 字标签 400（提示含 12）", st == 400 and "12" in body.get("message", ""))
+        st, body = _post_tags([OK_TAG])
+        ok_pid = (body.get("data") or {}).get("id")
+        check("12 字标签放行且完整保留", st in (200, 201) and (body.get("data") or {}).get("tags") == [OK_TAG])
+        if ok_pid:
+            pids.append(ok_pid)
+        st, body = _post_tags([EMOJI_TAG])
+        emoji_pid = (body.get("data") or {}).get("id")
+        check("emoji 剥掉后 12 字放行（净化后才算长度）",
+              st in (200, 201) and (body.get("data") or {}).get("tags") == [OK_TAG])
+        if emoji_pid:
+            pids.append(emoji_pid)
+
         # ---------- 前端 ----------
         with sync_playwright() as pw:
             browser = pw.chromium.launch()
             page = attach(browser.new_page(viewport={"width": 1440, "height": 960}))
+
+            # 发布页：输入框 maxlength 当场挡住超长（打字/粘贴都被截到 12）
+            inject_login(page, token, creator["user"])
+            page.goto(f"{FRONT}/publish", wait_until="networkidle")
+            page.wait_for_timeout(1200)
+            tag_input = page.locator("[data-test='tag-input']")
+            check("发布页标签输入框 maxlength=12", tag_input.get_attribute("maxlength") == "12")
+            tag_input.fill("评" * 20)
+            page.wait_for_timeout(300)
+            check("粘贴 20 字被 maxlength 截到 12", tag_input.input_value() == "评" * 12)
 
             # 详情页标签可点
             page.goto(f"{FRONT}/project/{p1}", wait_until="networkidle")

@@ -21,12 +21,13 @@ export const DEFAULT_TAG_SUGGESTIONS = [
   '社区营造'
 ]
 
-// 单个标签的净化：剥 emoji → 收敛空白 → 截断
+// 单个标签的净化：剥 emoji → 收敛空白
+// 不再静默截断：输入框 maxlength 已当场挡住键盘/粘贴，这里若还 slice，
+// 绕过输入框的超长（如程序化调用）会被悄悄截坏 —— 交给后端 400 明确拒绝
 export const cleanTag = (raw) =>
   stripEmoji(String(raw ?? ''))
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, TAG_MAX_LENGTH)
 
 // 追加一个标签；重复 / 为空 / 已满时原样返回（引用不变，便于调用方判断是否变化）
 export const addTagToList = (list, raw) => {

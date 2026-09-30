@@ -68,11 +68,16 @@ def main():
             sql_one(f"SELECT tags FROM projects WHERE id = {p1['id']}") == '["开源","开源硬件","环保"]',
         )
 
-        p2 = api("/projects", base_body(tags=[LONG_TAG, "a", "b", "c", "d", "e", "f"]), token=owner["token"])["data"]
+        # 超长标签：2026-09 产品决策改为明确拒绝（旧世界是静默截断，此处期望已翻转）
+        status, body = api_status(
+            "/projects", base_body(tags=[LONG_TAG, "a", "b", "c", "d", "e", "f"]), token=owner["token"]
+        )
+        check("单标签超过 12 字创建被拒 400（提示含 12）", status == 400 and "12" in body.get("message", ""))
+
+        p2 = api("/projects", base_body(tags=["a", "b", "c", "d", "e", "f"]), token=owner["token"])["data"]
         pids.append(p2["id"])
-        check("单标签超过 12 字被截断", p2["tags"][0] == LONG_TAG[:12])
         check("标签数组最多保留 5 个", len(p2["tags"]) == 5)
-        check("上限截断保留的是前 5 个", p2["tags"] == [LONG_TAG[:12], "a", "b", "c", "d"])
+        check("上限截断保留的是前 5 个", p2["tags"] == ["a", "b", "c", "d", "e"])
 
         # ---------- API：分类必选 ----------
         # 故意不带 categoryId（base_body 默认是带分类的，这里显式剔除）
