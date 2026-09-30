@@ -8,6 +8,8 @@
     "dev": "nodemon server.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "test": "node --test \"tests/unit/*.test.js\"",
+    "test:coverage": "node --test --experimental-test-coverage \"tests/unit/*.test.js\"",
     "uploads:prune": "node scripts/prune-uploads.js --apply",
     "uploads:prune:dry": "node scripts/prune-uploads.js",
     "logs:prune": "node scripts/prune-activity-logs.js --apply",

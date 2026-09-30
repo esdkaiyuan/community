@@ -105,7 +105,7 @@ npm run dev
 ### 待完善的功能
 
 ⏳ **需要进一步完善**
-- [ ] 单元测试
+- [x] ~~单元测试~~ 已落地：`backend/tests/unit/`（node:test 49 项），`npm test` 跑、`npm run test:coverage` 看覆盖率，CI 在安装依赖后最先执行
 
 ## 上传文件的清理策略
 
@@ -628,7 +628,6 @@ community/
 
 ## 下一步计划
 
-- [ ] 单元测试与覆盖率
 - [ ] 移动端交互细节继续打磨
 
 ## 联系方式

@@ -32,7 +32,9 @@ const hasEmoji = (text) => typeof text === 'string' && EMOJI_RE.test(text)
 //   单行字段（用户名）连 `\t` `\n` 一起去掉 —— 那里出现换行必然是攻击载荷或粘贴夹带；
 //   多行字段（简介）必须保留 `\n` —— 用户真的会分段，删掉等于篡改他的内容。
 const CONTROL_SINGLE_LINE_RE = /[\u0000-\u001F\u007F-\u009F]/g
-const CONTROL_MULTI_LINE_RE = /[\u0000-\u0009\u000B\u000C\u000E-\u001F\u007F-\u009F]/g
+// 多行模式：保留 \n（\u000A），其余 C0 全清 —— \u000B-\u001F 是连续区间，
+// 必须用区间写法把 \u000D（CR）盖住；逐个枚举曾漏掉 \r（CRLF 伪造字符漏网，单测实证）
+const CONTROL_MULTI_LINE_RE = /[\u0000-\u0009\u000B-\u001F\u007F-\u009F]/g
 const INVISIBLE_RE = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g
 
 /**

@@ -85,6 +85,10 @@ jobs:
           npm ci --prefix backend
           npm ci --prefix frontend
 
+      # 单测不依赖库/服务，放在最前面：挂了就不用等 Playwright 装完才失败
+      - name: 后端单元测试（node:test，49 项）
+        run: npm test --prefix backend
+
       - name: 建库 + 种子数据
         run: |
           mysql -h 127.0.0.1 -uco_creation_esdk -pci_verify_only co_creation_esdk < backend/database/schema.sql
