@@ -45,7 +45,9 @@ CREATE TABLE IF NOT EXISTS projects (
     status TINYINT DEFAULT 0 COMMENT '0-正常',
     tags TEXT DEFAULT NULL COMMENT 'JSON 数组字符串',
     is_recommend TINYINT DEFAULT 0 COMMENT '编辑推荐',
-    is_hot TINYINT DEFAULT 0 COMMENT '热门标记',
+    -- is_hot 已废弃：全仓无代码写入，热门语义改由 sort=hot（按 like_count 排序）承担，
+    -- 保留该列仅为兼容存量数据，不要再新增读写
+    is_hot TINYINT DEFAULT 0 COMMENT '热门标记（已废弃，见上行注释）',
     like_count INT DEFAULT 0,
     comment_count INT DEFAULT 0,
     participant_count INT DEFAULT 0,

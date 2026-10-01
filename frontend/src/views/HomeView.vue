@@ -141,6 +141,8 @@
           <button
             v-for="f in FILTERS"
             :key="f.value"
+            data-test="filter-chip"
+            :data-value="f.value"
             class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-colors"
             :class="query.filter === f.value ? 'bg-sand font-semibold text-ink' : 'text-ink-mid hover:bg-sand/60'"
             @click="toggleFilter(f.value)"
@@ -290,10 +292,9 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 
 const PAGE_SIZE = 12
-const FILTERS = [
-  { label: '编辑推荐', value: 'recommend', icon: 'star' },
-  { label: '热门', value: 'hot', icon: 'flame' }
-]
+// 「热门」已从筛选里去掉：它与排序里的「最热」是同一件事（都按互动量排），
+// 而它依赖的 is_hot 标记位没有任何代码维护，点下去只能得到空列表。
+const FILTERS = [{ label: '编辑推荐', value: 'recommend', icon: 'star' }]
 const SORTS = [
   { label: '最新', value: 'latest' },
   { label: '最热', value: 'hot' },

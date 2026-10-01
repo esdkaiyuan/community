@@ -167,8 +167,12 @@ exports.listProjects = async ({
   const where = {}
   if (categoryId) where.category_id = categoryId
   if (creatorId) where.creator_id = creatorId
+  // 筛选只认「编辑推荐」：这个标记位由 scripts/refresh-project-flags.js 维护。
+  // 曾经还有一条 `filter=hot -> is_hot = 1`，但全仓没有任何代码写 is_hot，
+  // 于是该筛选永远返回空列表 —— 一个长得能用、实际恒空的假入口。
+  // 「热门」语义交给 sort=hot（按 like_count 排序），不再依赖人工标记位；
+  // 任何认不出的 filter 值一律静默忽略（退化成不过滤），不拼进 SQL。
   if (filter === 'recommend') where.is_recommend = 1
-  if (filter === 'hot') where.is_hot = 1
   // 标签筛选：tags 列存 JSON 数组，用 JSON_CONTAINS 精确匹配，
   // 而不是 LIKE —— 否则「开源」会误命中「开源硬件」这类互含子串的标签
   if (tag) {
