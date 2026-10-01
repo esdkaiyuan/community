@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS categories (
     description TEXT DEFAULT NULL,
     sort_order INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    INDEX idx_name (name),
+
 );
 
 -- 项目表
@@ -58,6 +60,13 @@ CREATE TABLE IF NOT EXISTS projects (
     INDEX idx_creator (creator_id),
     INDEX idx_category (category_id),
     INDEX idx_deleted_at (deleted_at),
+    -- 列表最高频的三个排序入口：默认「最新」、sort=hot、sort=participants。
+    -- 缺了它们，ORDER BY 每次都是全表 filesort，数据量上来后性能断崖。
+    INDEX idx_created (created_at),
+    INDEX idx_like_count (like_count),
+    INDEX idx_participant_count (participant_count),
+    -- status 是废弃列（详见下方列注释），索引仅为与线上既有结构保持一致
+    INDEX idx_status (status),
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
     FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -75,6 +84,7 @@ CREATE TABLE IF NOT EXISTS comment_likes (
     user_id INT UNSIGNED NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (comment_id, user_id),
+    INDEX idx_user (user_id),
     FOREIGN KEY (comment_id) REFERENCES project_comments(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -86,6 +96,8 @@ CREATE TABLE IF NOT EXISTS project_participants (
     role ENUM('creator', 'member', 'observer') DEFAULT 'member',
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (project_id, user_id),
+    UNIQUE KEY uk_project_user (project_id, user_id),
+    KEY idx_user (user_id),
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -96,6 +108,8 @@ CREATE TABLE IF NOT EXISTS project_likes (
     user_id INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (project_id, user_id),
+    UNIQUE KEY uk_project_user (project_id, user_id),
+    KEY idx_user (user_id),
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -120,6 +134,7 @@ CREATE TABLE IF NOT EXISTS project_views (
     user_id INT UNSIGNED NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (project_id, user_id),
+    INDEX idx_user (user_id),
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -136,6 +151,9 @@ CREATE TABLE IF NOT EXISTS notifications (
     is_read TINYINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_read (user_id, is_read, created_at),
+    INDEX idx_actor (actor_id),
+    INDEX idx_comment (comment_id),
+    INDEX idx_project (project_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
