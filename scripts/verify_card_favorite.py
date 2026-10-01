@@ -95,7 +95,15 @@ def main():
 
             card = page.locator("article").first
             btn = card.locator("button").first
-            check("卡片上有收藏按钮", page.locator("article button[aria-label='收藏项目']").count() == len(all_ids))
+            # 断言基准是「页面上真实渲染的卡片数」，不是库里项目总数 —— 首页每页只渲染
+            # 12 张卡，拿库里全部项目数去比会永远少 6 个（首页分页使然，与按钮无关）。
+            # 另外已收藏的卡片 aria-label 会变成「取消收藏」，所以按 data-test 计数。
+            card_count = page.locator("article").count()
+            fav_btn_count = page.locator("article button[data-test='card-fav']").count()
+            check(
+                f"每张卡片都有收藏按钮（卡片 {card_count} / 按钮 {fav_btn_count}）",
+                card_count > 0 and fav_btn_count == card_count,
+            )
 
             opacity_idle = btn.evaluate("el => getComputedStyle(el).opacity")
             card.hover()

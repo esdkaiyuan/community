@@ -8,6 +8,7 @@ const notificationService = require('./notification.service')
 const coverService = require('./cover.service')
 const activityLogService = require('./activityLog.service')
 const { clampInt, MAX_PAGE } = require('../utils/pagination')
+const { bumpCounter } = require('../utils/counter')
 
 // 数据库行 -> 前端数据形状（camelCase）
 const toClientProject = (p, extra = {}) => {
@@ -568,9 +569,9 @@ exports.likeProject = async (id, userId) => {
   if (existing) throw ApiError.conflict('已点赞过该项目')
 
   await ProjectLike.create({ project_id: id, user_id: userId })
-  project.like_count += 1
-  await project.save()
-  return { likeCount: project.like_count }
+  // 原子自增：交给数据库做。绝不能「读出来 +1 再写回」——并发下会丢更新
+  const likeCount = await bumpCounter(Project, id, 'like_count', 1)
+  return { likeCount }
 }
 
 exports.unlikeProject = async (id, userId) => {
@@ -580,11 +581,9 @@ exports.unlikeProject = async (id, userId) => {
   if (!existing) throw ApiError.badRequest('尚未点赞该项目')
 
   await existing.destroy()
-  if (project.like_count > 0) {
-    project.like_count -= 1
-    await project.save()
-  }
-  return { likeCount: project.like_count }
+  // 自减同理；下限由 SQL 的 GREATEST 兜住，不会减成负数
+  const likeCount = await bumpCounter(Project, id, 'like_count', -1)
+  return { likeCount }
 }
 
 // 收藏项目（数据库唯一键兜底防重复）
@@ -615,8 +614,7 @@ exports.participateProject = async (id, userId) => {
   if (existing) throw ApiError.conflict('已参与此项目')
 
   await ProjectParticipant.create({ project_id: id, user_id: userId, role: 'member' })
-  project.participant_count += 1
-  await project.save()
+  const participantCount = await bumpCounter(Project, id, 'participant_count', 1)
 
   // 通知发起人（同一人对同一项目只提醒一次，避免「退出 → 再加入」刷屏）
   notificationService.notifyOnce({
@@ -626,7 +624,7 @@ exports.participateProject = async (id, userId) => {
     projectId: Number(id)
   })
 
-  return { participantCount: project.participant_count }
+  return { participantCount }
 }
 
 exports.cancelParticipate = async (id, userId) => {
@@ -637,11 +635,8 @@ exports.cancelParticipate = async (id, userId) => {
   if (participant.role === 'creator') throw ApiError.badRequest('项目创建者不能退出自己的项目')
 
   await participant.destroy()
-  if (project.participant_count > 0) {
-    project.participant_count -= 1
-    await project.save()
-  }
-  return { participantCount: project.participant_count }
+  const participantCount = await bumpCounter(Project, id, 'participant_count', -1)
+  return { participantCount }
 }
 
 exports.toClientProject = toClientProject

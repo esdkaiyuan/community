@@ -2,6 +2,7 @@ const { Op } = require('sequelize')
 const { Comment, Project, User, CommentLike } = require('../models')
 const ApiError = require('../utils/ApiError')
 const { stripEmoji, hasEmoji } = require('../utils/textSanitize')
+const { bumpCounter } = require('../utils/counter')
 const notificationService = require('./notification.service')
 const activityLogService = require('./activityLog.service')
 const { clampInt, MAX_PAGE } = require('../utils/pagination')
@@ -205,8 +206,8 @@ exports.createComment = async ({ projectId, content, userId, parentId, req }) =>
     content: cleaned
   })
 
-  project.comment_count += 1
-  await project.save()
+  // 原子自增（并发下不丢更新，见 utils/counter.js）
+  const commentCount = await bumpCounter(Project, Number(projectId), 'comment_count', 1)
 
   // 站内通知（自己触发的不通知自己，服务内部处理）
   notificationService.notify({
@@ -245,7 +246,7 @@ exports.createComment = async ({ projectId, content, userId, parentId, req }) =>
     comment: toClientComment(full, { canDelete: true, liked: false, replyCount: 0, replies: [] }),
     hadEmoji: hasEmoji(content),
     mentions: mentions.map((m) => ({ id: m.id, username: m.username })),
-    commentCount: project.comment_count
+    commentCount
   }
 }
 
@@ -270,8 +271,7 @@ exports.deleteComment = async ({ projectId, commentId, userId, req }) => {
   await comment.destroy()
 
   const removed = 1 + replyCount
-  project.comment_count = Math.max(0, project.comment_count - removed)
-  await project.save()
+  const commentCount = await bumpCounter(Project, Number(projectId), 'comment_count', -removed)
 
   await activityLogService.logCommentDeleted({
     userId,
@@ -280,7 +280,7 @@ exports.deleteComment = async ({ projectId, commentId, userId, req }) => {
     req
   })
 
-  return { commentCount: project.comment_count }
+  return { commentCount }
 }
 
 exports.likeComment = async ({ projectId, commentId, userId }) => {
@@ -290,8 +290,7 @@ exports.likeComment = async ({ projectId, commentId, userId }) => {
   if (existing) throw ApiError.conflict('已点赞过该评论')
 
   await CommentLike.create({ comment_id: commentId, user_id: userId })
-  comment.like_count += 1
-  await comment.save()
+  const likeCount = await bumpCounter(Comment, comment.id, 'like_count', 1)
 
   // 通知评论作者（自己点赞自己不通知）
   notificationService.notify({
@@ -302,7 +301,7 @@ exports.likeComment = async ({ projectId, commentId, userId }) => {
     commentId: comment.id
   })
 
-  return { likeCount: comment.like_count }
+  return { likeCount }
 }
 
 exports.unlikeComment = async ({ projectId, commentId, userId }) => {
@@ -312,11 +311,8 @@ exports.unlikeComment = async ({ projectId, commentId, userId }) => {
   if (!existing) throw ApiError.badRequest('尚未点赞该评论')
 
   await existing.destroy()
-  if (comment.like_count > 0) {
-    comment.like_count -= 1
-    await comment.save()
-  }
-  return { likeCount: comment.like_count }
+  const likeCount = await bumpCounter(Comment, comment.id, 'like_count', -1)
+  return { likeCount }
 }
 
 const getCommentOr404 = async (projectId, commentId) => {
