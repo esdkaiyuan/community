@@ -273,26 +273,25 @@ exports.listProjects = async ({
 exports.listPopularTags = async ({ limit = 12 } = {}) => {
   const max = clampInt(limit, { max: 30, fallback: 12 })
 
-  const rows = await Project.findAll({
-    attributes: ['tags'],
-    where: { tags: { [Op.ne]: null } }
-  })
+  // 单条 SQL 聚合：JSON_TABLE 把 tags 里的 JSON 数组摊成行，GROUP BY 直接计数。
+  // 旧实现是把**全表** projects 的 tags 捞进内存再用 Map 逐条数 —— 全表扫描 +
+  // 大内存 + 无上限，数据量一大就拖垮列表页。交给数据库只返回聚合结果。
+  // JSON_VALID 是必要的护栏：历史上存在非 JSON 的脏值，缺了它整条查询会报错。
+  const [rows] = await sequelize.query(
+    `SELECT jt.tag_name AS name, COUNT(*) AS cnt
+       FROM projects p,
+            JSON_TABLE(p.tags, '$[*]' COLUMNS (tag_name VARCHAR(50) PATH '$')) jt
+      WHERE p.deleted_at IS NULL
+        AND p.tags IS NOT NULL
+        AND JSON_VALID(p.tags)
+      GROUP BY jt.tag_name
+      ORDER BY cnt DESC, jt.tag_name ASC
+      LIMIT ${max}`
+  )
 
-  const counter = new Map()
-  rows.forEach((row) => {
-    const list = Array.isArray(row.tags) ? row.tags : []
-    list.forEach((raw) => {
-      const name = String(raw || '').trim()
-      if (!name) return
-      counter.set(name, (counter.get(name) || 0) + 1)
-    })
-  })
-
-  // 项目数倒序；数量相同按名称稳定排序，避免每次刷新顺序抖动
-  return [...counter.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh'))
-    .slice(0, max)
+  // 并列时按名称的二进制序（旧实现用 zh localeCompare）。排序口径不同但同样稳定，
+  // 热门标签是索引入口，顺序稳定比「按中文习惯排」更重要。
+  return rows.map((r) => ({ name: r.name, count: Number(r.cnt) }))
 }
 
 // —— 相关项目推荐 ——
