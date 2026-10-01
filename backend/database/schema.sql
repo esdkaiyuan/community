@@ -62,21 +62,12 @@ CREATE TABLE IF NOT EXISTS projects (
     FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 标签表
-CREATE TABLE IF NOT EXISTS tags (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 项目标签关联表
-CREATE TABLE IF NOT EXISTS project_tags (
-    project_id INT NOT NULL,
-    tag_id INT NOT NULL,
-    PRIMARY KEY (project_id, tag_id),
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-);
+-- 标签的唯一真源是 projects.tags（TEXT，存 JSON 数组字符串），没有独立标签表。
+-- 这里曾经声明过 tags / project_tags 两张表并配了 Tag / ProjectTag 模型，但它们
+-- 从未被任何 service 读写过（线上库里也从未创建），属于纯粹的 schema 漂移 ——
+-- 新环境照这份文件建库会多出两张与真实数据不一致的死表。已删除：
+--   scripts/verify_schema_consistency.py 会把「schema ↔ 线上库 ↔ 模型」三方一致
+--   钉成断言，防止这类漂移再出现。
 
 -- 评论点赞表（唯一约束防止重复点赞；评论删除时级联清理）
 CREATE TABLE IF NOT EXISTS comment_likes (
