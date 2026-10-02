@@ -100,7 +100,7 @@ DB_NAME=co_creation_dev
 
 ```bash
 cd backend
-mysql -u dev_user -p co_creation_dev < database/init-database.sql
+mysql -u dev_user -p co_creation_dev < backend/database/schema.sql
 npm run db:sync
 ```
 

@@ -156,65 +156,21 @@ npm run db:sync
 
 ### 方法2：手动执行 SQL 脚本
 
-如果 `db:sync` 不可用，可以创建 SQL 脚本：
-
-```sql
--- 创建用户表
-CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  username VARCHAR(50) NOT NULL UNIQUE,
-  email VARCHAR(100) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL,
-  avatar VARCHAR(255),
-  bio TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- 创建分类表
-CREATE TABLE categories (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(50) NOT NULL,
-  description TEXT,
-  icon VARCHAR(50),
-  sort_order INT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 创建项目表
-CREATE TABLE projects (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  category_id INT NOT NULL,
-  title VARCHAR(200) NOT NULL,
-  description TEXT,
-  cover_image VARCHAR(255),
-  tags JSON,
-  status ENUM('draft', 'published', 'archived') DEFAULT 'published',
-  views INT DEFAULT 0,
-  likes INT DEFAULT 0,
-  participants INT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-);
-
--- 插入种子数据
-INSERT INTO categories (name, description, icon, sort_order) VALUES
-('技术开发', '编程、软件、算法等技术类项目', 'Monitor', 1),
-('设计创意', 'UI/UX、平面设计、插画等', 'Picture', 2),
-('教育学习', '课程、教程、知识分享', 'Reading', 3),
-('商业创业', '商业模式、创业项目', 'Briefcase', 4),
-('生活兴趣', '美食、旅行、摄影等', 'CoffeeCup', 5),
-('游戏娱乐', '游戏开发、电竞、娱乐', 'VideoPlay', 6);
-```
-
-保存为 `init-database.sql`，然后执行：
+仓库里已有权威的建库脚本 `backend/database/schema.sql`，直接执行它即可：
 
 ```powershell
-mysql -u dev_user -p co_creation_dev < init-database.sql
+mysql -u dev_user -p co_creation_dev < backend/database/schema.sql
+node backend/database/seed.js   # 写入 8 条分类种子
 ```
+
+> 本节曾内嵌一份手写的示例 schema，但里面的 `projects.user_id`、
+> `views` / `likes` / `participants`、`status ENUM('draft','published','archived')`
+> 等与真实结构完全不符，且结尾写着「保存为 backend/database/schema.sql」——
+> 照做会把真正的建库脚本覆盖成错的。
+>
+> 建库脚本只能有一份：`backend/database/schema.sql`。
+> `scripts/verify_schema_consistency.py` 会**真的把它执行一遍**（隔离命名空间下建表
+> 再比对线上结构），所以它不会再退化成「能看不能跑」。
 
 ---
 
