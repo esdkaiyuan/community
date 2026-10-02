@@ -1,6 +1,18 @@
 const mysql = require('mysql2/promise')
 require('dotenv').config({ path: __dirname + '/../.env' })
 
+// 种子数据：目前只有 8 条分类。
+//
+// ⚠️ 这里曾经还往一张 `tags` 表插 18 个标签。那张表**从未在线上创建过**、也没有任何
+//    代码读写（标签的唯一真源是 projects.tags JSON 列），已在消除 schema 漂移时删掉建表
+//    语句与模型 —— 于是这段插入变成「往不存在的表写数据」，每次跑都报错。已整段移除：
+//    标签建议由前端 DEFAULT_TAG_SUGGESTIONS 提供，不需要种子表。
+//
+// 幂等性：categories 上有 UNIQUE KEY name，`ON DUPLICATE KEY UPDATE` 让本脚本可以
+// 反复执行而不产生重复分类（这也是那条唯一键不能删的原因）。
+//
+// 退出码：失败必须 exit(1)。此前只 console.error 就继续走，脚本永远返回 0，
+// 调用方（部署脚本 / CI）根本不知道种子其实没写进去。
 async function seed() {
   const connection = await mysql.createConnection({
     host: process.env.DB_HOST,
@@ -31,22 +43,16 @@ async function seed() {
         [cat.name, cat.icon, cat.description, cat.sort_order]
       )
     }
-    console.log('✓ 分类数据插入完成')
+    console.log(`✓ 分类数据插入完成（${categories.length} 条）`)
 
-    // 插入标签数据
-    const tags = ['开发', '开源', '效率工具', '设计', '小程序', '公益', 'AI', '硬件', '物联网', '智能家居', '产品', '教育', '协作', '游戏开发', '像素风', '独立游戏', '字体', '社区']
-    
-    for (const tagName of tags) {
-      await connection.execute(
-        'INSERT INTO tags (name) VALUES (?) ON DUPLICATE KEY UPDATE name=name',
-        [tagName]
-      )
-    }
-    console.log('✓ 标签数据插入完成')
+    // 事后核对：不信「执行没报错」，直接问库里有几条
+    const [rows] = await connection.execute('SELECT COUNT(*) AS n FROM categories')
+    console.log(`✓ 库内分类总数：${rows[0].n}`)
 
     console.log('种子数据插入完成！')
   } catch (error) {
-    console.error('种子数据插入失败:', error)
+    console.error('种子数据插入失败:', error.message)
+    process.exitCode = 1
   } finally {
     await connection.end()
   }
