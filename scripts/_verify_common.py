@@ -33,9 +33,8 @@ MYSQL = os.environ.get(
 # ⚠️ 必须带 --default-character-set=utf8mb4：否则 mysql CLI 按 GBK 输出，
 # 结果里一旦有中文（项目标题/标签），Python 侧按 utf-8 解码会抛 UnicodeDecodeError
 MYSQL_CHARSET = "--default-character-set=utf8mb4"
-DB_USER = os.environ.get("VERIFY_DB_USER", "co_creation_esdk")
-DB_PASS = os.environ.get("VERIFY_DB_PASS", "GchzPPQ8sM6Rc2Xn")
-DB_NAME = os.environ.get("VERIFY_DB_NAME", "co_creation_esdk")
+# 凭据一律来自环境变量 / backend/.env，源码里不出现密码字面量（仓库是公开的）。
+from _db_config import DB_NAME, DB_PASS, DB_USER  # noqa: E402,F401  再导出给各验证脚本
 PASSWORD = "test123456"
 
 TS = str(int(time.time()))[-6:]  # 同一轮脚本共用的时间戳后缀，保证临时账号唯一
@@ -61,20 +60,26 @@ def api(path, data=None, token=None, method=None):
 
 
 def sql(statement):
+    # 密码走 MYSQL_PWD 环境变量而不是 `-p<密码>` 命令行参数：
+    #   · 命令行参数会出现在 subprocess 的异常回溯里 —— 脚本一失败就把密码打进日志；
+    #   · mysql 客户端对命令行密码还会打「Using a password」警告污染 stderr，
+    #     会让「按 stderr 判成败」的断言恒红。
     subprocess.run(
-        [MYSQL, "-u", DB_USER, f"-p{DB_PASS}", DB_NAME, MYSQL_CHARSET, "-e", statement],
+        [MYSQL, "-u", DB_USER, DB_NAME, MYSQL_CHARSET, "-e", statement],
         check=True,
         capture_output=True,
+        env={**os.environ, "MYSQL_PWD": DB_PASS},
     )
 
 
 def sql_one(statement):
     """返回单值（-N -B 去表头与对齐）"""
     res = subprocess.run(
-        [MYSQL, "-u", DB_USER, f"-p{DB_PASS}", DB_NAME, MYSQL_CHARSET, "-N", "-B", "-e", statement],
+        [MYSQL, "-u", DB_USER, DB_NAME, MYSQL_CHARSET, "-N", "-B", "-e", statement],
         check=True,
         capture_output=True,
         text=True,
+        env={**os.environ, "MYSQL_PWD": DB_PASS},
     )
     return res.stdout.strip()
 

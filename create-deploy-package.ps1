@@ -99,7 +99,7 @@ cd community
 Database info (create in Baota panel):
 - Database: co_creation_esdk
 - Username: co_creation_esdk
-- Password: GchzPPQ8sM6Rc2Xn
+- Password: <见 backend/.env，切勿写入仓库>
 
 ### 4. Install and Start
 

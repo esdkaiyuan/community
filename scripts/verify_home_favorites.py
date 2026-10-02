@@ -8,6 +8,7 @@
 4) 清理：删除临时用户（级联删除其收藏）
 """
 import json
+import os
 import subprocess
 import sys
 import time
@@ -18,7 +19,8 @@ from playwright.sync_api import sync_playwright
 
 BASE = "http://localhost:5000/api"
 MYSQL = r"C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe"
-DB = "co_creation_esdk"
+from _db_config import DB_NAME, DB_PASS
+DB = DB_NAME
 OUT_LIGHT = "docs/screenshots/home-favorites-light.png"
 OUT_DARK = "docs/screenshots/home-favorites-dark.png"
 OUT_EMPTY = "docs/screenshots/home-favorites-empty.png"
@@ -48,9 +50,10 @@ def api(path, data=None, token=None, method=None):
 
 def sql(statement):
     subprocess.run(
-        [MYSQL, "-u", "co_creation_esdk", "-pGchzPPQ8sM6Rc2Xn", DB, "-e", statement],
+        [MYSQL, "-u", "co_creation_esdk", DB, "-e", statement],
         check=True,
         capture_output=True,
+        env={**os.environ, "MYSQL_PWD": DB_PASS},
     )
 
 

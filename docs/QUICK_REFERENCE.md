@@ -4,7 +4,7 @@
 ```
 数据库名: co_creation_esdk
 用户名:   co_creation_esdk
-密码:     GchzPPQ8sM6Rc2Xn
+密码:     <见 backend/.env，切勿写入仓库>
 主机:     localhost
 端口:     3306
 ```
@@ -17,7 +17,7 @@ PORT=5000
 NODE_ENV=production
 DB_HOST=localhost
 DB_USER=co_creation_esdk
-DB_PASSWORD=GchzPPQ8sM6Rc2Xn
+DB_PASSWORD=<见 backend/.env，切勿写入仓库>
 DB_NAME=co_creation_esdk
 ```
 
@@ -64,7 +64,7 @@ cd ../frontend && npm install && npm run build
 
 ### 备份数据库
 ```bash
-mysqldump -u co_creation_esdk -p'GchzPPQ8sM6Rc2Xn' co_creation_esdk > backup_$(date +%Y%m%d).sql
+mysqldump -u co_creation_esdk -p co_creation_esdk > backup_$(date +%Y%m%d).sql
 ```
 
 ## 🔧 Nginx 配置要点

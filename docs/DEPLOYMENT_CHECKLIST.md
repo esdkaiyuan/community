@@ -12,7 +12,7 @@
 ### 数据库配置
 - [ ] 数据库名：`co_creation_esdk`
 - [ ] 数据库用户：`co_creation_esdk`
-- [ ] 数据库密码：`GchzPPQ8sM6Rc2Xn`
+- [ ] 数据库密码：`<见 backend/.env，切勿写入仓库>`
 - [ ] 访问权限：本地服务器
 - [ ] 已导入数据库结构（执行 `npm run db:sync` 或 SQL 文件）
 
@@ -171,10 +171,10 @@ tail -f /www/wwwlogs/your-domain.com.error.log
 ### 数据库连接失败
 ```bash
 # 测试数据库连接
-mysql -u co_creation_esdk -p'GchzPPQ8sM6Rc2Xn' -h localhost
+mysql -u co_creation_esdk -p -h localhost
 
 # 检查数据库是否存在
-mysql -u co_creation_esdk -p'GchzPPQ8sM6Rc2Xn' -e "SHOW DATABASES;"
+mysql -u co_creation_esdk -p -e "SHOW DATABASES;"
 ```
 
 ---
@@ -205,10 +205,10 @@ cd ../frontend && npm install && npm run build
 ### 备份数据库
 ```bash
 # 手动备份
-mysqldump -u co_creation_esdk -p'GchzPPQ8sM6Rc2Xn' co_creation_esdk > backup_$(date +%Y%m%d_%H%M%S).sql
+mysqldump -u co_creation_esdk -p co_creation_esdk > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # 设置定时备份（crontab）
-0 2 * * * mysqldump -u co_creation_esdk -p'GchzPPQ8sM6Rc2Xn' co_creation_esdk > /backup/db_$(date +\%Y\%m\%d).sql
+0 2 * * * mysqldump -u co_creation_esdk -p co_creation_esdk > /backup/db_$(date +\%Y\%m\%d).sql
 ```
 
 ### 清理日志

@@ -30,7 +30,7 @@
 ```
 数据库名: co_creation_esdk
 用户名: co_creation_esdk
-密码: GchzPPQ8sM6Rc2Xn
+密码: <见 backend/.env，切勿写入仓库>
 主机: localhost:3306
 ```
 
@@ -177,10 +177,10 @@ nginx -s reload
 systemctl status mysqld
 
 # 2. 测试数据库连接
-mysql -u co_creation_esdk -p'GchzPPQ8sM6Rc2Xn' co_creation_esdk
+mysql -u co_creation_esdk -p co_creation_esdk
 
 # 3. 如果数据库未初始化，执行 SQL 脚本
-mysql -u co_creation_esdk -p co_creation_esdk < database/init-database.sql
+mysql -u co_creation_esdk -p co_creation_esdk < backend/database/schema.sql
 ```
 
 ### 问题 3：Nginx 反向代理不工作

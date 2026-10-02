@@ -12,6 +12,7 @@
    点击评论类通知深链到该条评论（?comment=<id>）
 """
 import json
+import os
 import subprocess
 import sys
 import time
@@ -23,9 +24,7 @@ from playwright.sync_api import sync_playwright
 BASE = "http://localhost:5000/api"
 FRONT = "http://localhost:3001"
 MYSQL = r"C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe"
-DB_USER = "co_creation_esdk"
-DB_PASS = "GchzPPQ8sM6Rc2Xn"
-DB_NAME = "co_creation_esdk"
+from _db_config import DB_NAME, DB_PASS, DB_USER  # 凭据只从环境变量 / backend/.env 读取
 
 TS = str(int(time.time()))[-6:]
 PASSWORD = "test123456"
@@ -51,18 +50,20 @@ def api(path, data=None, token=None, method=None):
 
 def sql(statement):
     subprocess.run(
-        [MYSQL, "-u", DB_USER, f"-p{DB_PASS}", DB_NAME, "-e", statement],
+        [MYSQL, "-u", DB_USER, DB_NAME, "-e", statement],
         check=True,
         capture_output=True,
+        env={**os.environ, "MYSQL_PWD": DB_PASS},
     )
 
 
 def sql_one(statement):
     res = subprocess.run(
-        [MYSQL, "-u", DB_USER, f"-p{DB_PASS}", DB_NAME, "-N", "-B", "-e", statement],
+        [MYSQL, "-u", DB_USER, DB_NAME, "-N", "-B", "-e", statement],
         check=True,
         capture_output=True,
         text=True,
+        env={**os.environ, "MYSQL_PWD": DB_PASS},
     )
     return res.stdout.strip()
 

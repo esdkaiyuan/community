@@ -12,7 +12,7 @@
 ### 2. 已配置的信息
 - **数据库名**: `co_creation_esdk`
 - **数据库用户**: `co_creation_esdk`
-- **数据库密码**: `GchzPPQ8sM6Rc2Xn`
+- **数据库密码**: `<见 backend/.env，切勿写入仓库>`
 - **后端端口**: `5000`
 - **前端端口**: `3000`（开发）/ `80`（生产）
 
@@ -51,7 +51,7 @@ cd community
    - 添加数据库：
      - 数据库名：`co_creation_esdk`
      - 用户名：`co_creation_esdk`
-     - 密码：`GchzPPQ8sM6Rc2Xn`
+     - 密码：`<见 backend/.env，切勿写入仓库>`
      - 访问权限：本地服务器
 
 2. **导入数据库结构**
@@ -65,7 +65,7 @@ cd community
    
    或者手动执行 SQL 文件（如果有）：
    ```bash
-   mysql -u co_creation_esdk -p'GchzPPQ8sM6Rc2Xn' co_creation_esdk < database/schema.sql
+   mysql -u co_creation_esdk -p co_creation_esdk < database/schema.sql
    ```
 
 ### 第四步：配置后端服务
@@ -85,7 +85,7 @@ cd community
    DB_HOST=localhost
    DB_PORT=3306
    DB_USER=co_creation_esdk
-   DB_PASSWORD=GchzPPQ8sM6Rc2Xn
+   DB_PASSWORD=<见 backend/.env，切勿写入仓库>
    DB_NAME=co_creation_esdk
    JWT_SECRET=co_creation_community_secret_key_2024_change_in_production
    JWT_EXPIRES_IN=7d
@@ -299,7 +299,7 @@ npm run build
 ### 3. 备份策略
 - ✅ 定期备份数据库
   ```bash
-  mysqldump -u co_creation_esdk -p'GchzPPQ8sM6Rc2Xn' co_creation_esdk > backup_$(date +%Y%m%d).sql
+  mysqldump -u co_creation_esdk -p co_creation_esdk > backup_$(date +%Y%m%d).sql
   ```
 - ✅ 备份项目文件
 - ✅ 备份 Nginx 配置
@@ -322,7 +322,7 @@ npm run build
 systemctl status mysqld
 
 # 测试数据库连接
-mysql -u co_creation_esdk -p'GchzPPQ8sM6Rc2Xn' -h localhost
+mysql -u co_creation_esdk -p -h localhost
 
 # 检查 .env 配置
 cat /www/wwwroot/community/backend/.env
