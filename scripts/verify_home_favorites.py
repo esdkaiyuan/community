@@ -28,6 +28,25 @@ OUT_EMPTY = "docs/screenshots/home-favorites-empty.png"
 TS = str(int(time.time()))[-6:]
 USERNAME = f"homefav{TS}"
 EMAIL = f"{USERNAME}@example.com"
+
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+HOME_SRC = os.path.join(REPO, "frontend", "src", "views", "HomeView.vue")
+
+
+def page_size():
+    """从**源码**读回首页每页条数，不把 12 抄进断言。
+
+    为什么必须读源码：这条断言要衡量「首页渲染了几张卡」。把 12 抄进脚本等于
+    「测试与实现各写一份」，PAGE_SIZE 改了测试照样绿。
+    """
+    try:
+        text = open(HOME_SRC, encoding="utf-8").read()
+    except OSError:
+        return None
+    import re
+
+    m = re.search(r"const\s+PAGE_SIZE\s*=\s*(\d+)", text)
+    return int(m.group(1)) if m else None
 PASSWORD = "test123456"
 
 console_errors = []
@@ -76,6 +95,14 @@ def main():
         api(f"/projects/{fav_id}/favorite", {}, token)
         print(f"收藏 {fav_id}（未收藏 {other_id}）")
 
+        # 首页只渲染**第一页**，不是全部项目。以前这里写死 cards.count() == len(all_ids)，
+        # 库里项目一多（> PAGE_SIZE）就必然假红 —— 那是测试自己腐烂，不是功能坏了。
+        # 正确口径：默认列表渲染的必须是「未筛选时第一页应有的那批 id」。
+        psize = page_size()
+        check("从源码读到首页 PAGE_SIZE", psize is not None and psize > 0)
+        first_page = [p["id"] for p in api(f"/projects?page=1&pageSize={psize}")["data"]["projects"]]
+        print(f"库里共 {len(all_ids)} 个项目，首页每页 {psize} 个，本次比对第一页 {len(first_page)} 个")
+
         # ---------- API 断言 ----------
         anon = api("/projects?pageSize=50")["data"]
         check("未登录列表不返回 favorited 字段", "favorited" not in anon["projects"][0])
@@ -111,7 +138,10 @@ def main():
             page.wait_for_timeout(1600)
 
             cards = page.locator("a[href^='/project/']")
-            check("默认列表展示全部项目", cards.count() == len(all_ids))
+            # 断言渲染出的就是「第一页那批 id」，顺序也一致 —— 既验证了没被误筛选，
+            # 又不会因为库里项目变多而失效。
+            rendered = [int(h.rsplit("/", 1)[-1]) for h in cards.evaluate_all("els => els.map(e => e.getAttribute('href'))")]
+            check("默认列表展示的是未筛选的第一页", rendered == first_page)
 
             pill = page.get_by_role("button", name="只看收藏")
             check("登录后出现「只看收藏」筛选", pill.count() == 1)
@@ -134,7 +164,7 @@ def main():
             page.emulate_media(color_scheme="light")
             page.get_by_role("button", name="只看收藏").click()
             page.wait_for_timeout(1600)
-            check("取消筛选后恢复全量项目", cards.count() == len(all_ids))
+            check("取消筛选后恢复全量项目", [int(h.rsplit("/", 1)[-1]) for h in cards.evaluate_all("els => els.map(e => e.getAttribute('href'))")] == first_page)
             check("URL 不再带 favorited", "favorited" not in page.url)
 
             # ---------- 详情页收藏微动效 ----------

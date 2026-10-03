@@ -56,6 +56,11 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) NOT NULL COMMENT '邮箱',
     -- 列名是 password，存的是 bcrypt 哈希（Sequelize 模型侧映射为 password_hash）
     password VARCHAR(255) NOT NULL COMMENT '密码(bcrypt 哈希)',
+    -- 会话版本：改密时 +1，此后**所有**旧 JWT 立即失效（auth 中间件拿 JWT 里的 tv 与它比对）。
+    -- ⚠️ 没有这一列的话，「改密码」就只是换了个密码字符串 —— 被盗的令牌仍然能用满
+    -- JWT_EXPIRES_IN（默认 7 天），改密的全部意义被架空。这是无状态 JWT 做会话作废的
+    -- 最小代价方案：一次主键查询（见 middleware/auth.js 的说明）。
+    token_version INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '会话版本: 改密后 +1，旧令牌作废',
     avatar VARCHAR(255) DEFAULT NULL COMMENT '头像URL',
     bio TEXT COMMENT '个人简介',
     -- 【线上遗留】有数据（1 个管理员、38 行 status=1），但全仓零读写：

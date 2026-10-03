@@ -180,6 +180,8 @@ def backend_can_delete(token):
             os.remove(os.path.join(UPLOAD_DIR, name))
         except OSError:
             pass
+        except BaseException:  # noqa: BLE001 - 沙箱删除守卫抛 SystemExit，抓不住会带崩整个脚本
+            pass
     return not residual
 
 
@@ -323,6 +325,8 @@ def main():
                 os.remove(os.path.join(UPLOAD_DIR, name))
             except OSError:
                 pass
+            except BaseException:  # noqa: BLE001 - 沙箱删除守卫抛 SystemExit，抓不住会带崩整个脚本
+                pass
 
     from playwright.sync_api import sync_playwright
 
@@ -425,6 +429,8 @@ if __name__ == "__main__":
                 os.remove(os.path.join(UPLOAD_DIR, name))
                 removed += 1
             except OSError:
+                pass
+            except BaseException:  # noqa: BLE001 - 沙箱删除守卫抛 SystemExit，抓不住会带崩整个脚本
                 pass
         shutil.rmtree(TMP, ignore_errors=True)
         print(f"已清理临时数据（上传文件删除 {removed}/{len(UPLOADED)}，目录剩余 {dir_count()} 个）")

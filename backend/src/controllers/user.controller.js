@@ -25,6 +25,13 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   ok(res, data, data.adjusted ? '资料已更新（已自动移除表情符号等非法字符）' : '资料已更新')
 })
 
+exports.updatePassword = asyncHandler(async (req, res) => {
+  const data = await userService.changePassword(req.user.userId, req.body, req)
+  // 文案必须讲清「其他设备会掉线」：用户改密往往就是为了把别人踢出去，
+  // 不说明的话他会以为「改完就没事了」，而实际上下一次请求才会发现旧令牌已废
+  ok(res, data, '密码已更新，其他设备需要重新登录')
+})
+
 exports.getPublicProfile = asyncHandler(async (req, res) => {
   const data = await userService.getPublicProfile(req.params.id)
   ok(res, data, '获取用户主页成功')

@@ -29,7 +29,8 @@ const log = createLogger('security')
 const EVENTS = Object.freeze({
   LOGIN_REJECTED: 'auth.login.rejected',
   REGISTER_REJECTED: 'auth.register.rejected',
-  TOKEN_REJECTED: 'auth.token.rejected'
+  TOKEN_REJECTED: 'auth.token.rejected',
+  PASSWORD_REJECTED: 'auth.password.rejected'
 })
 const EVENT_VALUES = Object.freeze(Object.values(EVENTS))
 
@@ -177,6 +178,14 @@ exports.logRegisterRejected = ({ account, targetUserId, reason, req }) =>
 // 真正异常的是签名/格式对不上 —— 那是有人在伪造或篡改令牌。
 exports.logTokenRejected = ({ reason, targetUserId, req }) =>
   recordEvent({ event: EVENTS.TOKEN_REJECTED, reason, targetUserId, req })
+
+// 改密时「当前密码不正确」。与登录失败同源（都是「不知道密码」），区别在于它发生在一个
+// **已经通过认证**的会话里 —— 更像「令牌被盗后试图改密把主人锁在门外」，而不是撞库。
+// 身份是确定的（target_user_id 就是当前登录的账号），所以它能归属到人、也就能出现在
+// 用户自己的安全提醒里 —— 这正是他必须知道的事。
+// ⚠️ 同样绝不接受 password 参数：本模块按白名单取值，但源头就不该碰。
+exports.logPasswordChangeRejected = ({ account, targetUserId, reason, req }) =>
+  recordEvent({ event: EVENTS.PASSWORD_REJECTED, account, targetUserId, reason, req })
 
 // ---- 读取：只允许查「针对自己账号」的尝试 ----
 // 与 activity_logs 的 /logs/me 同一思路：能读到什么由「你是谁」决定，不接受任何

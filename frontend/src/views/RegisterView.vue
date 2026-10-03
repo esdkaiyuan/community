@@ -61,6 +61,7 @@
               class="input"
               placeholder="至少 6 位"
               autocomplete="new-password"
+              :maxlength="PASSWORD_MAX_LENGTH"
             />
             <!-- 密码强度 -->
             <div v-if="form.password" class="mt-2 flex items-center gap-2">
@@ -86,6 +87,7 @@
               class="input"
               placeholder="再次输入密码"
               autocomplete="new-password"
+              :maxlength="PASSWORD_MAX_LENGTH"
             />
             <p v-if="errors.confirm" class="form-error">{{ errors.confirm }}</p>
           </div>
@@ -109,6 +111,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { toast } from '@/composables/useToast'
 import { stripEmoji } from '@/utils/text'
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordStrength } from '@/utils/password'
 import AppIcon from '@/components/AppIcon.vue'
 
 const router = useRouter()
@@ -118,24 +121,14 @@ const form = reactive({ username: '', email: '', password: '', confirm: '' })
 const errors = reactive({ username: '', email: '', password: '', confirm: '' })
 const submitting = ref(false)
 
-// 密码强度：长度 + 字符种类
-const strength = computed(() => {
-  const p = form.password
-  let score = 0
-  if (p.length >= 6) score++
-  if (p.length >= 10) score++
-  if (/[a-zA-Z]/.test(p) && /\d/.test(p)) score++
-  if (/[^a-zA-Z0-9]/.test(p)) score++
-
-  if (score <= 1) return { level: 1, label: '较弱', color: 'bg-clay', textColor: 'text-clay' }
-  if (score <= 2) return { level: 2, label: '中等', color: 'bg-amber-warm', textColor: 'text-amber-warm' }
-  return { level: 3, label: '强', color: 'bg-pine', textColor: 'text-pine' }
-})
+// 密码强度与上下界都来自 utils/password.js —— 与「账号安全 → 登录密码」共用一份口径，
+// 免得两处各写一套慢慢漂移（一处改成 8 位、另一处还写着 6 位）
+const strength = computed(() => passwordStrength(form.password))
 
 const validate = () => {
   errors.username = form.username.length >= 2 && form.username.length <= 20 ? '' : '用户名需 2-20 个字符'
   errors.email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '' : '请输入有效的邮箱地址'
-  errors.password = form.password.length >= 6 ? '' : '密码至少 6 位'
+  errors.password = form.password.length >= PASSWORD_MIN_LENGTH ? '' : `密码至少 ${PASSWORD_MIN_LENGTH} 位`
   errors.confirm = form.confirm === form.password ? '' : '两次输入的密码不一致'
   return !errors.username && !errors.email && !errors.password && !errors.confirm
 }

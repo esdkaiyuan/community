@@ -6,7 +6,7 @@
       <p data-test="security-subtitle" class="mt-2 text-sm text-ink-mid">{{ subtitle }}</p>
     </div>
 
-    <!-- 分段控件：安全提醒 / 我的操作 -->
+    <!-- 分段控件：安全提醒 / 我的操作 / 登录密码 -->
     <div class="mt-6 inline-flex rounded-full bg-sand p-1" role="tablist" aria-label="账号安全视图">
       <button
         v-for="opt in TAB_OPTIONS"
@@ -127,7 +127,7 @@
     </section>
 
     <!-- ===================== 我的操作 ===================== -->
-    <section v-else data-test="activity-panel" class="mt-6">
+    <section v-else-if="tab === 'activity'" data-test="activity-panel" class="mt-6">
       <!-- 类型筛选。列表行不重复动作名：后端 summary 本来就以动词开头。 -->
       <div class="flex flex-wrap gap-1.5">
         <button
@@ -202,6 +202,92 @@
         </button>
       </div>
     </section>
+
+    <!-- ===================== 登录密码 ===================== -->
+    <!-- 这一栏是纯表单，没有列表要拉 —— 所以 ensureLoaded / configOf 都刻意跳过它 -->
+    <section v-else data-test="password-panel" class="mt-6">
+      <form class="card max-w-xl p-6 sm:p-8" @submit.prevent="submitPassword">
+        <div class="flex items-start gap-3">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine-soft text-pine-deep">
+            <AppIcon name="lock" class="h-[18px] w-[18px]" />
+          </span>
+          <div class="min-w-0 flex-1">
+            <h2 class="text-base font-medium text-ink">修改登录密码</h2>
+            <p class="mt-1 text-[13px] leading-relaxed text-ink-mid">
+              修改后，其他设备上的登录会立即失效，需要重新登录；当前设备不受影响。
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-6 space-y-5">
+          <div>
+            <label class="form-label" for="pw-old">当前密码</label>
+            <input
+              id="pw-old"
+              data-test="pw-old"
+              v-model="pwForm.old"
+              type="password"
+              class="input"
+              placeholder="请输入当前登录密码"
+              autocomplete="current-password"
+            />
+            <p v-if="pwErrors.old" data-test="pw-error-old" class="form-error">{{ pwErrors.old }}</p>
+          </div>
+
+          <div>
+            <label class="form-label" for="pw-next">新密码</label>
+            <input
+              id="pw-next"
+              data-test="pw-next"
+              v-model="pwForm.next"
+              type="password"
+              class="input"
+              :placeholder="`至少 ${PASSWORD_MIN_LENGTH} 位`"
+              autocomplete="new-password"
+              :maxlength="PASSWORD_MAX_LENGTH"
+            />
+            <!-- 强度条：与注册页同一份口径（utils/password.js） -->
+            <div v-if="pwForm.next" class="mt-2 flex items-center gap-2">
+              <div class="flex flex-1 gap-1">
+                <span
+                  v-for="i in 3"
+                  :key="i"
+                  class="h-1 flex-1 rounded-full transition-colors"
+                  :class="i <= strength.level ? strength.color : 'bg-sand'"
+                ></span>
+              </div>
+              <span class="text-xs" :class="strength.textColor">{{ strength.label }}</span>
+            </div>
+            <p v-if="pwErrors.next" data-test="pw-error-next" class="form-error">{{ pwErrors.next }}</p>
+          </div>
+
+          <div>
+            <label class="form-label" for="pw-confirm">确认新密码</label>
+            <input
+              id="pw-confirm"
+              data-test="pw-confirm"
+              v-model="pwForm.confirm"
+              type="password"
+              class="input"
+              placeholder="再次输入新密码"
+              autocomplete="new-password"
+              :maxlength="PASSWORD_MAX_LENGTH"
+            />
+            <p v-if="pwErrors.confirm" data-test="pw-error-confirm" class="form-error">{{ pwErrors.confirm }}</p>
+          </div>
+        </div>
+
+        <!-- 后端 4xx 的业务文案落在这里（就地红字，不弹全局提示）。
+             刻意不猜「这条错误该挂在哪个输入框上」—— 按文案猜字段是脆弱做法。 -->
+        <p v-if="pwErrors.form" data-test="pw-error-form" class="form-error mt-4">{{ pwErrors.form }}</p>
+
+        <div class="mt-6 flex justify-end">
+          <button type="submit" data-test="pw-submit" class="btn-primary" :disabled="pwSaving">
+            {{ pwSaving ? '保存中…' : '保存新密码' }}
+          </button>
+        </div>
+      </form>
+    </section>
   </div>
 </template>
 
@@ -209,7 +295,11 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getMyLogs, getMySecurityEvents } from '@/api/log'
+import { updatePassword } from '@/api/user'
+import { useUserStore } from '@/store/user'
+import { toast } from '@/composables/useToast'
 import { relativeTime } from '@/utils/time'
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordStrength } from '@/utils/password'
 import {
   ACTION_FILTERS,
   EVENT_FILTERS,
@@ -223,13 +313,16 @@ import EmptyState from '@/components/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const PAGE_SIZE = 15
 
 const TAB_OPTIONS = [
   { value: 'security', label: '安全提醒' },
-  { value: 'activity', label: '我的操作' }
+  { value: 'activity', label: '我的操作' },
+  { value: 'password', label: '登录密码' }
 ]
+const TAB_VALUES = TAB_OPTIONS.map((o) => o.value)
 
 // 两个视图的列表机制完全相同（分页 / 追加 / 筛选 / 空状态），所以共用下面一组函数、
 // 各自持一份状态 —— 免得同一套「加载更多」写两遍，然后慢慢漂移成两个行为。
@@ -289,13 +382,13 @@ const loadMore = async (state, cfg) => {
 
 // 标签页与筛选都写进 URL：可分享、可后退。只带**当前视图**那一个参数 ——
 // 免得另一侧的旧筛选在 URL 里阴魂不散，也免得复制的链接落到别的视图上。
-const tab = ref(route.query.tab === 'activity' ? 'activity' : 'security')
+const tab = ref(TAB_VALUES.includes(route.query.tab) ? route.query.tab : 'security')
 security.filter = pickFilter(route.query.event, EVENT_FILTERS)
 activity.filter = pickFilter(route.query.action, ACTION_FILTERS)
 
 const syncRoute = () => {
   const query = {}
-  if (tab.value === 'activity') query.tab = 'activity'
+  if (tab.value !== 'security') query.tab = tab.value
   if (tab.value === 'security' && security.filter) query.event = security.filter
   if (tab.value === 'activity' && activity.filter) query.action = activity.filter
   router.replace({ query })
@@ -305,6 +398,8 @@ const configOf = (value) => (value === 'security' ? SECURITY_CFG : ACTIVITY_CFG)
 const stateOf = (value) => (value === 'security' ? security : activity)
 
 const ensureLoaded = (value) => {
+  // 「登录密码」是纯表单，没有列表要拉 —— 让它落进 configOf/stateOf 会拿到 activity 的配置
+  if (value === 'password') return
   const state = stateOf(value)
   if (!state.loaded) loadFirst(state, configOf(value))
 }
@@ -323,7 +418,56 @@ const applyFilter = (state, cfg, value) => {
   loadFirst(state, cfg)
 }
 
+// ---- 登录密码 ----
+const pwForm = reactive({ old: '', next: '', confirm: '' })
+const pwErrors = reactive({ old: '', next: '', confirm: '', form: '' })
+const pwSaving = ref(false)
+const strength = computed(() => passwordStrength(pwForm.next))
+
+const clearPasswordErrors = () => {
+  pwErrors.old = ''
+  pwErrors.next = ''
+  pwErrors.confirm = ''
+  pwErrors.form = ''
+}
+
+const submitPassword = async () => {
+  if (pwSaving.value) return
+
+  // 只做「本地能判定」的校验；「当前密码对不对」只有服务端知道，不在这里猜
+  const local = {
+    old: pwForm.old ? '' : '请输入当前密码',
+    next: pwForm.next.length >= PASSWORD_MIN_LENGTH ? '' : `密码至少 ${PASSWORD_MIN_LENGTH} 位`,
+    confirm: pwForm.confirm === pwForm.next ? '' : '两次输入的密码不一致'
+  }
+  clearPasswordErrors()
+  Object.assign(pwErrors, local)
+  if (local.old || local.next || local.confirm) return
+
+  pwSaving.value = true
+  try {
+    const res = await updatePassword({ oldPassword: pwForm.old, newPassword: pwForm.next })
+    // 🔥 服务端已经把此前签发的所有令牌作废并换发了一张新的，必须立刻落回本地：
+    // 否则当前页面下一次请求（顶栏每 60 秒的未读轮询）就会 401
+    userStore.updateToken(res.data.token)
+    toast('密码已更新，其他设备需要重新登录')
+    pwForm.old = ''
+    pwForm.next = ''
+    pwForm.confirm = ''
+  } catch (e) {
+    // 4xx 是后端写好的普通话，就地红字；5xx / 网络错误交给拦截器统一提示（不再弹一次）
+    const status = e.response?.status
+    if (status && status < 500) {
+      clearPasswordErrors()
+      pwErrors.form = e.response?.data?.message || '修改失败，请稍后重试'
+    }
+  } finally {
+    pwSaving.value = false
+  }
+}
+
 const subtitle = computed(() => {
+  if (tab.value === 'password') return '定期更换密码，并避免在别的网站复用同一个密码'
   if (tab.value === 'activity') {
     // 条数用服务端的 total，不用本页条数 —— 分页时「共 N 条」才不会骗人
     return activity.loading || activity.total === 0
@@ -341,7 +485,7 @@ watch(
   () => JSON.stringify(route.query),
   () => {
     const q = route.query
-    const nextTab = q.tab === 'activity' ? 'activity' : 'security'
+    const nextTab = TAB_VALUES.includes(q.tab) ? q.tab : 'security'
     if (nextTab !== tab.value) {
       tab.value = nextTab
       ensureLoaded(nextTab)

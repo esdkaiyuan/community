@@ -108,6 +108,13 @@ def node_section():
                 f.unlink()
             except OSError:
                 pass
+            except BaseException as err:
+                # 🔥 本机沙箱的删除守卫抛的是 SystemExit（继承 BaseException，
+                # **不是** OSError），所以上面的 `except OSError` 抓不住它 ——
+                # 结果清理动作把整个脚本带崩，退出码 1，几十条已通过的断言全被
+                # 记成「这个脚本失败」。删除失败不影响本轮结论，吞掉即可。
+                # （实测：守卫触发时 stderr 会打 [safe-delete][SAFE_DELETE_BULK_CONFIRM_REQUIRED]）
+                print(f"  [清理跳过] {f.name}: 沙箱删除守卫拦下（{type(err).__name__}），不影响结论")
 
 
 # ---------------- A 段：API / 存储 ----------------

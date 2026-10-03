@@ -141,6 +141,7 @@ WRITE_ENDPOINTS = (
     ("POST", "/projects", True),
     ("PUT", "/projects/{pid}", True),
     ("PUT", "/users/profile", True),
+    ("PUT", "/users/password", True),
     ("POST", "/projects/{pid}/comments", True),
 )
 
@@ -314,6 +315,7 @@ def sec_e_auth():
     for method, path, _ in (
         ("POST", "/projects", {"title": "x"}),
         ("PUT", "/users/profile", {"bio": "x"}),
+        ("PUT", "/users/password", {"oldPassword": "x", "newPassword": "y"}),
         ("POST", "/projects/1/like", None),
     ):
         status, _ = audit("%s %s（无 token）" % (method, path), path, data=_, method=method)

@@ -20,7 +20,8 @@ export const ACTION_ICONS = {
   'comment.create': 'message-circle',
   'comment.delete': 'trash-2',
   'user.register': 'user',
-  'user.profile.update': 'user'
+  'user.profile.update': 'user',
+  'user.password.update': 'lock'
 }
 
 export const actionIcon = (action) => ACTION_ICONS[action] || 'info'
@@ -46,14 +47,16 @@ export const ACTION_FILTERS = [
 export const EVENT_LABELS = {
   'auth.login.rejected': '登录尝试',
   'auth.register.rejected': '注册尝试',
-  'auth.token.rejected': '令牌校验'
+  'auth.token.rejected': '令牌校验',
+  'auth.password.rejected': '改密尝试'
 }
 
 // 一句话解释「这类事件意味着什么」。写给非技术用户看：不要出现 token / JWT / 签名 这类词。
 export const EVENT_HINTS = {
   'auth.login.rejected': '有人用你的邮箱尝试登录，但密码不对',
   'auth.register.rejected': '有人想用你的用户名或邮箱注册新账号',
-  'auth.token.rejected': '有人带着伪造或篡改过的登录凭证访问了接口'
+  'auth.token.rejected': '有人带着伪造或篡改过的登录凭证访问了接口',
+  'auth.password.rejected': '有人在已登录的状态下试图修改你的登录密码，但当前密码不对'
 }
 
 export const eventLabel = (event) => EVENT_LABELS[event] || '异常尝试'
@@ -68,13 +71,15 @@ export const eventHint = (event) => EVENT_HINTS[event] || '一次没有成功的
 // 只对运维有意义。给它放一个筛选项 = 一个永远筛出空列表的假入口，所以不放。
 // （标签仍保留在 EVENT_LABELS 里：将来后端若能归属到具体账号，列表会照常渲染。）
 //
-// 能出现在这一页的只有两类，各自的可归属性来自：
+// 能出现在这一页的有三类，各自的可归属性来自：
 //   登录尝试 → 邮箱存在，user.id 已知
 //   注册尝试 → 撞上了已存在的用户名 / 邮箱，existing.id 已知
+//   改密尝试 → 发生在已登录会话里，被瞄准的就是当前这个账号
 export const EVENT_FILTERS = [
   { value: '', label: '全部' },
   { value: 'auth.login.rejected', label: '登录' },
-  { value: 'auth.register.rejected', label: '注册' }
+  { value: 'auth.register.rejected', label: '注册' },
+  { value: 'auth.password.rejected', label: '改密' }
 ]
 
 // 只接受词表里出现过的筛选值。URL 上的 query 是用户可控的（也可能是手改的 / 旧的），

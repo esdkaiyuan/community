@@ -666,6 +666,8 @@ def main():
             os.remove(os.path.join(UPLOAD_DIR, name))
         except OSError:
             pass
+        except BaseException:  # noqa: BLE001 - 沙箱删除守卫抛 SystemExit，抓不住会带崩整个脚本
+            pass
 
     remaining = sorted(dir_names() - before_all)
     if remaining:

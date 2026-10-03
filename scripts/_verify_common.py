@@ -115,6 +115,21 @@ def check(label, cond):
         assert_fails.append(label)
 
 
+def crash(exc):
+    """登记「脚本中途崩了」，让退出码一定是红的。
+
+    为什么需要它：脚本为了在崩溃时也能清场，用的是
+    `try: main() except BaseException: traceback.print_exc() finally: finish()`。
+    但 finish() 只看 assert_fails / console_errors —— 崩溃两者都不碰，
+    于是**退出码 0、汇总 PASS**，实际上一半断言根本没跑。
+    这比红更危险：红会被人看见，假绿会被当成「回归通过」。
+    所以任何未捕获异常都必须先登记成一次失败。
+    """
+    label = f"脚本中途崩溃（后续断言未执行）：{type(exc).__name__}: {exc}"
+    print(" FAIL " + label)
+    assert_fails.append(label)
+
+
 def attach(page):
     """挂上 console / pageerror 收集器，返回 page 便于链式调用"""
     page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)

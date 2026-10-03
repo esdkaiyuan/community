@@ -85,6 +85,7 @@ import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { toast } from '@/composables/useToast'
+import { PASSWORD_MIN_LENGTH } from '@/utils/password'
 
 const route = useRoute()
 const router = useRouter()
@@ -97,7 +98,8 @@ const showPassword = ref(false)
 
 const validate = () => {
   errors.email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '' : '请输入有效的邮箱地址'
-  errors.password = form.password.length >= 6 ? '' : '密码至少 6 位'
+  // 下界来自 utils/password.js：与注册页 / 改密页同一个数，别再硬编码一个 6
+  errors.password = form.password.length >= PASSWORD_MIN_LENGTH ? '' : `密码至少 ${PASSWORD_MIN_LENGTH} 位`
   return !errors.email && !errors.password
 }
 

@@ -22,6 +22,13 @@ const User = sequelize.define('User', {
     allowNull: false,
     field: 'password' // 实际数据库列名为 password
   },
+  // 会话版本：改密时 +1，JWT 里带着签发时的 tv，auth 中间件比对不上即视为会话失效。
+  // 无状态 JWT 没有「吊销」概念，这是最小代价的作废方案（见 middleware/auth.js）。
+  token_version: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 0
+  },
   avatar: {
     type: DataTypes.STRING(255),
     allowNull: true

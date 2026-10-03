@@ -21,6 +21,7 @@ from _verify_common import (  # noqa: E402
     check,
     cleanup_project,
     create_project,
+    crash,
     finish,
     inject_login,
     register,
@@ -38,8 +39,12 @@ def mention_rows(where):
     # 只按 uid 过滤（uid 是本次注册的临时账号，天然干净）；
     # 别用 username LIKE 匹配 TS——register 用的是 _verify_common 模块自己的 TS，
     # 与脚本运行的 TS 差几秒，LIKE 永远不命中（实测 A2/A4 假红根因）
+    #
+    # WHERE 里的 n.user_id 依赖 FROM 上的别名 n：漏了别名 mysql 会报
+    # Unknown column，整个脚本在 A2 崩掉 —— 而崩溃一度被下方的 except 吞成 exit 0，
+    # 结果是「A2~A8 与整段页面测试都没跑，汇总却显示 PASS」的假绿。别名必须写。
     return int(sql_one(
-        f"SELECT COUNT(*) FROM notifications WHERE type = 'mention' AND {where}"
+        f"SELECT COUNT(*) FROM notifications n WHERE type = 'mention' AND {where}"
     ) or 0)
 
 
@@ -150,10 +155,17 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except BaseException:
+    except BaseException as err:  # noqa: BLE001 - 清场优先，但崩溃必须记账
+        # 这一段曾经是**假绿**：崩溃被 except 吞掉，而 finish() 只看
+        # assert_fails / console_errors（崩溃两者都不碰）-> 退出码 0、汇总 PASS，
+        # 实际 A2~A8 与整段页面测试全都没跑。已实测复现。
+        # 修法：crash() 把崩溃登记成一次失败，finish() 必然退出 1。
+        # 其余 4 个同类脚本（counter_atomicity / popular_tags / project_flags /
+        # rich_text）本来就有 _ERRORED -> sys.exit(1)，行为是对的，别照抄这段。
+        crash(err)
         import traceback
 
-        traceback.print_exc()  # finish() 的 sys.exit 会吞异常，先打印再走清理
+        traceback.print_exc()
     finally:
         for pid in PIDS:
             cleanup_project(pid, UIDS)

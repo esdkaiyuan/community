@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import * as userApi from '@/api/user'
-import { getUserInfo, getToken, saveSession, setUserInfo, clearSession } from '@/utils/storage'
+import { getUserInfo, getToken, saveSession, setToken, setUserInfo, clearSession } from '@/utils/storage'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -40,6 +40,13 @@ export const useUserStore = defineStore('user', {
       this.userInfo = res.data
       setUserInfo(res.data)
       return res.data
+    },
+
+    // 只换令牌、不动用户信息。改密成功后服务端会作废旧令牌并换发新的，
+    // 必须立刻落回本地 —— 否则当前标签页的下一次请求就会 401，用户会被自己刚做的改动踢下线
+    updateToken(token) {
+      this.token = token
+      setToken(token)
     },
 
     logout() {

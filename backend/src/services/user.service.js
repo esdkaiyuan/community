@@ -10,6 +10,29 @@ const securityEventService = require('./securityEvent.service')
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+// 密码边界。**注册与改密必须共用同一对常量与同一个断言函数** —— 分开写迟早漂移
+// （本仓库在用户名上就吃过一次：register 不 trim、updateProfile 会 trim）。
+//
+// 上界为什么是 64：bcrypt 只使用前 **72 个字节**，再长的部分对哈希没有任何贡献，
+// 用户却以为自己设了一段很长的密码。按字符数卡 64 之后，纯 ASCII 密码（64 < 72）
+// 永远不会被静默截断；多字节密码（一个汉字 3 字节）理论上仍可能越过 72 字节，
+// 这是已知且可接受的取舍 —— 24 个汉字以上的密码在「记不住」这条上已经先输了。
+const PASSWORD_MIN_LENGTH = 6
+const PASSWORD_MAX_LENGTH = 64
+
+// 类型也一并收口：`password.length` 对数字 / 对象是 undefined，而 `undefined < 6`
+// 是 false —— 于是 `{"password": 12345}` 这种请求会一路走到 bcrypt.hash 并抛 500。
+// 非字符串一律按「太短」拒掉，不给它们任何走到 bcrypt 的机会。
+const assertPassword = (password) => {
+  if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH) {
+    throw ApiError.badRequest(`密码至少 ${PASSWORD_MIN_LENGTH} 位`)
+  }
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    throw ApiError.badRequest(`密码最多 ${PASSWORD_MAX_LENGTH} 位`)
+  }
+  return password
+}
+
 // 资料字段上界。bio 与前端 textarea 的 maxlength 对齐（200 字符）；
 // avatar 没有前端 maxlength —— 那是**有意**的：给 URL 输入框加 maxlength 会把
 // 粘贴进来的长链接静默截断，变成一条坏链接，还不如让服务端明确报错。
@@ -84,9 +107,7 @@ exports.register = async ({ username, email, password }, req) => {
     if (!EMAIL_RE.test(email)) {
       throw ApiError.badRequest('邮箱格式不正确')
     }
-    if (password.length < 6) {
-      throw ApiError.badRequest('密码至少 6 位')
-    }
+    assertPassword(password)
 
     const existing = await User.findOne({ where: { [Op.or]: [{ username: name }, { email }] } })
     if (existing) {
@@ -100,7 +121,7 @@ exports.register = async ({ username, email, password }, req) => {
 
     const passwordHash = await bcrypt.hash(password, 10)
     const user = await User.create({ username: name, email, password_hash: passwordHash })
-    const token = generateToken(user.id)
+    const token = generateToken(user.id, user.token_version)
 
     // 注册是审计时间线的起点（后面所有日志靠 user_id 串起来），必须留痕。
     // 写入失败只 warn，绝不把注册带崩 —— 见 activityLog.service 的约定。
@@ -144,7 +165,7 @@ exports.login = async ({ email, password }, req) => {
     throw ApiError.unauthorized('邮箱或密码错误')
   }
 
-  const token = generateToken(user.id)
+  const token = generateToken(user.id, user.token_version)
   return { user: toClientUser(user), token }
 }
 
@@ -205,6 +226,54 @@ exports.updateProfile = async (userId, { username, avatar, bio }, req) => {
   }
 
   return { user: toClientUser(user), changedFields: changed, adjusted }
+}
+
+// 修改登录密码。
+//
+// 三件事必须一起做，少一件这个功能就是半成品：
+//   1. 校验当前密码 —— 否则任何拿到令牌的人都能把主人锁在门外；
+//   2. 用新盐重算 bcrypt 哈希；
+//   3. **把 token_version +1** —— 让此前签发的所有令牌立即失效（见 middleware/auth.js）。
+// 最后返回一张新令牌，让「正在改密的这台设备」不被自己踢下线（其他设备会）。
+exports.changePassword = async (userId, { oldPassword, newPassword }, req) => {
+  const user = await User.findByPk(userId)
+  if (!user) throw ApiError.notFound('用户不存在')
+
+  // 两处都先收口成「一定是字符串」：非字符串（数字 / 数组 / 对象）不该有机会走到 bcrypt
+  const current = typeof oldPassword === 'string' ? oldPassword : ''
+  if (!current) throw ApiError.badRequest('请填写当前密码')
+  const next = assertPassword(newPassword)
+  if (next === current) throw ApiError.badRequest('新密码不能与当前密码相同')
+
+  if (!(await bcrypt.compare(current, user.password_hash))) {
+    // 「已经登录、却答不出当前密码」是个强信号：多半是别人的令牌到了手，想改密把主人
+    // 锁在门外。与登录失败的区别在于它**有确定身份**（就是当前会话的账号），所以能归属
+    // 到人，也就该出现在用户自己的安全提醒里 —— 这正是他必须知道的事。
+    await securityEventService.logPasswordChangeRejected({
+      account: user.email,
+      targetUserId: user.id,
+      reason: '当前密码不正确',
+      req
+    })
+    throw ApiError.badRequest('当前密码不正确')
+  }
+
+  // 原子自增会话版本：读出来 +1 再写回会在并发改密时丢计数（与浏览量同一个坑）。
+  // 与换哈希放在同一条 UPDATE 里，避免出现「哈希已换、版本没动」的中间态。
+  await User.update(
+    {
+      password_hash: await bcrypt.hash(next, 10),
+      token_version: sequelize.literal('token_version + 1')
+    },
+    { where: { id: userId } }
+  )
+
+  const fresh = await User.findByPk(userId, { attributes: ['id', 'token_version'] })
+
+  // 审计留痕：只记「这个账号改过密码」，**任何形态的密码都不进日志**（明文 / 长度 / 哈希）。
+  await activityLogService.logUserPasswordChanged({ userId, req })
+
+  return { token: generateToken(userId, fresh ? fresh.token_version : 0) }
 }
 
 // 我发表的评论（含所属项目，供个人中心「我参与的讨论」）

@@ -22,7 +22,8 @@ const ACTIONS = Object.freeze({
   COMMENT_CREATE: 'comment.create',
   COMMENT_DELETE: 'comment.delete',
   USER_REGISTER: 'user.register',
-  USER_PROFILE_UPDATE: 'user.profile.update'
+  USER_PROFILE_UPDATE: 'user.profile.update',
+  USER_PASSWORD_UPDATE: 'user.password.update'
 })
 const ACTION_VALUES = Object.freeze(Object.values(ACTIONS))
 
@@ -42,7 +43,10 @@ const DETAIL_KEYS = Object.freeze({
   [ACTIONS.COMMENT_CREATE]: ['projectTitle', 'preview', 'isReply'],
   [ACTIONS.COMMENT_DELETE]: ['projectTitle', 'preview'],
   [ACTIONS.USER_REGISTER]: ['username'],
-  [ACTIONS.USER_PROFILE_UPDATE]: ['changed', 'usernameFrom', 'usernameTo']
+  [ACTIONS.USER_PROFILE_UPDATE]: ['changed', 'usernameFrom', 'usernameTo'],
+  // 改密刻意**没有任何 detail 键**：密码的任何形态（明文 / 长度 / 哈希）都不进日志。
+  // 白名单为空 = 调用方多传什么都进不来，比「记得别传」可靠。
+  [ACTIONS.USER_PASSWORD_UPDATE]: []
 })
 
 const SUMMARY_MAX = 255
@@ -209,6 +213,19 @@ exports.logUserProfileUpdated = ({ userId, changedFields = [], usernameFrom, use
     // 日志行里记的都还是旧名字；没有 from → to，事后就再也解释不清「同一个 user_id 为什么
     // 有两个名字」。bio / avatar 只记「改没改」，不存值：日志是留痕不是内容备份。
     detail: { changed: changedFields, usernameFrom, usernameTo },
+    req
+  })
+
+// 改密必须留痕：它是「账号可能已被他人接管」这类事后取证里最关键的时间锚点 ——
+// 攻击者拿到令牌后的典型动作就是改密锁人，事主事后能看到的往往就只剩这一行。
+// detail 刻意为空：见 DETAIL_KEYS 的说明。
+exports.logUserPasswordChanged = ({ userId, req }) =>
+  record({
+    action: ACTIONS.USER_PASSWORD_UPDATE,
+    targetType: 'user',
+    targetId: userId,
+    userId,
+    summary: '修改了登录密码',
     req
   })
 
