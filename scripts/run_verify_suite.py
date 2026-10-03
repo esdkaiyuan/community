@@ -38,15 +38,45 @@ SCRIPT_TIMEOUT = 1200  # 单脚本 20 分钟封顶（最重的是封面裁剪 + 
 # 脚本解释器：必须带 playwright（见 docstring ⚠️）；CI 里 setup-python 的 python 天然满足
 SCRIPT_PY = os.environ.get("VERIFY_PYTHON") or sys.executable
 
+# 🔥 必须让本机地址绕过代理，且必须**在拉起子进程之前**设（子进程靠继承拿到）。
+# 环境里通常设了 HTTP_PROXY/HTTPS_PROXY 指向 127.0.0.1 的本地代理，而 urllib /
+# requests / axios 都会遵守它 —— 于是「访问 http://localhost:5000」被发给代理，
+# 服务没起时代理返回 **502**，脚本看到的是一个与真实原因无关的错误码
+# （实测：一轮 38 个脚本全挂，报的都是 502，真因是后端没起）。
+# 只改 no_proxy、不动 http_proxy：万一后面要访问外网，代理行为保持不变。
+# ⚠️ Windows 上 os.environ **大小写不敏感**，no_proxy 与 NO_PROXY 是同一个键。
+# 先读一次、算一次、写一次即可；写成「两个变量的循环」会在第二次迭代里
+# 读到刚写入的值，算出多余的逗号（实测得到 `no_proxy=localhost,...,::1,`）。
+_cur = os.environ.get("no_proxy", "") or os.environ.get("NO_PROXY", "")
+_parts = [x.strip() for x in _cur.split(",") if x.strip()]
+for _host in ("localhost", "127.0.0.1", "::1"):
+    if _host not in _parts:
+        _parts.append(_host)
+os.environ["no_proxy"] = ",".join(_parts)
+# 很多库只读大写变量，两个都设（Windows 上是同一个键，等价；Linux 上各设一份）
+os.environ["NO_PROXY"] = os.environ["no_proxy"]
+
 
 def http_ok(url):
-    """可达且非 5xx 即算健康（404 也算服务在）"""
+    """可达且非 5xx 即算健康（404 也算服务在）。
+
+    🔥 两个必须绕开的坑（都是本轮实测踩的）：
+    1) **必须绕过本机代理**：环境里设了 HTTP_PROXY/HTTPS_PROXY 指向 127.0.0.1，
+       urllib 会把「连 localhost:5000」也发给代理。目标没起时代理返回 **502**，
+       于是探活拿到的是代理的响应、不是服务的 —— 判据整个失真。
+    2) **5xx 不能算健康**：原实现 `except HTTPError: return True`（注释：��有 HTTP
+       响应就是服务在」），但 502 恰恰证明**服务没在**。误判的后果是套件跳过拉起后端，
+       38 个脚本全部报 502，排查方向完全被带偏。
+    """
+    # 显式关掉代理：只影响本函数（用 opener 而非改 os.environ，避免污染子进程）
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
         req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=3) as resp:
+        with opener.open(req, timeout=3) as resp:
             return resp.status < 500
-    except urllib.error.HTTPError:
-        return True  # 有 HTTP 响应就是服务在
+    except urllib.error.HTTPError as err:
+        # 4xx 说明服务在（只是路径不对）；5xx 是代理或上游故障，不算
+        return err.code < 500
     except Exception:
         return False
 
