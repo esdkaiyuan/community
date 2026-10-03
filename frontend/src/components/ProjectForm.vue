@@ -8,6 +8,7 @@
       </label>
       <input
         id="title"
+        data-test="form-title"
         v-model.trim="form.title"
         type="text"
         class="input"
@@ -51,6 +52,7 @@
       </label>
       <textarea
         id="description"
+        data-test="form-description"
         v-model.trim="form.description"
         class="input min-h-[180px] resize-y leading-relaxed"
         placeholder="介绍一下：你想做什么？为什么想做？目前进展如何？需要什么样的伙伴？"
@@ -59,6 +61,38 @@
       <div class="mt-1.5 flex items-center justify-between">
         <p v-if="errors.description" class="form-error !mt-0">{{ errors.description }}</p>
         <span class="ml-auto text-xs text-ink-dim">{{ form.description.length }}/2000</span>
+      </div>
+    </div>
+
+    <!-- 仓库地址 + 截止日期（都可留空） -->
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="form-label" for="repositoryUrl">仓库地址</label>
+        <input
+          id="repositoryUrl"
+          v-model.trim="form.repositoryUrl"
+          type="url"
+          inputmode="url"
+          class="input"
+          placeholder="https://github.com/…"
+          maxlength="255"
+          data-test="form-repo"
+        />
+        <p v-if="errors.repositoryUrl" class="form-error" data-test="error-repo">{{ errors.repositoryUrl }}</p>
+        <p v-else class="mt-1.5 text-xs text-ink-dim">代码或成果开源在这里，详情页会展示「查看仓库」入口。</p>
+      </div>
+
+      <div>
+        <label class="form-label" for="endDate">截止日期</label>
+        <input
+          id="endDate"
+          v-model.trim="form.endDate"
+          type="date"
+          class="input"
+          data-test="form-end-date"
+        />
+        <p v-if="errors.endDate" class="form-error" data-test="error-end-date">{{ errors.endDate }}</p>
+        <p v-else class="mt-1.5 text-xs text-ink-dim">过了这天，详情页会标「已截止」。留空表示不设截止。</p>
       </div>
     </div>
 
@@ -288,9 +322,19 @@ const form = reactive({
   description: props.project?.description || '',
   categoryId: props.project?.categoryId ?? null,
   tags: toTagList(props.project?.tags),
-  coverImage: props.project?.coverImage || ''
+  coverImage: props.project?.coverImage || '',
+  // 仓库地址 / 截止日期：接自 2026-10-03（这两列线上一直有数据但模型没声明，
+  // 此前接口取不到、前端也填不了）。这里补上录入入口，功能才算完整。
+  repositoryUrl: props.project?.repositoryUrl || '',
+  endDate: props.project?.endDate || ''
 })
-const errors = reactive({ title: '', description: '', categoryId: '' })
+const errors = reactive({
+  title: '',
+  description: '',
+  categoryId: '',
+  repositoryUrl: '',
+  endDate: ''
+})
 const tagInput = ref('')
 const coverBroken = ref(false)
 const submitting = ref(false)
@@ -455,11 +499,42 @@ const onTagBackspace = () => {
   if (!tagInput.value && form.tags.length) form.tags.pop()
 }
 
+// 仓库地址：只认 http/https。与后端 cleanRepositoryUrl 同口径 ——
+// `javascript:` / `data:` 伪协议是 XSS 执行入口，两侧都要拦，前端这道是为了即时反馈，
+// 后端那道才是结构性的（前端过滤会被绕过，比如直接打接口）。
+const validateRepositoryUrl = (raw) => {
+  const url = String(raw || '').trim()
+  if (!url) return ''
+  if (!/^https?:\/\/\S+$/i.test(url)) return '仓库地址需以 http:// 或 https:// 开头'
+  if (url.length > 255) return '仓库地址最多 255 个字符'
+  return ''
+}
+
+// 截止日期：格式 + 真实性双查。
+// 真实性用「构造一个 Date 再读回年月日」来判，而不是 new Date('2026-02-31') —
+// JS 会把 2 月 31 日悄悄滚到 3 月 3 日，2026-02-31 会被当成合法日期收下。
+const validateEndDate = (raw) => {
+  const date = String(raw || '').trim()
+  if (!date) return ''
+  const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return '截止日期格式应为 YYYY-MM-DD'
+  const [, y, mo, d] = m
+  const probe = new Date(`${date}T00:00:00Z`)
+  if (Number.isNaN(probe.getTime()) || probe.getUTCFullYear() !== Number(y) ||
+      probe.getUTCMonth() + 1 !== Number(mo) || probe.getUTCDate() !== Number(d)) {
+    return '截止日期不是一个真实存在的日期'
+  }
+  return ''
+}
+
 const validate = () => {
   errors.title = form.title.length >= 4 ? '' : '标题至少 4 个字符'
   errors.categoryId = form.categoryId ? '' : '请选择一个项目分类'
   errors.description = form.description.length >= 20 ? '' : '介绍至少 20 个字符，多写一点更容易吸引伙伴'
-  return !errors.title && !errors.categoryId && !errors.description
+  errors.repositoryUrl = validateRepositoryUrl(form.repositoryUrl)
+  errors.endDate = validateEndDate(form.endDate)
+  return !errors.title && !errors.categoryId && !errors.description &&
+    !errors.repositoryUrl && !errors.endDate
 }
 
 const handleCancel = () => {
@@ -489,7 +564,10 @@ const handleSubmit = async () => {
       description: form.description,
       categoryId: form.categoryId,
       tags: form.tags,
-      coverImage: coverBroken.value ? '' : form.coverImage
+      coverImage: coverBroken.value ? '' : form.coverImage,
+      // 空串而非 null：后端把空串视为「清空」，这样编辑时留空就能真的清掉这两项
+      repositoryUrl: form.repositoryUrl.trim(),
+      endDate: form.endDate.trim()
     }
     const res = isEdit.value
       ? await updateProject(props.project.id, payload)
