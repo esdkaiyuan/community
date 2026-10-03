@@ -33,6 +33,17 @@ const Project = sequelize.define('Project', {
     type: DataTypes.TINYINT,
     defaultValue: 0
   },
+  // 仓库地址：线上有 10 个项目填了真实地址，此前模型没声明所以接口取不到（死列）。
+  // 现接成真功能 —— 详情页展示「查看仓库」入口，无值时不渲染。
+  repository_url: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  // 截止日期：线上 10 个项目有值且全部已过期。详情页据此显示「已截止」标记。
+  end_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
   tags: {
     type: DataTypes.TEXT,
     allowNull: true,

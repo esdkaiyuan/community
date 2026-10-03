@@ -117,8 +117,34 @@
                  相对时间回答的是另一个问题——「这项目还新鲜吗」，且与卡片上的
                  「· 3 天前」是同一套口径。超过 30 天 relativeTime 会自己退回绝对日期。 -->
             <span>发布于 {{ relativeTime(project.createdAt) }}</span>
+            <!-- 截止日期已过：明确标出来。线上 10 个项目有 end_date 且全部已过期，
+                 此前这个信息存在库里却没人看得到。日期数字由 endDateShort 统一格式化，
+                 meta 行不再重复出现绝对日期。 -->
+            <span
+              v-if="isExpired"
+              class="inline-flex items-center gap-1 text-ink-dim"
+              data-test="detail-expired"
+            >
+              <AppIcon name="lock" class="h-3.5 w-3.5" />
+              已于 {{ endDateShort }} 截止
+            </span>
             <!-- 「N 次浏览」不在这里重复出现：右侧规格条已经有「浏览次数」 -->
           </div>
+
+          <!-- 仓库地址：线上一直有 10 个项目填了真实地址，此前模型没声明所以取不到。
+               repoUrl 计算属性已过滤掉非 http/https 的值（防 javascript: 伪协议），
+               所以这里可以安全地绑到 href。target=_blank 必须配 rel=noopener。 -->
+          <a
+            v-if="repoUrl"
+            :href="repoUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-4 inline-flex items-center gap-1.5 text-sm text-ink-dim underline decoration-ink-dim/30 underline-offset-4 transition-colors hover:text-ink hover:decoration-ink/60"
+            data-test="detail-repo"
+          >
+            <AppIcon name="external-link" class="h-4 w-4" />
+            查看仓库
+          </a>
 
           <div v-if="project.tags?.length" class="mt-4 flex flex-wrap gap-2">
             <!-- 标签是可点入口：跳到广场按该标签筛选 -->
@@ -353,6 +379,39 @@ const createdShort = computed(() => {
   const d = new Date(project.value.createdAt)
   const md = `${d.getMonth() + 1} 月 ${d.getDate()} 日`
   return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()} 年 ${md}`
+})
+
+// 截止日期（线上一直有数据但模型没声明，此前取不到）。
+// 🔥 只认 http/https：`repository_url` 是**用户可填的外部数据**，
+// 直接塞进 href 等于把 `javascript:` 伪协议的入口一并开放（点一下就执行脚本）。
+// 任何「渲染用户给的链接」的地方都必须过这一关。
+const repoUrl = computed(() => {
+  const raw = project.value?.repositoryUrl
+  if (typeof raw !== 'string') return ''
+  const url = raw.trim()
+  if (!/^https?:\/\//i.test(url)) return ''
+  return url
+})
+
+// 「已截止」判定：只看日期部分，**不 new Date('YYYY-MM-DD')** ——
+// 那会被当成 UTC 午夜解析，在东八区显示成前一天（8 月 9 日截止却显示「已截止」是错的）。
+const isExpired = computed(() => {
+  const raw = project.value?.endDate
+  if (typeof raw !== 'string') return false
+  const m = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return false
+  const today = new Date()
+  const todayKey = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate()
+  const endKey = Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3])
+  return endKey < todayKey
+})
+
+const endDateShort = computed(() => {
+  const raw = project.value?.endDate
+  if (typeof raw !== 'string') return ''
+  const m = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return ''
+  return `${m[1]} 年 ${Number(m[2])} 月 ${Number(m[3])} 日`
 })
 
 // 滚过封面后浮现顶部玻璃操作条（apple.com 产品页式）

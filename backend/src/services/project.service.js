@@ -27,6 +27,10 @@ const toClientProject = (p, extra = {}) => {
     viewCount: row.view_count || 0,
     isRecommend: !!row.is_recommend,
     isHot: !!row.is_hot,
+    // 仓库地址与截止日期：线上一直有真实数据但模型没声明，所以此前取不到（死列）。
+    // 现接成真功能 —— 前端据此渲染「查看仓库」入口与「已截止」标记。
+    repositoryUrl: row.repository_url || null,
+    endDate: row.end_date || null,
     // 近 7 天活跃度：只有列表按 sort=trending 查询时才带出来
     ...(row.trendScore === undefined || row.trendScore === null
       ? {}
@@ -456,7 +460,42 @@ exports.listParticipants = async (id, { page = 1, pageSize = 24 } = {}) => {
   }
 }
 
-exports.createProject = async ({ title, description, coverImage, categoryId, tags, creatorId, req }) => {
+// 仓库地址：只收 http/https。
+// 为什么服务端也要拦：`javascript:` / `data:` 伪协议存进库，将来任何一处
+// 「把这个字段直接绑到 href」的改动都会变成 XSS 执行入口。拦在写入侧成本最低
+// （前端过滤只是渲染层的第二道防线，不能当唯一防线）。
+const cleanRepositoryUrl = (val) => {
+  const url = String(val ?? '').trim()
+  if (!url) return null
+  if (!/^https?:\/\/\S+$/i.test(url)) {
+    throw ApiError.badRequest('仓库地址需以 http:// 或 https:// 开头')
+  }
+  if (url.length > 255) {
+    throw ApiError.badRequest('仓库地址最多 255 个字符')
+  }
+  return url
+}
+
+// 截止日期：只收 YYYY-MM-DD，且必须是真日期（2026-02-31 这种要当场拒掉）。
+// 存 DATE 列，Sequelize 会把 Date 对象按本地时区格式化，所以这里统一用字符串
+// 交给数据库校验，避免「new Date('2026-02-31') 被 JS 悄悄滚到 3 月」。
+const cleanEndDate = (val) => {
+  const raw = String(val ?? '').trim()
+  if (!raw) return null
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) throw ApiError.badRequest('截止日期格式应为 YYYY-MM-DD')
+  const [, y, mo, d] = m
+  const probe = new Date(`${raw}T00:00:00Z`)
+  if (Number.isNaN(probe.getTime()) || probe.getUTCFullYear() !== Number(y) ||
+      probe.getUTCMonth() + 1 !== Number(mo) || probe.getUTCDate() !== Number(d)) {
+    throw ApiError.badRequest('截止日期不是一个真实存在的日期')
+  }
+  return raw
+}
+
+exports.createProject = async ({
+  title, description, coverImage, categoryId, tags, creatorId, repositoryUrl, endDate, req
+}) => {
   const cleanTitle = stripEmoji(String(title ?? '')).trim()
   if (!cleanTitle) throw ApiError.badRequest('标题为必填项')
   if (cleanTitle.length < 4) throw ApiError.badRequest('标题至少 4 个字符')
@@ -478,6 +517,8 @@ exports.createProject = async ({ title, description, coverImage, categoryId, tag
     cover_image: coverImage || null,
     category_id: categoryId,
     creator_id: creatorId,
+    repository_url: cleanRepositoryUrl(repositoryUrl),
+    end_date: cleanEndDate(endDate),
     tags: normalizeTags(tags)
   })
 
@@ -494,7 +535,9 @@ exports.createProject = async ({ title, description, coverImage, categoryId, tag
   return toClientProject(project)
 }
 
-exports.updateProject = async (id, userId, { title, description, coverImage, categoryId, tags }, req) => {
+exports.updateProject = async (
+  id, userId, { title, description, coverImage, categoryId, tags, repositoryUrl, endDate }, req
+) => {
   const project = await getProjectOr404(id)
   if (project.creator_id !== userId) throw ApiError.forbidden('无权修改此项目')
 
@@ -509,6 +552,8 @@ exports.updateProject = async (id, userId, { title, description, coverImage, cat
     description: project.description,
     cover_image: project.cover_image,
     category_id: project.category_id,
+    repository_url: project.repository_url,
+    end_date: project.end_date,
     tags: JSON.stringify(project.tags)
   }
 
@@ -530,6 +575,8 @@ exports.updateProject = async (id, userId, { title, description, coverImage, cat
   }
   if (coverImage !== undefined) project.cover_image = coverImage || null
   if (categoryId !== undefined) project.category_id = await assertCategoryExists(categoryId)
+  if (repositoryUrl !== undefined) project.repository_url = cleanRepositoryUrl(repositoryUrl)
+  if (endDate !== undefined) project.end_date = cleanEndDate(endDate)
   // 传空数组即清空标签（编辑页允许把标签删光）
   if (tags !== undefined && Array.isArray(tags)) project.tags = normalizeTags(tags)
 
