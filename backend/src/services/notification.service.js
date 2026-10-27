@@ -5,6 +5,12 @@ const { clampInt, MAX_PAGE } = require('../utils/pagination')
 const ACTOR_ATTRS = ['id', 'username', 'avatar']
 const PROJECT_ATTRS = ['id', 'title']
 
+// 通知类型白名单，与 Notification.type 的 ENUM 取值一致（schema.sql 同源）。
+// ⚠️ 白名单外的入参「静默忽略」（当作不筛选）而不是 400：与既有 filter 参数保持同一
+// 语义（filter 传 'unread' 之外的值也是当 all）。理由有两条——这是只读筛选，非法值
+// 不构成安全事件；且将来 ENUM 扩展时前端传新值只会被忽略，不会突然开始报错。
+const NOTIFICATION_TYPES = ['comment', 'reply', 'like', 'participate', 'mention']
+
 // 创建通知（fire-and-forget：失败不影响主流程；自己触发的不通知自己）
 exports.notify = ({ userId, type, actorId, projectId, commentId = null }) => {
   if (!userId || userId === actorId) return Promise.resolve(null)
@@ -32,13 +38,16 @@ exports.notifyOnce = ({ userId, type, actorId, projectId, commentId = null }) =>
     .catch(() => null)
 }
 
-exports.list = async ({ userId, page = 1, pageSize = 15, unreadOnly = false }) => {
+exports.list = async ({ userId, page = 1, pageSize = 15, unreadOnly = false, type }) => {
   page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
   const limit = clampInt(pageSize, { max: 50, fallback: 15 })
   const offset = (page - 1) * limit
 
   const where = { user_id: userId }
   if (unreadOnly) where.is_read = 0
+  // 类型筛选：白名单校验在此收口，service 层是唯一入口，路由/控制器不必重复判
+  const typeFilter = NOTIFICATION_TYPES.includes(type) ? type : null
+  if (typeFilter) where.type = typeFilter
 
   const { count, rows } = await Notification.findAndCountAll({
     where,
@@ -76,7 +85,10 @@ exports.list = async ({ userId, page = 1, pageSize = 15, unreadOnly = false }) =
     unread,
     page,
     pageSize: limit,
-    filter: unreadOnly ? 'unread' : 'all'
+    filter: unreadOnly ? 'unread' : 'all',
+    // 回显实际生效的筛选态：非法 type 被忽略后前端能据此判断「筛选没生效」而不是
+    // 误以为「这个类型没有通知」
+    type: typeFilter || 'all'
   }
 }
 

@@ -95,7 +95,7 @@ npm run dev
 - [x] 分类列表
 - [x] 点赞 / 收藏 / 参与功能
 - [x] 评论与回复
-- [x] 站内通知（参与 / 评论 / 点赞 / 收藏 / 回复）
+- [x] 站内通知（实际触发 4 类：参与 / 评论 / 回复 / 提及；`like` 见下方「僵尸枚举值」说明）
 - [x] 标签归一化与相关推荐
 - [x] 操作日志（发布 / 编辑 / 删除项目、发表 / 删除评论、注册 / 改资料 / 改密码全量留痕，写入前统一净化）
 - [x] 用户资料字段归一化（用户名 / 简介剥 emoji 与控制字符，注册与改名共用一个口径）
@@ -553,13 +553,13 @@ python scripts/audit_backend_api.py
 
 ## 验证套件与 CI
 
-28 个验证脚本不用一个个手敲：`scripts/run_verify_suite.py` 顺序跑全量并汇总，
+38 个验证脚本不用一个个手敲：`scripts/run_verify_suite.py` 顺序跑全量并汇总，
 任一失败 exit 1。脚本间自动重启后端清限流（仅当后端由套件自己拉起；复用本机
 现役服务时不动它）。解释器注意：脚本继承**启动套件的 python**，它必须装有
 playwright（本地用带 playwright 的完整路径解释器启动，或设 `VERIFY_PYTHON`）。
 
 ```bash
-python scripts/run_verify_suite.py --list              # 28 个脚本清单
+python scripts/run_verify_suite.py --list              # 38 个脚本清单
 python scripts/run_verify_suite.py --only verify_tags  # 定向跑（.py 可省）
 python scripts/run_verify_suite.py                     # 全量 + 汇总
 ```
@@ -753,7 +753,23 @@ python scripts/verify_security_page.py  # 分段控件 tab + 筛选 chip
   渲染层纯插值组件（零 v-html，XSS 面 = 0），未闭合定界符原样显示（内容零丢失），
   代码区不解析其它语法；存储仍是纯文本（后端零改动），解析器 `utils/richText.js`
   零 import 纯函数可 node 直测，断言入 `verify_rich_text.py`（18 项）
-- [ ] 通知中心筛选与批量已读
+- [x] ~~通知中心筛选与批量已读~~ 已落地：类型筛选（全部 + 5 类）+ 已读状态筛选，两个
+  维度可组合并同步进 URL；新增选择模式（HIG 列表编辑态：左侧勾选圈 + 贴底操作条），
+  支持逐条勾选 / 全选后批量标记已读（复用后端既有的 `markRead({ ids })`，此前前端只
+  暴露了「全部标为已读」一个入口）。断言入 `verify_notifications_filter.py`（41 项）
+
+### 通知类型：一处僵尸枚举值（`like`）
+
+`notifications.type` 的 ENUM 有 5 个取值，但全仓只有 4 个通知触发点
+（`comment.service.js` 三处：评论 / 回复 / 提及；`project.service.js` 一处：参与）。
+即 **`like` 在枚举里存在、线上零触发点**——点赞项目不会给作者发通知。
+
+这与此前清理的「僵尸列」是同一类问题（声明了但没接成真功能），差别是它藏在枚举里、
+比列更难扫到。补不补是产品决策（点赞是否该通知作者），未定前不擅自加触发点；
+前端类型筛选照实把 5 类都列出来，等真有了数据自然显示。
+
+顺带订正：此前 README 把「收藏」也列为通知类型，但 ENUM 里根本没有 `favorite`，
+收藏通知从未存在过——是文档笔误，不是功能缺失。
 
 ## 深色模式逐页走查
 

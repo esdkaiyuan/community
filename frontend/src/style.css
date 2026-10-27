@@ -265,6 +265,47 @@
   @apply w-8 px-0;
 }
 
+/* 筛选 chip：与分段控件刻意做层级区分。
+   同一屏出现两组筛选时（这里是「已读状态」+「通知类型」），若两者都用品牌蓝，
+   视觉上会争主次、让人分不清哪组是主筛选。故分段控件保留蓝滑块（主），
+   chip 选中态走实心墨底（次）—— 形态与颜色双重区分。 */
+.hig-chip {
+  @apply inline-flex h-8 shrink-0 items-center rounded-full bg-sand px-3.5 text-footnote text-ink-mid transition-colors duration-150;
+}
+.hig-chip:hover {
+  @apply text-ink;
+}
+.hig-chip.is-active {
+  /* 墨底 + 背景色文字：深浅两主题自动翻转，不需要为 chip 单独定义一对令牌 */
+  @apply bg-ink font-medium text-cream;
+}
+
+/* 列表选择态（批量操作的编辑模式）：HIG 的选中行不换背景，而是左侧出现勾选圈。
+   用背景色区分「选中」会在深色下与 hover 态糊在一起 */
+.hig-pick {
+  @apply relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors duration-150;
+}
+.hig-pick-off {
+  @apply border-ink-dim/50;
+}
+.hig-pick-on {
+  @apply border-pine bg-pine text-white;
+}
+
+/* 底部浮层进出（批量操作条）：HIG 的 sheet 是「贴着底边推入 + 淡入」，
+   曲线用 iOS sheet 的 (0.32, 0.72, 0, 1)——起步快、尾段缓，收得住不弹 */
+.sheet-enter-active,
+.sheet-leave-active {
+  transition:
+    opacity 0.25s cubic-bezier(0.32, 0.72, 0, 1),
+    transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sheet-enter-from,
+.sheet-leave-to {
+  opacity: 0;
+  transform: translateY(100%);
+}
+
 /* 收藏成功微动效：书签图标上挑回弹 + 中性光晕扩散（不影响布局，全局复用）
    放在 @layer 之外，避免被 utilities 层的同名声明覆盖 */
 @keyframes fav-icon-lift {

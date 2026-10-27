@@ -7,7 +7,8 @@ exports.getNotifications = asyncHandler(async (req, res) => {
     userId: req.user.userId,
     page: req.query.page,
     pageSize: req.query.pageSize,
-    unreadOnly: req.query.filter === 'unread'
+    unreadOnly: req.query.filter === 'unread',
+    type: req.query.type
   })
   ok(res, data, '获取通知列表成功')
 })
