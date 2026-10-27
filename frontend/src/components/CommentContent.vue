@@ -8,7 +8,7 @@
       <pre
         v-if="block.type === 'fence'"
         data-test="rich-pre"
-        class="my-1.5 overflow-x-auto rounded-lg bg-sand px-3 py-2 font-mono text-[13px] leading-relaxed text-ink"
+        class="my-1.5 overflow-x-auto rounded-lg bg-sand px-3 py-2 font-mono text-footnote leading-relaxed text-ink"
       >{{ block.text }}</pre>
       <template v-else>
         <template v-for="(seg, si) in block.segs" :key="si">

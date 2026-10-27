@@ -1,8 +1,8 @@
 <template>
   <div class="card p-5">
     <div class="mb-3 flex items-center justify-between">
-      <p class="text-xs font-medium tracking-wide text-ink-dim">共创伙伴</p>
-      <span v-if="count" data-test="participants-count" class="text-xs tabular-nums text-ink-dim">
+      <p class="text-caption1 font-medium tracking-wide text-ink-dim">共创伙伴</p>
+      <span v-if="count" data-test="participants-count" class="text-caption1 tabular-nums text-ink-dim">
         {{ count }} 位
       </span>
     </div>
@@ -14,7 +14,7 @@
           v-for="p in stack"
           :key="p.id"
           data-test="participant-avatar"
-          class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-sm font-bold text-pine-deep ring-2 ring-cream"
+          class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-footnote font-bold text-pine-deep ring-2 ring-cream"
           :title="p.username"
         >
           <img v-if="p.avatar" :src="p.avatar" alt="" class="h-full w-full object-cover" />
@@ -23,20 +23,20 @@
         <span
           v-if="overflow"
           data-test="participant-overflow"
-          class="flex h-9 w-9 items-center justify-center rounded-full bg-sand text-xs font-semibold tabular-nums text-ink-mid ring-2 ring-cream"
+          class="flex h-9 w-9 items-center justify-center rounded-full bg-sand text-caption1 font-semibold tabular-nums text-ink-mid ring-2 ring-cream"
         >
           +{{ overflow }}
         </span>
       </div>
     </div>
-    <p v-else class="text-sm leading-relaxed text-ink-mid">
+    <p v-else class="text-footnote leading-relaxed text-ink-mid">
       还没有人加入，来成为第一位共创伙伴吧。
     </p>
 
     <button
       v-if="count"
       data-test="open-participants"
-      class="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-sand px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-line"
+      class="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-sand px-3 py-2 text-footnote font-medium text-ink transition-colors hover:bg-line"
       @click="openModal"
     >
       <AppIcon name="users" class="h-3.5 w-3.5" />
@@ -59,8 +59,8 @@
         <div class="card flex max-h-[80vh] w-full max-w-md flex-col p-6 shadow-pop">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <h3 class="font-display text-xl font-bold text-ink">共创伙伴</h3>
-              <p class="mt-1 text-sm text-ink-dim" data-test="participants-total">
+              <h3 class="font-display text-title3 font-bold text-ink">共创伙伴</h3>
+              <p class="mt-1 text-footnote text-ink-dim" data-test="participants-total">
                 共 {{ total || count }} 位伙伴参与了这个项目
               </p>
             </div>
@@ -94,7 +94,7 @@
               class="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-sand/60"
             >
               <span
-                class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-sm font-bold text-pine-deep"
+                class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-footnote font-bold text-pine-deep"
               >
                 <img v-if="p.avatar" :src="p.avatar" alt="" class="h-full w-full object-cover" />
                 <template v-else>{{ initial(p.username) }}</template>
@@ -103,17 +103,17 @@
                 <router-link
                   :to="`/user/${p.id}`"
                   data-test="participant-name"
-                  class="block truncate text-sm font-medium text-ink transition-colors hover:text-pine"
+                  class="block truncate text-footnote font-medium text-ink transition-colors hover:text-pine"
                 >
                   {{ p.username }}
                 </router-link>
-                <p class="truncate text-xs text-ink-dim">
+                <p class="truncate text-caption1 text-ink-dim">
                   {{ roleLabel(p.role) }}<template v-if="p.joinedAt"> · {{ relativeTime(p.joinedAt) }}加入</template>
                 </p>
               </div>
               <span
                 v-if="p.role === 'creator'"
-                class="shrink-0 rounded-full bg-pine-soft px-2 py-0.5 text-xs font-medium text-pine-deep"
+                class="shrink-0 rounded-full bg-pine-soft px-2 py-0.5 text-caption1 font-medium text-pine-deep"
               >
                 发起人
               </span>
@@ -123,7 +123,7 @@
           <button
             v-if="!loading && list.length < total"
             data-test="load-more-participants"
-            class="btn-secondary mt-4 w-full !py-2.5 text-sm"
+            class="btn-secondary mt-4 w-full !py-2.5 text-footnote"
             :disabled="loadingMore"
             @click="loadMore"
           >

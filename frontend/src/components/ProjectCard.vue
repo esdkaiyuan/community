@@ -35,17 +35,17 @@
 
         <!-- 徽标（苹果式白玻璃轻徽章） -->
         <div class="absolute left-3 top-3 flex gap-1.5">
-          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md">
+          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-caption2 font-medium text-ink shadow-sm backdrop-blur-md">
             <AppIcon name="star" class="h-3 w-3 text-amber-warm" />推荐
           </span>
-          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md">
+          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-caption2 font-medium text-ink shadow-sm backdrop-blur-md">
             <AppIcon name="flame" class="h-3 w-3 text-clay" />热门
           </span>
           <!-- 本周活跃度：只在按「本周热门」排序时出现，用来解释「为什么它排在前面」 -->
           <span
             v-if="trend > 0"
             data-test="card-trend"
-            class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-[11px] font-medium text-ink shadow-sm backdrop-blur-md"
+            class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-caption2 font-medium text-ink shadow-sm backdrop-blur-md"
             :title="`近 7 天 ${trend} 次互动（点赞 / 评论 / 参与）`"
           >
             <AppIcon name="trendingUp" class="h-3 w-3 text-pine" />本周 {{ trend }}
@@ -53,7 +53,7 @@
         </div>
         <span
           v-if="project.categoryName"
-          class="absolute bottom-3 left-3 rounded-full bg-black/40 px-2.5 py-0.5 text-xs text-white backdrop-blur-md"
+          class="absolute bottom-3 left-3 rounded-full bg-black/40 px-2.5 py-0.5 text-caption1 text-white backdrop-blur-md"
         >
           {{ project.categoryName }}
         </span>
@@ -61,10 +61,10 @@
 
       <!-- 内容 -->
       <div class="p-5">
-        <h3 class="truncate text-[17px] font-semibold text-ink transition-colors group-hover:text-pine">
+        <h3 class="truncate text-headline font-semibold text-ink transition-colors group-hover:text-pine">
           {{ project.title }}
         </h3>
-        <p class="mt-1.5 line-clamp-2 min-h-[2.5rem] text-sm leading-relaxed text-ink-mid">
+        <p class="mt-1.5 line-clamp-2 min-h-[2.5rem] text-subhead leading-relaxed text-ink-mid">
           {{ project.description }}
         </p>
 
@@ -90,22 +90,22 @@
             class="pointer-events-auto relative z-10 flex min-w-0 items-center gap-2 rounded-full transition-opacity hover:opacity-70"
             :title="`看看 ${project.creator.username} 的主页`"
           >
-            <span class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-[10px] font-bold text-pine-deep">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-caption2 font-bold text-pine-deep">
               <img v-if="project.creator?.avatar" :src="project.creator.avatar" alt="" class="h-full w-full object-cover" />
               <template v-else>{{ (project.creator?.username || '友').slice(0, 1).toUpperCase() }}</template>
             </span>
-            <span class="truncate text-xs text-ink-mid">{{ project.creator?.username || '匿名共创者' }}</span>
+            <span class="truncate text-caption1 text-ink-mid">{{ project.creator?.username || '匿名共创者' }}</span>
             <!-- 相对时间：设计稿里卡片要素之一，也让「本周热门」的排序有据可依 -->
-            <span v-if="createdText" class="shrink-0 text-[11px] text-ink-dim">· {{ createdText }}</span>
+            <span v-if="createdText" class="shrink-0 text-caption2 text-ink-dim">· {{ createdText }}</span>
           </router-link>
           <div v-else class="flex min-w-0 items-center gap-2">
-            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sand text-[10px] font-bold text-ink-dim">友</span>
-            <span class="truncate text-xs text-ink-mid">匿名共创者</span>
-            <span v-if="createdText" class="shrink-0 text-[11px] text-ink-dim">· {{ createdText }}</span>
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sand text-caption2 font-bold text-ink-dim">友</span>
+            <span class="truncate text-caption1 text-ink-mid">匿名共创者</span>
+            <span v-if="createdText" class="shrink-0 text-caption2 text-ink-dim">· {{ createdText }}</span>
           </div>
 
           <!-- 数据 -->
-          <div class="flex shrink-0 items-center gap-3 text-xs text-ink-dim">
+          <div class="flex shrink-0 items-center gap-3 text-caption1 tabular-nums text-ink-dim">
             <span class="flex items-center gap-1" title="点赞">
               <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.4 12.6 12 21l-8.4-8.4a5.3 5.3 0 1 1 7.5-7.5l.9.9.9-.9a5.3 5.3 0 1 1 7.5 7.5z" />

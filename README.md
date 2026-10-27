@@ -656,6 +656,82 @@ community/
     └── seed.sql          # 种子数据
 ```
 
+## 设计系统（Apple HIG）
+
+前端按 Apple Human Interface Guidelines 重构过一轮。核心不是「把颜色换成苹果蓝」——
+令牌本来就是 `#0071E3` / `#F5F5F7` 那一套——而是把**散在各页面的临时拼装**收成一套有名字的规则。
+
+### 两层令牌
+
+`tailwind.config.js` 里刻意分成两层，混用会出事：
+
+| 层 | 名字 | 谁在用 |
+| --- | --- | --- |
+| 材质层 | `paper` / `ink` / `pine` / `clay` / `green` / `sand` / `cream` | 存量代码 + **31 个验证脚本** |
+| 语义层 | `label` / `label-2` / `separator` / `sys-fill` / `system-blue` / `system-red` … | 新代码一律写这一层 |
+
+材质层指向的 CSS 变量（`--c-clay` 等）被 `verify_dark_mode.py` **逐值比对**手写常量，
+改名或调值会一次撞红几十条断言。所以语义层只是指向同一批变量的别名，不动取值。
+
+### 排版：HIG 文本样式表
+
+取代了原先散落的 `text-[17px]` / `text-[13px]` / `text-[11px]` 硬编码：
+
+| 类 | 字号/行高 | 用途 |
+| --- | --- | --- |
+| `text-largetitle` | 34/40 | 一屏唯一的大标题（首页 Hero、页头） |
+| `text-title1` | 28/34 | 页面主标题 |
+| `text-title2` | 22/28 | 分区主标题 |
+| `text-title3` | 20/24 | 卡片 / 区块标题 |
+| `text-headline` | 17/22 | 强调正文 |
+| `text-body` | 17/24 | 正文 |
+| `text-callout` | 16/22 | 次要正文 |
+| `text-subhead` | 15/21 | 说明文字 |
+| `text-footnote` | 13/18 | 标签、次要信息 |
+| `text-caption1` | 12/16 | 计数、时间戳 |
+| `text-caption2` | 11/14 | 徽标内文字 |
+
+字重**不**内置在字号里，一律用 `font-*` 显式声明——否则 `text-title1` 自带的 bold
+会和 `font-medium` 抢优先级，改样式时会出现改不动的怪事。
+
+### 组件层
+
+| 组件 | 解决什么 |
+| --- | --- |
+| `AppSegmented` | 分段控件：2~5 个平级选项的「多选一」（排序、视图切换）。选项多于此用 chip |
+| `AppSectionHeader` | 分区标题。此前 ProfileView 把同一段装饰抄了三遍，改一次要改三处 |
+| `AppStatGrid` | 苹果官网参数式发丝线规格条（1px 间隙露出底色当分隔线） |
+| `AppListRow` | 分组列表行：leading 图标 — 主/副标题 — trailing 值或 chevron，最小行高 44pt |
+| `AppSheet` | 模态表单。窄屏底部升起带 grabber，桌面居中卡片 |
+| `AppConfirmHost` | 警告框，替代 `window.confirm`（见下） |
+
+### 两个刻意的例外
+
+**导航栏 44pt，代价是铃铛与账号菜单要缩小。** HIG 的导航栏标准高度是 44pt，
+但 36px 的控件在里面居中后上边缘只剩 4px，而 `::after` 热区要往上探 6px——
+探针点会落到视口外（y = -1），`verify_mobile_touch` 的「盒上方 5px 命中」直接失败。
+所以铃铛收到 32px、账号菜单内边距收到 `py-1`：44pt 的导航栏与 44pt 的热区这才同时成立。
+
+**破坏性确认不用 `window.confirm`。** 原生对话框不跟主题、不跟字体，
+而且在 Playwright 里属于原生对话框会被自动 dismiss —— 等于「点了删除会发生什么」根本没被测到。
+改为 `composables/useConfirm.js` 的 `confirm()`，用法与原生同形（`await confirm({...})` 出布尔值），
+由 `AppConfirmHost` 渲染。按钮只渲染**一份** DOM（flex 方向切换竖排/横排），
+不做「两套 DOM + hidden」——那样同一个 `data-test` 会出现两次，脚本 `count()` 拿到 2、
+`click()` 点到不可见的那一套。
+
+### 验证
+
+```bash
+python scripts/verify_dark_mode.py      # 令牌逐值比对 + 逐页 console / 溢出
+python scripts/verify_mobile_touch.py   # 44px 热区（elementFromPoint 真实命中探测）
+python scripts/verify_project_trending.py  # 排序分段控件（按 get_by_role("button") 点）
+python scripts/verify_security_page.py  # 分段控件 tab + 筛选 chip
+```
+
+⚠️ 跑之前先确认 `scripts/_verify_common.py` 的 `FRONT` 指向的是**真的 Vite**。
+本机 3001 若被别的 node 进程占了（症状：`Cannot GET /` + 满屏 404），
+用 `VERIFY_FRONT_BASE=http://localhost:<真实端口>` 覆盖，不要去改脚本里的默认值。
+
 ## 开发建议
 
 1. **先启动后端**，确保数据库连接正常

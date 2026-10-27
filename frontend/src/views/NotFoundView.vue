@@ -7,8 +7,8 @@
     >
       404
     </p>
-    <h1 class="mt-4 text-2xl font-semibold tracking-tight text-ink">这片土地还没被开垦</h1>
-    <p class="mt-2 max-w-sm text-sm leading-relaxed text-ink-mid">
+    <h1 class="mt-4 text-title2 font-semibold tracking-tight text-ink">这片土地还没被开垦</h1>
+    <p class="mt-2 max-w-sm text-footnote leading-relaxed text-ink-mid">
       你访问的页面不存在或已被移动。回到项目广场，看看正在发生的共创吧。
     </p>
     <router-link to="/" class="btn-primary mt-8">回到首页</router-link>

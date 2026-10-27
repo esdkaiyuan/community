@@ -4,12 +4,12 @@
       <!-- 品牌面板 -->
       <div class="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-b from-pine to-pine-deep p-10 text-white md:flex">
         <div class="relative">
-          <span class="text-xs tracking-[0.3em] opacity-70">CO-CREATION COMMUNITY</span>
-          <h2 class="mt-4 font-display text-3xl font-semibold leading-snug tracking-tight">
+          <span class="text-caption1 tracking-[0.3em] opacity-70">CO-CREATION COMMUNITY</span>
+          <h2 class="mt-4 font-display text-title1 font-semibold leading-snug tracking-tight">
             加入共创社区，<br />让想法遇见同行者
           </h2>
         </div>
-        <ul class="relative space-y-3 text-sm opacity-85">
+        <ul class="relative space-y-3 text-footnote opacity-85">
           <li class="flex items-center gap-2.5"><AppIcon name="lightbulb" class="h-4 w-4 shrink-0" />发布项目，寻找志同道合的伙伴</li>
           <li class="flex items-center gap-2.5"><AppIcon name="users" class="h-4 w-4 shrink-0" />参与感兴趣的项目，贡献力量</li>
           <li class="flex items-center gap-2.5"><AppIcon name="sprout" class="h-4 w-4 shrink-0" />见证创意从萌芽到落地</li>
@@ -18,8 +18,8 @@
 
       <!-- 表单 -->
       <div class="p-8 sm:p-10">
-        <h1 class="font-display text-3xl font-semibold tracking-tight text-ink">创建账号</h1>
-        <p class="mt-1.5 text-sm text-ink-mid">
+        <h1 class="font-display text-title1 font-semibold tracking-tight text-ink">创建账号</h1>
+        <p class="mt-1.5 text-footnote text-ink-mid">
           已有账号？
           <router-link to="/login" class="font-medium text-pine hover:underline">直接登录</router-link>
         </p>
@@ -73,7 +73,7 @@
                   :class="i <= strength.level ? strength.color : 'bg-sand'"
                 ></span>
               </div>
-              <span class="text-xs" :class="strength.textColor">{{ strength.label }}</span>
+              <span class="text-caption1" :class="strength.textColor">{{ strength.label }}</span>
             </div>
             <p v-if="errors.password" class="form-error">{{ errors.password }}</p>
           </div>

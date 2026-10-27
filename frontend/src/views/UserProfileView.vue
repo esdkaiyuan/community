@@ -25,15 +25,15 @@
         <div class="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-pine-soft blur-2xl" aria-hidden="true"></div>
 
         <div class="relative flex flex-col gap-6 sm:flex-row sm:items-center">
-          <span class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-pine text-3xl font-bold text-white">
+          <span class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-pine text-title1 font-bold text-white">
             <img v-if="profile?.user?.avatar" :src="profile.user.avatar" alt="" class="h-full w-full object-cover" />
             <template v-else>{{ (profile?.user?.username || '友').slice(0, 1).toUpperCase() }}</template>
           </span>
 
           <div class="min-w-0 flex-1">
-            <h1 class="font-display text-2xl font-bold text-ink" data-test="user-name">{{ profile?.user?.username }}</h1>
-            <p class="mt-1 text-sm text-ink-dim">{{ joinedText }}</p>
-            <p class="mt-2 text-sm leading-relaxed text-ink-mid">
+            <h1 class="font-display text-title2 font-bold text-ink" data-test="user-name">{{ profile?.user?.username }}</h1>
+            <p class="mt-1 text-footnote text-ink-dim">{{ joinedText }}</p>
+            <p class="mt-2 text-footnote leading-relaxed text-ink-mid">
               {{ profile?.user?.bio || '这位共创者还没有写简介。' }}
             </p>
           </div>
@@ -45,47 +45,32 @@
         </div>
 
         <!-- 数据概览：苹果参数式发丝线规格条 -->
-        <div class="relative mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-line sm:grid-cols-4" data-test="user-stats">
-          <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
-            <p class="text-xl font-semibold tabular-nums text-ink">{{ profile?.stats?.projectCount ?? '—' }}</p>
-            <p class="mt-0.5 text-xs text-ink-dim">发布项目</p>
-          </div>
-          <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
-            <p class="text-xl font-semibold tabular-nums text-ink">{{ profile?.stats?.joinedCount ?? '—' }}</p>
-            <p class="mt-0.5 text-xs text-ink-dim">参与共创</p>
-          </div>
-          <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
-            <p class="text-xl font-semibold tabular-nums text-ink">{{ profile?.stats?.likeReceived ?? '—' }}</p>
-            <p class="mt-0.5 text-xs text-ink-dim">收到点赞</p>
-          </div>
-          <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
-            <p class="text-xl font-semibold tabular-nums text-ink">{{ joinMonth }}</p>
-            <p class="mt-0.5 text-xs text-ink-dim">加入于</p>
-          </div>
-        </div>
+        <AppStatGrid :items="statItems" :cols="4" class="relative mt-8" test-id="user-stats" />
       </div>
 
       <!-- TA 发布的项目 -->
       <div class="mt-10">
-        <div class="mb-5 flex items-center justify-between">
-          <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
-            <span class="h-4 w-1 rounded-full bg-pine"></span>
-            {{ isMe ? '我发布的项目' : 'TA 发布的项目' }}
-            <span v-if="!loadingCreated" data-test="created-count" class="text-sm font-normal text-ink-dim">（{{ createdCount }}）</span>
-          </h2>
-          <!-- 预览只 6 条，被截断才给入口；跳广场用现成的 creatorId 筛选 -->
-          <router-link
-            v-if="!loadingCreated && hasMoreCreated"
-            data-test="view-all-created"
-            :to="{ path: '/', query: { creatorId: route.params.id } }"
-            class="btn-ghost !py-1 text-xs"
-          >
-            查看全部
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m9 6 6 6-6 6" />
-            </svg>
-          </router-link>
-        </div>
+        <AppSectionHeader
+          :title="isMe ? '我发布的项目' : 'TA 发布的项目'"
+          icon="lightbulb"
+          :count="loadingCreated ? null : createdCount"
+          count-test-id="created-count"
+        >
+          <template #action>
+            <!-- 预览只 6 条，被截断才给入口；跳广场用现成的 creatorId 筛选 -->
+            <router-link
+              v-if="!loadingCreated && hasMoreCreated"
+              data-test="view-all-created"
+              :to="{ path: '/', query: { creatorId: route.params.id } }"
+              class="btn-ghost !py-1 text-caption1"
+            >
+              查看全部
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m9 6 6 6-6 6" />
+              </svg>
+            </router-link>
+          </template>
+        </AppSectionHeader>
 
         <div v-if="loadingCreated" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <ProjectCardSkeleton v-for="i in 2" :key="i" />
@@ -107,24 +92,26 @@
 
       <!-- TA 参与的共创 -->
       <div class="mt-12">
-        <div class="mb-5 flex items-center justify-between">
-          <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
-            <span class="h-4 w-1 rounded-full bg-pine"></span>
-            {{ isMe ? '我参与的共创' : 'TA 参与的共创' }}
-            <span v-if="!loadingJoined" data-test="joined-count" class="text-sm font-normal text-ink-dim">（{{ joinedCount }}）</span>
-          </h2>
-          <router-link
-            v-if="!loadingJoined && hasMoreJoined"
-            data-test="view-all-joined"
-            :to="{ path: '/', query: { participantId: route.params.id } }"
-            class="btn-ghost !py-1 text-xs"
-          >
-            查看全部
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m9 6 6 6-6 6" />
-            </svg>
-          </router-link>
-        </div>
+        <AppSectionHeader
+          :title="isMe ? '我参与的共创' : 'TA 参与的共创'"
+          icon="users"
+          :count="loadingJoined ? null : joinedCount"
+          count-test-id="joined-count"
+        >
+          <template #action>
+            <router-link
+              v-if="!loadingJoined && hasMoreJoined"
+              data-test="view-all-joined"
+              :to="{ path: '/', query: { participantId: route.params.id } }"
+              class="btn-ghost !py-1 text-caption1"
+            >
+              查看全部
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m9 6 6 6-6 6" />
+              </svg>
+            </router-link>
+          </template>
+        </AppSectionHeader>
 
         <div v-if="loadingJoined" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <ProjectCardSkeleton v-for="i in 2" :key="i" />
@@ -156,6 +143,8 @@ import { useUserStore } from '@/store/user'
 import ProjectCard from '@/components/ProjectCard.vue'
 import ProjectCardSkeleton from '@/components/ProjectCardSkeleton.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import AppSectionHeader from '@/components/AppSectionHeader.vue'
+import AppStatGrid from '@/components/AppStatGrid.vue'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -193,6 +182,14 @@ const joinMonth = computed(() => {
   if (!d || Number.isNaN(d.getTime())) return '—'
   return `${d.getFullYear() % 100}/${String(d.getMonth() + 1).padStart(2, '0')}`
 })
+
+// 概览四格。'—' 表示「还不知道」，不是「一个都没有」——两者不该显示成同一个数。
+const statItems = computed(() => [
+  { label: '发布项目', value: profile.value?.stats?.projectCount ?? '—' },
+  { label: '参与共创', value: profile.value?.stats?.joinedCount ?? '—' },
+  { label: '收到点赞', value: profile.value?.stats?.likeReceived ?? '—' },
+  { label: '加入于', value: joinMonth.value }
+])
 
 const loadProfile = async () => {
   const id = route.params.id

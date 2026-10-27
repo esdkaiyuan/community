@@ -4,6 +4,8 @@
 
 /* 设计 token：RGB 三元组（供 Tailwind <alpha-value> 使用）+ 玻璃材质变量 */
 /* 浅色 = Apple HIG 默认；深色 = 跟随系统 prefers-color-scheme */
+/* ⚠️ 变量名与取值被 scripts/ 下的验证脚本按值钉死（verify_dark_mode.py 逐条比对
+   手写常量），改名或调值会撞红 31 个脚本 —— 只允许新增，不允许改动。 */
 :root {
   --c-paper: 245 245 247; /* #F5F5F7 */
   --c-cream: 255 255 255; /* 卡片 #FFFFFF */
@@ -76,6 +78,13 @@
     @apply bg-pine/20 text-pine-deep;
   }
 
+  /* HIG：键盘导航必须有可见焦点环，且只用系统蓝 —— 鼠标点击不出现（focus-visible） */
+  :focus-visible {
+    outline: 2px solid rgb(var(--c-pine));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
   * {
     scrollbar-width: thin;
     scrollbar-color: rgb(var(--c-line)) transparent;
@@ -94,6 +103,52 @@
 }
 
 @layer components {
+  /* ============================================================
+     HIG 结构层
+     ============================================================ */
+
+  /* 分组卡片：iOS「inset grouped」列表的容器面 —— 连续圆角 + 极淡描边，
+     不用投影（投影是 macOS 窗口的语言，列表分组靠的是描边与背景层次） */
+  .hig-card {
+    @apply rounded-14 bg-cream;
+    box-shadow: 0 0 0 0.5px rgb(var(--c-line) / 0.5);
+  }
+
+  /* 分组列表：行与行之间用发丝线分隔，分隔线从左侧文字处起（inset separator） */
+  .hig-list {
+    @apply overflow-hidden rounded-14 bg-cream;
+    box-shadow: 0 0 0 0.5px rgb(var(--c-line) / 0.5);
+  }
+  .hig-list > * + * {
+    border-top: 0.5px solid rgb(var(--c-line) / 0.7);
+  }
+
+  /* 列表行：HIG 最小行高 44pt；左侧 16pt 留白，右侧留给 chevron
+     行内两根柱子固定：leading（图标）— 文字 — trailing（值 / 箭头） */
+  .hig-row {
+    @apply flex min-h-11 items-center gap-3 px-4 py-3 text-left transition-colors duration-150;
+  }
+  .hig-row-interactive {
+    @apply hover:bg-sand/60 active:bg-sand;
+  }
+
+  /* 分区标题：HIG 的 section header —— 小号、次级色、全大写感（中文用字重与间距表达） */
+  .hig-section-title {
+    @apply px-1 text-footnote font-semibold tracking-wide text-ink-dim;
+  }
+
+  /* 规格条：苹果官网参数式发丝线网格（1px 间隙露出底色当分隔线） */
+  .hig-stat-grid {
+    @apply grid gap-px overflow-hidden rounded-10 bg-line;
+  }
+  .hig-stat-cell {
+    @apply bg-cream px-4 py-3.5 text-center;
+  }
+
+  /* ============================================================
+     存量组件（验证脚本有断言，勿动签名）
+     ============================================================ */
+
   /* 滚动渐入（v-reveal 指令）：苹果官网式淡入上浮 */
   .reveal-init {
     opacity: 0;
@@ -127,6 +182,11 @@
   /* 幽灵按钮 */
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-ink-mid transition-colors duration-200 hover:bg-sand hover:text-ink;
+  }
+
+  /* 破坏性按钮（HIG： destructive 操作一律 systemRed） */
+  .btn-destructive {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full bg-clay px-5 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   /* 输入框（apple.com：细边框 + 宽聚焦环） */
@@ -182,6 +242,27 @@
   .cat-pill.is-active {
     @apply bg-pine text-white hover:bg-pine;
   }
+}
+
+/* ============================================================
+   HIG 分段控件（Segmented Control）
+   iOS 的分段控件：灰底圆角容器 + 白色滑块，选中段是「按下去」的那一片
+   ============================================================ */
+.hig-segmented {
+  @apply inline-flex items-center gap-0.5 rounded-10 bg-sand p-0.5;
+}
+.hig-segmented-item {
+  @apply inline-flex min-h-8 items-center justify-center gap-1.5 rounded-[8px] px-3 text-footnote font-medium text-ink transition-all duration-150 ease-hig-out;
+}
+.hig-segmented-item:hover:not(.is-active) {
+  @apply text-ink;
+}
+.hig-segmented-item.is-active {
+  @apply bg-cream text-ink shadow-hig;
+}
+/* 图标型分段（只有图标没有文字）：段宽固定 */
+.hig-segmented-item.is-icon {
+  @apply w-8 px-0;
 }
 
 /* 收藏成功微动效：书签图标上挑回弹 + 中性光晕扩散（不影响布局，全局复用）
@@ -261,5 +342,17 @@ a,
   textarea,
   select {
     font-size: 16px !important;
+  }
+}
+
+/* HIG：尊重「减弱动态效果」——过渡与动画全部降到最短，但不移除功能 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

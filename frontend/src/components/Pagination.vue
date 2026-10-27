@@ -7,7 +7,7 @@
     </button>
 
     <template v-for="(item, i) in pageItems" :key="i">
-      <span v-if="item === '…'" class="px-1.5 text-sm text-ink-dim">…</span>
+      <span v-if="item === '…'" class="px-1.5 text-footnote text-ink-dim">…</span>
       <button
         v-else
         class="page-btn" data-test="page-btn"
@@ -59,9 +59,11 @@ const go = (p) => {
 </script>
 
 <style scoped>
-/* apple.com 式极简分页：无边框圆片，选中蓝字加粗 */
+/* apple.com 式极简分页：无边框圆片，选中蓝字加粗。
+   数字用 tabular-nums：页码从 9 跳到 10 时圆片宽度不抖。
+   ⚠️ 视觉高 36px 与 ::after 垂直 -8px 被 verify_mobile_touch 按值断言，勿改。 */
 .page-btn {
-  @apply relative flex h-9 min-w-[2.25rem] items-center justify-center rounded-full px-2 text-sm text-ink-mid transition-colors hover:bg-sand hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-mid;
+  @apply relative flex h-9 min-w-[2.25rem] items-center justify-center rounded-full px-2 text-footnote tabular-nums text-ink-mid transition-colors hover:bg-sand hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-mid;
 }
 
 /* 触屏热区：视觉盒 36px 不变，垂直扩 8px 到 52px。

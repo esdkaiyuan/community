@@ -5,15 +5,15 @@
       <div class="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-pine-soft blur-2xl" aria-hidden="true"></div>
 
       <div class="relative flex flex-col gap-6 sm:flex-row sm:items-center">
-        <span class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-pine text-3xl font-bold text-white">
+        <span class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-pine text-title1 font-bold text-white">
           <img v-if="user?.avatar" :src="user.avatar" alt="" class="h-full w-full object-cover" />
           <template v-else>{{ (user?.username || '友').slice(0, 1).toUpperCase() }}</template>
         </span>
 
         <div class="min-w-0 flex-1">
-          <h1 class="font-display text-2xl font-bold text-ink">{{ user?.username }}</h1>
-          <p class="mt-1 text-sm text-ink-dim">{{ user?.email }}</p>
-          <p class="mt-2 text-sm leading-relaxed text-ink-mid">
+          <h1 class="font-display text-title2 font-bold text-ink">{{ user?.username }}</h1>
+          <p class="mt-1 text-footnote text-ink-dim">{{ user?.email }}</p>
+          <p class="mt-2 text-footnote leading-relaxed text-ink-mid">
             {{ user?.bio || '这位共创者还没有写简介。' }}
           </p>
         </div>
@@ -22,62 +22,42 @@
       </div>
 
       <!-- 数据概览：苹果参数式发丝线规格条 -->
-      <div class="relative mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-line sm:grid-cols-4">
-        <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
-          <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.projectCount ?? '—' }}</p>
-          <p class="mt-0.5 text-xs text-ink-dim">发布项目</p>
-        </div>
-        <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
-          <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.commentCount ?? '—' }}</p>
-          <p class="mt-0.5 text-xs text-ink-dim">参与评论</p>
-        </div>
-        <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
-          <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.favoriteCount ?? '—' }}</p>
-          <p class="mt-0.5 text-xs text-ink-dim">收藏项目</p>
-        </div>
-        <div class="bg-cream px-4 py-3.5 text-center sm:text-left">
-          <p class="text-xl font-semibold tabular-nums text-ink">{{ stats?.likeReceived ?? '—' }}</p>
-          <p class="mt-0.5 text-xs text-ink-dim">收到点赞</p>
-        </div>
-      </div>
+      <AppStatGrid :items="statItems" :cols="4" class="relative mt-8" />
     </div>
 
     <!-- 账号安全入口：安全提醒与操作记录都收在那一页。
          放在个人中心是因为这是用户会主动来找它的地方（顶栏用户菜单里也有一个）。 -->
-    <router-link
+    <AppListRow
       to="/security"
-      data-test="profile-security-entry"
-      class="mt-6 flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-sand"
-    >
-      <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pine-soft text-pine-deep">
-        <AppIcon name="shield" class="h-[18px] w-[18px]" />
-      </span>
-      <span class="min-w-0 flex-1">
-        <span class="block text-sm font-medium text-ink">账号安全</span>
-        <span class="block text-xs text-ink-dim">查看针对你账号的失败尝试，以及你自己的操作记录</span>
-      </span>
-      <AppIcon name="chevronRight" class="h-4 w-4 shrink-0 text-ink-dim" />
-    </router-link>
+      title="账号安全"
+      subtitle="查看针对你账号的失败尝试，以及你自己的操作记录"
+      icon="shield"
+      icon-tone="blue"
+      chevron
+      test-id="profile-security-entry"
+      class="mt-6 hig-card"
+    />
 
     <!-- 我发布的项目 -->
     <div class="mt-10">
-      <div class="mb-5 flex items-center justify-between">
-        <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
-          <span class="h-4 w-1 rounded-full bg-pine"></span>
-          我发布的项目
-          <span v-if="!loadingProjects" class="text-sm font-normal text-ink-dim">（{{ myProjects.length }}）</span>
-        </h2>
-        <!-- 自己看自己也走同一条广场筛选路径，不另做一套「我的项目」列表页 -->
-        <router-link
-          v-if="stats && stats.projectCount > myProjects.length"
-          data-test="profile-view-all-projects"
-          :to="{ path: '/', query: { creatorId: userStore.userId } }"
-          class="btn-ghost text-sm"
-        >
-          查看全部
-        </router-link>
-        <router-link to="/publish" class="btn-ghost text-sm">+ 发布新项目</router-link>
-      </div>
+      <AppSectionHeader
+        title="我发布的项目"
+        icon="lightbulb"
+        :count="loadingProjects ? null : myProjects.length"
+      >
+        <template #action>
+          <!-- 自己看自己也走同一条广场筛选路径，不另做一套「我的项目」列表页 -->
+          <router-link
+            v-if="stats && stats.projectCount > myProjects.length"
+            data-test="profile-view-all-projects"
+            :to="{ path: '/', query: { creatorId: userStore.userId } }"
+            class="btn-ghost text-footnote"
+          >
+            查看全部
+          </router-link>
+          <router-link to="/publish" class="btn-ghost text-footnote">+ 发布新项目</router-link>
+        </template>
+      </AppSectionHeader>
 
       <div v-if="loadingProjects" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <ProjectCardSkeleton v-for="i in 3" :key="i" />
@@ -105,13 +85,11 @@
 
     <!-- 我的收藏 -->
     <div class="mt-12">
-      <div class="mb-5 flex items-center justify-between">
-        <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
-          <span class="h-4 w-1 rounded-full bg-pine"></span>
-          我的收藏
-          <span v-if="!loadingFavorites" class="text-sm font-normal text-ink-dim">（{{ favoriteTotal }}）</span>
-        </h2>
-      </div>
+      <AppSectionHeader
+        title="我的收藏"
+        icon="bookmark"
+        :count="loadingFavorites ? null : favoriteTotal"
+      />
 
       <div v-if="loadingFavorites" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <ProjectCardSkeleton v-for="i in 3" :key="i" />
@@ -146,13 +124,11 @@
 
     <!-- 我参与的讨论 -->
     <div class="mt-12">
-      <div class="mb-5 flex items-center justify-between">
-        <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
-          <span class="h-4 w-1 rounded-full bg-pine"></span>
-          我参与的讨论
-          <span v-if="!loadingComments" class="text-sm font-normal text-ink-dim">（{{ commentTotal }}）</span>
-        </h2>
-      </div>
+      <AppSectionHeader
+        title="我参与的讨论"
+        icon="message-circle"
+        :count="loadingComments ? null : commentTotal"
+      />
 
       <div v-if="loadingComments" class="space-y-3">
         <div v-for="i in 3" :key="i" class="card h-[76px] animate-pulse !shadow-sm" style="animation-delay: 0ms"></div>
@@ -168,7 +144,8 @@
       </EmptyState>
 
       <template v-else>
-        <div class="card divide-y divide-line overflow-hidden !p-0">
+        <!-- HIG 分组列表：发丝线由 .hig-list 统一画，行内不再各自描边 -->
+        <div class="hig-list">
           <router-link
             v-for="(c, i) in myComments"
             :key="c.id"
@@ -178,14 +155,14 @@
             class="group block px-5 py-4 transition-colors hover:bg-pine-soft/40"
           >
             <div class="flex items-center gap-2">
-              <span class="min-w-0 flex-1 truncate text-sm font-medium text-pine-deep">
+              <span class="min-w-0 flex-1 truncate text-footnote font-medium text-pine-deep">
                 {{ c.project?.title || '项目已删除' }}
               </span>
-              <span v-if="c.parentId" class="chip !px-2 !py-0.5 text-[11px]">回复</span>
-              <span class="shrink-0 text-xs tabular-nums text-ink-dim">{{ relativeTime(c.createdAt) }}</span>
+              <span v-if="c.parentId" class="chip !px-2 !py-0.5 text-caption2">回复</span>
+              <span class="shrink-0 text-caption1 tabular-nums text-ink-dim">{{ relativeTime(c.createdAt) }}</span>
             </div>
-            <p class="mt-1.5 line-clamp-2 text-[15px] leading-relaxed text-ink-mid">{{ c.content }}</p>
-            <div class="mt-2 flex items-center gap-1 text-xs tabular-nums text-ink-dim">
+            <p class="mt-1.5 line-clamp-2 text-subhead leading-relaxed text-ink-mid">{{ c.content }}</p>
+            <div class="mt-2 flex items-center gap-1 text-caption1 tabular-nums text-ink-dim">
               <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.4 12.6 12 21l-8.4-8.4a5.3 5.3 0 1 1 7.5-7.5l.9.9.9-.9a5.3 5.3 0 1 1 7.5 7.5z" />
               </svg>
@@ -208,48 +185,40 @@
       </template>
     </div>
 
-    <!-- 编辑资料弹窗 -->
-    <Teleport to="body">
-      <transition name="modal">
-        <div
-          v-if="editing"
-          class="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-          @click.self="editing = false"
-        >
-          <div class="card w-full max-w-md p-6 shadow-pop sm:p-8">
-            <h3 class="font-display text-xl font-bold text-ink">编辑资料</h3>
-
-            <form class="mt-6 space-y-5" @submit.prevent="handleSave">
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-ink" for="edit-username">用户名</label>
-                <input id="edit-username" v-model.trim="editForm.username" type="text" class="input" maxlength="20" />
-              </div>
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-ink" for="edit-avatar">头像链接</label>
-                <input id="edit-avatar" v-model.trim="editForm.avatar" type="url" class="input" placeholder="https://…" />
-              </div>
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-ink" for="edit-bio">个人简介</label>
-                <textarea
-                  id="edit-bio"
-                  v-model.trim="editForm.bio"
-                  class="input min-h-[90px] resize-y"
-                  placeholder="用一两句话介绍自己…"
-                  maxlength="200"
-                ></textarea>
-              </div>
-
-              <div class="flex justify-end gap-3 pt-2">
-                <button type="button" class="btn-ghost" @click="editing = false">取消</button>
-                <button type="submit" class="btn-primary" :disabled="saving">
-                  {{ saving ? '保存中…' : '保存' }}
-                </button>
-              </div>
-            </form>
+    <!-- 编辑资料：HIG 模态表单（窄屏底部升起带 grabber，桌面居中卡片） -->
+    <AppSheet v-model="editing" title="编辑资料" test-id="edit-profile-sheet">
+      <form id="edit-profile-form" @submit.prevent="handleSave">
+        <div class="space-y-5">
+          <div>
+            <label class="form-label" for="edit-username">用户名</label>
+            <input id="edit-username" v-model.trim="editForm.username" type="text" class="input" maxlength="20" />
+          </div>
+          <div>
+            <label class="form-label" for="edit-avatar">头像链接</label>
+            <input id="edit-avatar" v-model.trim="editForm.avatar" type="url" class="input" placeholder="https://…" />
+          </div>
+          <div>
+            <label class="form-label" for="edit-bio">个人简介</label>
+            <textarea
+              id="edit-bio"
+              v-model.trim="editForm.bio"
+              class="input min-h-[90px] resize-y"
+              placeholder="用一两句话介绍自己…"
+              maxlength="200"
+            ></textarea>
           </div>
         </div>
-      </transition>
-    </Teleport>
+      </form>
+
+      <template #footer>
+        <button type="button" class="btn-ghost" @click="editing = false">取消</button>
+        <!-- 按钮在 footer 插槽里、form 之外：用 form 属性回绑，
+             否则点「保存」不会触发 submit（HTML 表单只认祖先-后代关系） -->
+        <button type="submit" form="edit-profile-form" class="btn-primary" :disabled="saving">
+          {{ saving ? '保存中…' : '保存' }}
+        </button>
+      </template>
+    </AppSheet>
   </div>
 </template>
 
@@ -264,10 +233,22 @@ import { stripEmoji } from '@/utils/text'
 import ProjectCard from '@/components/ProjectCard.vue'
 import ProjectCardSkeleton from '@/components/ProjectCardSkeleton.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import AppIcon from '@/components/AppIcon.vue'
+import AppSectionHeader from '@/components/AppSectionHeader.vue'
+import AppStatGrid from '@/components/AppStatGrid.vue'
+import AppSheet from '@/components/AppSheet.vue'
+import AppListRow from '@/components/AppListRow.vue'
 
 const userStore = useUserStore()
 const user = computed(() => userStore.userInfo)
+
+// 概览四格。stats 还没到时用 '—' 占位而不是 0：0 会被读成「确实一个都没有」，
+// 而真实情况是「还不知道」——这两种空不一样，不该显示成同一个数。
+const statItems = computed(() => [
+  { label: '发布项目', value: stats.value?.projectCount ?? '—' },
+  { label: '参与评论', value: stats.value?.commentCount ?? '—' },
+  { label: '收藏项目', value: stats.value?.favoriteCount ?? '—' },
+  { label: '收到点赞', value: stats.value?.likeReceived ?? '—' }
+])
 
 const myProjects = ref([])
 const loadingProjects = ref(true)

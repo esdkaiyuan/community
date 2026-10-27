@@ -2,25 +2,19 @@
   <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
     <!-- 页头：苹果式大标题 -->
     <div>
-      <h1 class="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">账号安全</h1>
-      <p data-test="security-subtitle" class="mt-2 text-sm text-ink-mid">{{ subtitle }}</p>
+      <h1 class="font-display text-title1 font-semibold tracking-tight text-ink sm:text-largetitle">账号安全</h1>
+      <p data-test="security-subtitle" class="mt-2 text-footnote text-ink-mid">{{ subtitle }}</p>
     </div>
 
-    <!-- 分段控件：安全提醒 / 我的操作 / 登录密码 -->
-    <div class="mt-6 inline-flex rounded-full bg-sand p-1" role="tablist" aria-label="账号安全视图">
-      <button
-        v-for="opt in TAB_OPTIONS"
-        :key="opt.value"
-        role="tab"
-        :aria-selected="tab === opt.value"
-        :data-test="`security-tab-${opt.value}`"
-        class="rounded-full px-4 py-1.5 text-sm transition-all duration-200"
-        :class="tab === opt.value ? 'bg-cream font-medium text-ink shadow-sm' : 'text-ink-mid hover:text-ink'"
-        @click="switchTab(opt.value)"
-      >
-        {{ opt.label }}
-      </button>
-    </div>
+    <!-- 分段控件：安全提醒 / 我的操作 / 登录密码
+         三选一且平级，正是 HIG 分段控件的语义。 -->
+    <AppSegmented
+      :model-value="tab"
+      :options="TAB_OPTIONS"
+      aria-label="账号安全视图"
+      class="mt-6"
+      @update:model-value="switchTab"
+    />
 
     <!-- ===================== 安全提醒 ===================== -->
     <section v-if="tab === 'security'" data-test="security-panel" class="mt-6">
@@ -28,14 +22,14 @@
       <div
         v-if="!security.loading && security.total > 0"
         data-test="security-summary"
-        class="card flex items-start gap-3 p-4 sm:p-5"
+        class="hig-card flex items-start gap-3 p-4 sm:p-5"
       >
         <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-clay/10 text-clay">
           <AppIcon name="triangle-alert" class="h-[18px] w-[18px]" />
         </span>
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-ink">这里记录了 {{ security.total }} 条针对你账号的失败尝试</p>
-          <p class="mt-1 text-[13px] leading-relaxed text-ink-mid">
+          <p class="text-footnote font-medium text-ink">这里记录了 {{ security.total }} 条针对你账号的失败尝试</p>
+          <p class="mt-1 text-footnote leading-relaxed text-ink-mid">
             失败的尝试不会影响你的账号，也不代表密码已经被猜到。如果下面的来源你都认不出来，建议换一个更长的密码，并避免在别处复用。
           </p>
         </div>
@@ -56,7 +50,7 @@
       </div>
 
       <!-- 骨架 -->
-      <div v-if="security.loading" class="card mt-4 divide-y divide-line overflow-hidden !p-0">
+      <div v-if="security.loading" class="hig-list mt-4">
         <div v-for="i in 3" :key="i" class="flex items-start gap-3 px-5 py-4">
           <div class="h-9 w-9 shrink-0 animate-pulse rounded-full bg-sand"></div>
           <div class="min-w-0 flex-1 space-y-2 py-1">
@@ -76,13 +70,13 @@
               : '有人在尝试登录、或拿你的用户名注册时，这里会留下一行记录。目前一切正常。'
           "
         >
-          <button v-if="security.filter" class="btn-secondary text-sm" @click="applyFilter(security, SECURITY_CFG, '')">
+          <button v-if="security.filter" class="btn-secondary text-footnote" @click="applyFilter(security, SECURITY_CFG, '')">
             查看全部类型
           </button>
         </EmptyState>
       </template>
 
-      <div v-else data-test="security-list" class="card mt-4 divide-y divide-line overflow-hidden !p-0">
+      <div v-else data-test="security-list" class="hig-list mt-4">
         <article
           v-for="(e, i) in security.items"
           :key="e.id"
@@ -104,9 +98,9 @@
               </span>
             </div>
 
-            <p class="mt-2 text-[15px] leading-snug text-ink">{{ eventHint(e.event) }}</p>
+            <p class="mt-2 text-subhead leading-snug text-ink">{{ eventHint(e.event) }}</p>
 
-            <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-dim">
+            <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption1 text-ink-dim">
               <span>
                 被尝试的账号
                 <span data-test="security-account" class="font-medium text-ink-mid">{{ e.account || '未识别' }}</span>
@@ -143,11 +137,11 @@
       </div>
 
       <!-- 口径说明：把「什么不记」也讲清楚，免得用户以为日志漏记了 -->
-      <p class="mt-3 text-xs leading-relaxed text-ink-dim">
+      <p class="mt-3 text-caption1 leading-relaxed text-ink-dim">
         只记录会留下内容或改变状态的操作。点赞、收藏、参与这类可反复切换的高频动作刻意不记，否则时间线会被噪音淹没。
       </p>
 
-      <div v-if="activity.loading" class="card mt-4 divide-y divide-line overflow-hidden !p-0">
+      <div v-if="activity.loading" class="hig-list mt-4">
         <div v-for="i in 3" :key="i" class="flex items-start gap-3 px-5 py-4">
           <div class="h-9 w-9 shrink-0 animate-pulse rounded-full bg-sand"></div>
           <div class="min-w-0 flex-1 space-y-2 py-1">
@@ -167,13 +161,13 @@
               : '你发布项目、编辑内容、发表评论、修改资料时，这里会留下一条记录。'
           "
         >
-          <button v-if="activity.filter" class="btn-secondary text-sm" @click="applyFilter(activity, ACTIVITY_CFG, '')">
+          <button v-if="activity.filter" class="btn-secondary text-footnote" @click="applyFilter(activity, ACTIVITY_CFG, '')">
             查看全部类型
           </button>
         </EmptyState>
       </template>
 
-      <div v-else data-test="activity-list" class="card mt-4 divide-y divide-line overflow-hidden !p-0">
+      <div v-else data-test="activity-list" class="hig-list mt-4">
         <article
           v-for="(l, i) in activity.items"
           :key="l.id"
@@ -187,8 +181,8 @@
           </span>
 
           <div class="min-w-0 flex-1">
-            <p data-test="log-summary" class="break-words text-[15px] leading-snug text-ink">{{ l.summary }}</p>
-            <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-dim">
+            <p data-test="log-summary" class="break-words text-subhead leading-snug text-ink">{{ l.summary }}</p>
+            <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption1 text-ink-dim">
               <span>{{ relativeTime(l.createdAt) }}</span>
               <span v-if="l.ip">来源 {{ l.ip }}</span>
             </p>
@@ -206,14 +200,14 @@
     <!-- ===================== 登录密码 ===================== -->
     <!-- 这一栏是纯表单，没有列表要拉 —— 所以 ensureLoaded / configOf 都刻意跳过它 -->
     <section v-else data-test="password-panel" class="mt-6">
-      <form class="card max-w-xl p-6 sm:p-8" @submit.prevent="submitPassword">
+      <form class="hig-card max-w-xl p-6 sm:p-8" @submit.prevent="submitPassword">
         <div class="flex items-start gap-3">
           <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine-soft text-pine-deep">
             <AppIcon name="lock" class="h-[18px] w-[18px]" />
           </span>
           <div class="min-w-0 flex-1">
-            <h2 class="text-base font-medium text-ink">修改登录密码</h2>
-            <p class="mt-1 text-[13px] leading-relaxed text-ink-mid">
+            <h2 class="text-callout font-medium text-ink">修改登录密码</h2>
+            <p class="mt-1 text-footnote leading-relaxed text-ink-mid">
               修改后，其他设备上的登录会立即失效，需要重新登录；当前设备不受影响。
             </p>
           </div>
@@ -256,7 +250,7 @@
                   :class="i <= strength.level ? strength.color : 'bg-sand'"
                 ></span>
               </div>
-              <span class="text-xs" :class="strength.textColor">{{ strength.label }}</span>
+              <span class="text-caption1" :class="strength.textColor">{{ strength.label }}</span>
             </div>
             <p v-if="pwErrors.next" data-test="pw-error-next" class="form-error">{{ pwErrors.next }}</p>
           </div>
@@ -310,6 +304,7 @@ import {
 } from '@/utils/audit'
 import AppIcon from '@/components/AppIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import AppSegmented from '@/components/AppSegmented.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -317,10 +312,12 @@ const userStore = useUserStore()
 
 const PAGE_SIZE = 15
 
+// test 逐项固定：端到端脚本按 security-tab-activity 这类名字直接点某一页，
+// 统一前缀生成会让这些定位失效（名字改了脚本找不到，是最隐蔽的一类回归）
 const TAB_OPTIONS = [
-  { value: 'security', label: '安全提醒' },
-  { value: 'activity', label: '我的操作' },
-  { value: 'password', label: '登录密码' }
+  { value: 'security', label: '安全提醒', test: 'security-tab-security' },
+  { value: 'activity', label: '我的操作', test: 'security-tab-activity' },
+  { value: 'password', label: '登录密码', test: 'security-tab-password' }
 ]
 const TAB_VALUES = TAB_OPTIONS.map((o) => o.value)
 

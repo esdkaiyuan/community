@@ -4,20 +4,20 @@
       <!-- 品牌面板 -->
       <div class="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-b from-pine to-pine-deep p-10 text-white md:flex">
         <div class="relative">
-          <span class="text-xs tracking-[0.3em] opacity-70">CO-CREATION COMMUNITY</span>
-          <h2 class="mt-4 font-display text-3xl font-semibold leading-snug tracking-tight">
+          <span class="text-caption1 tracking-[0.3em] opacity-70">CO-CREATION COMMUNITY</span>
+          <h2 class="mt-4 font-display text-title1 font-semibold leading-snug tracking-tight">
             欢迎回来，<br />继续你的共创之旅
           </h2>
         </div>
-        <p class="relative text-sm leading-relaxed opacity-80">
+        <p class="relative text-footnote leading-relaxed opacity-80">
           "好的想法从不孤单。<br />在这里，总有人愿意和你一起把它做出来。"
         </p>
       </div>
 
       <!-- 表单 -->
       <div class="p-8 sm:p-10">
-        <h1 class="font-display text-3xl font-semibold tracking-tight text-ink">登录</h1>
-        <p class="mt-1.5 text-sm text-ink-mid">
+        <h1 class="font-display text-title1 font-semibold tracking-tight text-ink">登录</h1>
+        <p class="mt-1.5 text-footnote text-ink-mid">
           还没有账号？
           <router-link to="/register" class="font-medium text-pine hover:underline">立即注册</router-link>
         </p>

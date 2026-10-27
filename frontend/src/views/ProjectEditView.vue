@@ -1,8 +1,8 @@
 <template>
   <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
     <div class="mb-8">
-      <h1 class="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">编辑项目</h1>
-      <p class="mt-2 text-sm text-ink-mid">改完立即生效，新加的标签会同步进广场的「热门标签」。</p>
+      <h1 class="font-display text-title1 font-semibold tracking-tight text-ink sm:text-largetitle">编辑项目</h1>
+      <p class="mt-2 text-footnote text-ink-mid">改完立即生效，新加的标签会同步进广场的「热门标签」。</p>
     </div>
 
     <!-- 骨架：拉详情期间避免表单闪现又回填 -->

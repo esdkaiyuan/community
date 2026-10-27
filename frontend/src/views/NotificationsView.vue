@@ -3,33 +3,29 @@
     <!-- 页头：苹果式大标题 -->
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">通知</h1>
-        <p class="mt-2 text-sm text-ink-mid">
+        <h1 class="font-display text-title1 font-semibold tracking-tight text-ink sm:text-largetitle">通知</h1>
+        <p class="mt-2 text-footnote text-ink-mid">
           <template v-if="unread > 0">有 {{ unread }} 条未读，共 {{ total }} 条</template>
           <template v-else>全部已读，共 {{ total }} 条</template>
         </p>
       </div>
-      <button v-if="unread > 0" class="btn-secondary text-sm" :disabled="marking" @click="markAllRead">
+      <button v-if="unread > 0" class="btn-secondary text-footnote" :disabled="marking" @click="markAllRead">
         {{ marking ? '处理中…' : '全部标为已读' }}
       </button>
     </div>
 
-    <!-- 分段控件：全部 / 未读 -->
-    <div class="mt-6 inline-flex rounded-full bg-sand p-1">
-      <button
-        v-for="opt in filterOptions"
-        :key="opt.value"
-        class="rounded-full px-4 py-1.5 text-sm transition-all duration-200"
-        :class="filter === opt.value ? 'bg-cream font-medium text-ink shadow-sm' : 'text-ink-mid hover:text-ink'"
-        @click="switchFilter(opt.value)"
-      >
-        {{ opt.label }}
-      </button>
-    </div>
+    <!-- 分段控件：全部 / 未读（二选一，HIG 分段控件的典型场景） -->
+    <AppSegmented
+      :model-value="filter"
+      :options="filterOptions"
+      aria-label="通知筛选"
+      class="mt-6"
+      @update:model-value="switchFilter"
+    />
 
     <!-- 通知列表 -->
     <div class="mt-6">
-      <div v-if="loading" class="card divide-y divide-line overflow-hidden !p-0">
+      <div v-if="loading" class="hig-list">
         <div v-for="i in 5" :key="i" class="flex items-start gap-3 px-5 py-4">
           <div class="h-10 w-10 shrink-0 animate-pulse rounded-full bg-sand"></div>
           <div class="min-w-0 flex-1 space-y-2 py-0.5">
@@ -49,12 +45,12 @@
             : '有人评论、回复、点赞或参与你的项目时，这里会第一时间告诉你。'
         "
       >
-        <router-link v-if="filter === 'unread'" class="btn-secondary text-sm" to="/notifications?filter=all">
+        <router-link v-if="filter === 'unread'" class="btn-secondary text-footnote" to="/notifications?filter=all">
           查看全部通知
         </router-link>
       </EmptyState>
 
-      <div v-else class="card divide-y divide-line overflow-hidden !p-0">
+      <div v-else class="hig-list">
         <button
           v-for="(n, i) in notifications"
           :key="n.id"
@@ -65,22 +61,22 @@
           @click="openNotification(n)"
         >
           <span
-            class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-sm font-bold text-pine-deep"
+            class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-footnote font-bold text-pine-deep"
           >
             <img v-if="n.actor?.avatar" :src="n.actor.avatar" alt="" class="h-full w-full object-cover" />
             <template v-else>{{ (n.actor?.username || '友').slice(0, 1).toUpperCase() }}</template>
           </span>
 
           <span class="min-w-0 flex-1">
-            <span class="block text-[15px] leading-snug text-ink">
+            <span class="block text-subhead leading-snug text-ink">
               <span class="font-medium">{{ n.actor?.username || '有人' }}</span>
               {{ notificationText(n.type) }}
               <span class="text-ink-mid">「{{ n.project?.title || '项目' }}」</span>
             </span>
-            <span v-if="n.commentPreview" class="mt-1 block truncate text-[13px] text-ink-mid">
+            <span v-if="n.commentPreview" class="mt-1 block truncate text-footnote text-ink-mid">
               {{ n.commentPreview }}
             </span>
-            <span class="mt-1.5 flex items-center gap-2 text-xs text-ink-dim">
+            <span class="mt-1.5 flex items-center gap-2 text-caption1 text-ink-dim">
               <span>{{ relativeTime(n.createdAt) }}</span>
               <span class="text-pine-deep opacity-0 transition-opacity group-hover:opacity-100">前往查看 ›</span>
             </span>
@@ -107,6 +103,7 @@ import { toast } from '@/composables/useToast'
 import { relativeTime } from '@/utils/time'
 import { notificationText, notificationTarget } from '@/utils/notification'
 import EmptyState from '@/components/EmptyState.vue'
+import AppSegmented from '@/components/AppSegmented.vue'
 
 const route = useRoute()
 const router = useRouter()

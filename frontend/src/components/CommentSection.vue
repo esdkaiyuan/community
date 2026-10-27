@@ -2,8 +2,8 @@
   <section id="comments" class="mt-14 scroll-mt-24">
     <!-- 分区标题：App Store「评分与评论」式大标题 + 发丝线分隔 -->
     <div class="flex items-end justify-between gap-4">
-      <h2 class="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">评论</h2>
-      <span class="pb-1 text-sm tabular-nums text-ink-dim">{{ total ? `${total} 条` : '' }}</span>
+      <h2 class="text-title2 font-semibold tracking-tight text-ink sm:text-title1">评论</h2>
+      <span class="pb-1 text-footnote tabular-nums text-ink-dim">{{ total ? `${total} 条` : '' }}</span>
     </div>
     <div class="mt-4 h-px bg-line"></div>
 
@@ -11,7 +11,7 @@
     <div v-if="userStore.isLoggedIn" class="card mt-6 p-5 sm:p-6">
       <div class="flex gap-3.5">
         <span
-          class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-sm font-bold text-pine-deep"
+          class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-footnote font-bold text-pine-deep"
         >
           <img v-if="userStore.avatar" :src="userStore.avatar" alt="" class="h-full w-full object-cover" />
           <template v-else>{{ (userStore.username || '友').slice(0, 1).toUpperCase() }}</template>
@@ -23,7 +23,7 @@
             maxlength="500"
             data-test="comment-input"
             placeholder="分享你的想法，@用户名 可提及他人"
-            class="w-full resize-none rounded-lg border-0 bg-transparent p-0 text-[15px] leading-relaxed text-ink placeholder:text-ink-dim/70 focus:outline-none"
+            class="w-full resize-none rounded-lg border-0 bg-transparent p-0 text-subhead leading-relaxed text-ink placeholder:text-ink-dim/70 focus:outline-none"
           ></textarea>
           <div class="mt-3 flex items-center justify-between border-t border-line pt-3">
             <!-- @ 提及候选：行尾输入 @ 时出现，点选补全 -->
@@ -37,15 +37,15 @@
             :key="u.id"
             type="button"
             data-test="mention-option"
-            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-sand"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left text-footnote text-ink hover:bg-sand"
             @click="pickMention(u.username)"
           >
             <span class="font-medium">@{{ u.username }}</span>
           </button>
         </div>
-        <span class="text-xs tabular-nums text-ink-dim" data-test="comment-counter">{{ draft.length }}/500</span>
+        <span class="text-caption1 tabular-nums text-ink-dim" data-test="comment-counter">{{ draft.length }}/500</span>
             <button
-              class="btn-primary !px-5 !py-1.5 text-sm"
+              class="btn-primary !px-5 !py-1.5 text-footnote"
               data-test="comment-submit"
               :disabled="!draft || submitting"
               @click="handleSubmit"
@@ -62,8 +62,8 @@
       v-else
       class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl2 border border-[color:var(--glass-border)] bg-[color:var(--glass-card)] px-5 py-4 backdrop-blur-xl backdrop-saturate-150"
     >
-      <p class="text-sm text-ink-mid" data-test="comment-login-hint">登录后即可参与讨论</p>
-      <router-link :to="{ name: 'Login', query: { redirect: route.fullPath } }" class="btn-secondary !py-1.5 text-sm">
+      <p class="text-footnote text-ink-mid" data-test="comment-login-hint">登录后即可参与讨论</p>
+      <router-link :to="{ name: 'Login', query: { redirect: route.fullPath } }" class="btn-secondary !py-1.5 text-footnote">
         登录
       </router-link>
     </div>
@@ -96,13 +96,13 @@
           <Avatar :user="c.user" size="md" />
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
-              <span class="truncate text-[15px] font-medium text-ink">{{ c.user?.username || '匿名共创者' }}</span>
-              <span class="shrink-0 text-xs text-ink-dim">{{ relativeTime(c.createdAt) }}</span>
+              <span class="truncate text-subhead font-medium text-ink">{{ c.user?.username || '匿名共创者' }}</span>
+              <span class="shrink-0 text-caption1 text-ink-dim">{{ relativeTime(c.createdAt) }}</span>
               <div class="ml-auto flex shrink-0 items-center gap-0.5">
                 <LikeButton :liked="c.liked" :count="c.likeCount" :disabled="liking === c.id" @toggle="toggleLike(c)" />
                 <button
                   v-if="userStore.isLoggedIn"
-                  class="relative rounded-full px-2 py-1 text-xs text-ink-dim transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-pine-soft hover:text-pine-deep"
+                  class="relative rounded-full px-2 py-1 text-caption1 text-ink-dim transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-pine-soft hover:text-pine-deep"
                   data-test="comment-reply-btn"
                   @click="toggleReply(c)"
                 >
@@ -110,7 +110,7 @@
                 </button>
                 <button
                   v-if="c.canDelete"
-                  class="relative inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-ink-dim transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-clay/10 hover:text-clay"
+                  class="relative inline-flex items-center gap-1 rounded-full px-2 py-1 text-caption1 text-ink-dim transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-clay/10 hover:text-clay"
                   data-test="comment-delete"
                   :disabled="removing === c.id"
                   @click="handleDelete(c, null)"
@@ -120,7 +120,7 @@
                 </button>
               </div>
             </div>
-            <p class="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed text-ink-mid"><CommentContent :content="c.content" :mention-names="mentionNames" /></p>
+            <p class="mt-1.5 whitespace-pre-wrap text-subhead leading-relaxed text-ink-mid"><CommentContent :content="c.content" :mention-names="mentionNames" /></p>
           </div>
         </div>
 
@@ -137,13 +137,13 @@
             <Avatar :user="r.user" size="sm" />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <span class="truncate text-sm font-medium text-ink">{{ r.user?.username || '匿名共创者' }}</span>
-                <span class="shrink-0 text-xs text-ink-dim">{{ relativeTime(r.createdAt) }}</span>
+                <span class="truncate text-footnote font-medium text-ink">{{ r.user?.username || '匿名共创者' }}</span>
+                <span class="shrink-0 text-caption1 text-ink-dim">{{ relativeTime(r.createdAt) }}</span>
                 <div class="ml-auto flex shrink-0 items-center gap-0.5">
                   <LikeButton :liked="r.liked" :count="r.likeCount" :disabled="liking === r.id" @toggle="toggleLike(r)" />
                   <button
                     v-if="r.canDelete"
-                    class="relative inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-ink-dim transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-clay/10 hover:text-clay"
+                    class="relative inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-caption1 text-ink-dim transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:bg-clay/10 hover:text-clay"
                     :disabled="removing === r.id"
                     @click="handleDelete(r, c)"
                   >
@@ -152,7 +152,7 @@
                   </button>
                 </div>
               </div>
-              <p class="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink-mid"><CommentContent :content="r.content" :mention-names="mentionNames" /></p>
+              <p class="mt-1 whitespace-pre-wrap text-footnote leading-relaxed text-ink-mid"><CommentContent :content="r.content" :mention-names="mentionNames" /></p>
             </div>
           </div>
         </div>
@@ -166,14 +166,14 @@
                 rows="2"
                 maxlength="500"
                 :placeholder="`回复 @${c.user?.username || '匿名共创者'}…`"
-                class="w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-ink placeholder:text-ink-dim/70 focus:outline-none"
+                class="w-full resize-none border-0 bg-transparent p-0 text-footnote leading-relaxed text-ink placeholder:text-ink-dim/70 focus:outline-none"
               ></textarea>
               <div class="mt-2 flex items-center justify-between border-t border-line pt-2">
-                <span class="text-xs tabular-nums text-ink-dim">{{ replyDraft.length }}/500</span>
+                <span class="text-caption1 tabular-nums text-ink-dim">{{ replyDraft.length }}/500</span>
                 <div class="flex items-center gap-1">
-                  <button class="btn-ghost !px-3 !py-1 text-xs" @click="cancelReply">取消</button>
+                  <button class="btn-ghost !px-3 !py-1 text-caption1" @click="cancelReply">取消</button>
                   <button
-                    class="btn-primary !px-4 !py-1 text-xs"
+                    class="btn-primary !px-4 !py-1 text-caption1"
                     :disabled="!replyDraft || submitting"
                     @click="submitReply(c)"
                   >
@@ -190,13 +190,13 @@
     <!-- 空状态 -->
     <div v-else class="mt-10 flex flex-col items-center gap-2 pb-4 text-center">
       <AppIcon name="message-circle" class="h-8 w-8 text-ink-dim/50" :stroke-width="1.5" />
-      <p class="text-[15px] text-ink-mid">还没有评论</p>
-      <p class="text-sm text-ink-dim">来写下第一条想法，与共创者交流。</p>
+      <p class="text-subhead text-ink-mid">还没有评论</p>
+      <p class="text-footnote text-ink-dim">来写下第一条想法，与共创者交流。</p>
     </div>
 
     <!-- 加载更多 -->
     <div v-if="!loading && hasMore" class="mt-2 flex justify-center">
-      <button class="btn-ghost text-sm text-pine" :disabled="loadingMore" @click="loadMore">
+      <button class="btn-ghost text-footnote text-pine" :disabled="loadingMore" @click="loadMore">
         {{ loadingMore ? '加载中…' : '显示更多评论' }}
       </button>
     </div>
@@ -217,7 +217,7 @@ import { useMentionHint } from '@/composables/useMentionHint'
 
 // 头像：与全站一致的字母回退（函数式组件，避免嵌套列表重复模板）
 const Avatar = (props) => {
-  const size = props.size === 'sm' ? 'h-8 w-8 text-xs' : 'h-10 w-10 text-sm'
+  const size = props.size === 'sm' ? 'h-8 w-8 text-caption1' : 'h-10 w-10 text-footnote'
   return h(
     'span',
     { class: `flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft font-bold text-pine-deep ${size}` },
@@ -233,7 +233,7 @@ const LikeButton = (props, { emit }) =>
   h(
     'button',
     {
-      class: `relative inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] ${
+      class: `relative inline-flex items-center gap-1 rounded-full px-2 py-1 text-caption1 transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] ${
         props.liked ? 'text-clay' : 'text-ink-dim hover:bg-clay/10 hover:text-clay'
       }`,
       type: 'button',

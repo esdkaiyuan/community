@@ -36,7 +36,7 @@
 
       <div
         v-if="!ready"
-        class="absolute inset-0 flex items-center justify-center bg-black/25 text-xs text-white"
+        class="absolute inset-0 flex items-center justify-center bg-black/25 text-caption1 text-white"
         data-test="cover-crop-loading"
       >
         正在准备…
@@ -44,7 +44,7 @@
     </div>
 
     <div class="mt-3 flex items-center gap-3">
-      <label class="flex flex-1 items-center gap-2 text-xs text-ink-dim" for="cover-crop-zoom">
+      <label class="flex flex-1 items-center gap-2 text-caption1 text-ink-dim" for="cover-crop-zoom">
         <AppIcon name="crop" class="h-4 w-4 shrink-0" />
         <span class="shrink-0">缩放</span>
         <input
@@ -62,7 +62,7 @@
       </label>
       <button
         type="button"
-        class="shrink-0 text-xs text-ink-dim transition-colors hover:text-ink disabled:opacity-50"
+        class="shrink-0 text-caption1 text-ink-dim transition-colors hover:text-ink disabled:opacity-50"
         data-test="cover-crop-center"
         :disabled="locked || !ready"
         @click="recenter"
@@ -71,7 +71,7 @@
       </button>
     </div>
 
-    <p class="mt-2 text-xs text-ink-dim">
+    <p class="mt-2 text-caption1 text-ink-dim">
       按住图片拖动即可调整位置。封面在列表里按 {{ COVER_ASPECT_LABEL }} 展示，框里留下什么就显示什么。
     </p>
 

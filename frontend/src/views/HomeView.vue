@@ -7,21 +7,22 @@
         <div class="absolute left-1/2 top-0 h-80 w-[36rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-pine-soft opacity-50 blur-3xl"></div>
       </div>
 
-      <div class="relative mx-auto max-w-4xl px-4 py-20 text-center sm:px-6 sm:py-28">
+      <div class="relative mx-auto max-w-4xl px-6 py-20 text-center sm:py-28">
         <div class="animate-fade-up">
-          <p class="inline-flex items-center gap-1.5 text-sm font-medium text-pine">
+          <p class="inline-flex items-center gap-1.5 text-footnote font-medium text-pine">
             <AppIcon name="sprout" class="h-4 w-4" />
             已有 {{ total }} 个项目正在共创
           </p>
-          <h1 class="mt-4 text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-6xl">
+          <!-- HIG Large Title（34pt）：一屏只有一个大标题，其余层级往下让 -->
+          <h1 class="mt-5 text-title1 font-bold leading-[1.08] tracking-tight text-ink sm:text-largetitle">
             一起想，一起做<br />
             <span class="text-pine">让好创意落地生根</span>
           </h1>
-          <p class="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-ink-mid">
+          <p class="mx-auto mt-6 max-w-xl text-body leading-relaxed text-ink-mid">
             在这里发布你的项目构想，找到志同道合的伙伴；或者加入别人的项目，贡献你的一份力量。
           </p>
           <div class="mt-9 flex flex-wrap items-center justify-center gap-5">
-            <router-link to="/publish" class="btn-primary !px-7 !py-3 text-base">
+            <router-link to="/publish" class="btn-primary !px-7 !py-3 text-callout">
               发布我的项目
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
                 <path d="M5 12h14m-6-6 6 6-6 6" />
@@ -29,7 +30,7 @@
             </router-link>
             <a
               href="#projects"
-              class="inline-flex items-center gap-0.5 text-base font-medium text-pine transition-colors hover:text-pine-deep hover:underline"
+              class="inline-flex items-center gap-0.5 text-callout font-medium text-pine transition-colors hover:text-pine-deep hover:underline"
             >
               浏览项目广场
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -50,23 +51,23 @@
         data-test="person-banner"
         class="mb-6 flex flex-wrap items-center gap-3 rounded-xl2 border border-line bg-pine-soft/40 px-4 py-3"
       >
-        <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine text-base font-semibold text-white">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine text-callout font-semibold text-white">
           <img v-if="person?.user?.avatar" :src="person.user.avatar" alt="" class="h-full w-full object-cover" />
           <template v-else>{{ personInitial }}</template>
         </span>
         <div class="min-w-0 flex-1">
-          <h2 class="truncate text-lg font-semibold text-ink" data-test="person-title">{{ personTitle }}</h2>
-          <p class="mt-0.5 text-xs text-ink-dim" data-test="person-sub">{{ personSubtitle }}</p>
+          <h2 class="truncate text-title3 font-semibold text-ink" data-test="person-title">{{ personTitle }}</h2>
+          <p class="mt-0.5 text-caption1 text-ink-dim" data-test="person-sub">{{ personSubtitle }}</p>
         </div>
         <router-link
           v-if="!personMissing"
           :to="`/user/${personId}`"
-          class="btn-ghost !py-1 text-xs"
+          class="btn-ghost !py-1 text-caption1"
           data-test="person-profile"
         >
           查看 TA 的主页
         </router-link>
-        <button class="btn-ghost !py-1 text-xs" data-test="clear-person" @click="clearPerson">
+        <button class="btn-ghost !py-1 text-caption1" data-test="clear-person" @click="clearPerson">
           清除筛选
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <path d="M18 6 6 18M6 6l12 12" />
@@ -76,8 +77,8 @@
 
       <!-- 搜索结果提示 -->
       <div v-if="query.search" class="mb-6 flex items-center gap-3">
-        <h2 class="text-lg font-semibold text-ink">「{{ query.search }}」的搜索结果</h2>
-        <button class="btn-ghost !py-1 text-xs" @click="clearSearch">
+        <h2 class="text-title3 font-semibold text-ink">「{{ query.search }}」的搜索结果</h2>
+        <button class="btn-ghost !py-1 text-caption1" @click="clearSearch">
           清除搜索
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <path d="M18 6 6 18M6 6l12 12" />
@@ -87,11 +88,11 @@
 
       <!-- 标签筛选提示 -->
       <div v-if="query.tag" class="mb-6 flex flex-wrap items-center gap-3">
-        <h2 class="flex items-center gap-2 text-lg font-semibold text-ink">
+        <h2 class="flex items-center gap-2 text-title3 font-semibold text-ink">
           <AppIcon name="tag" class="h-4 w-4 text-ink-dim" />
           标签「{{ query.tag }}」下的项目
         </h2>
-        <button class="btn-ghost !py-1 text-xs" data-test="clear-tag" @click="clearTag">
+        <button class="btn-ghost !py-1 text-caption1" data-test="clear-tag" @click="clearTag">
           清除筛选
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <path d="M18 6 6 18M6 6l12 12" />
@@ -113,13 +114,13 @@
         >
           <AppIcon v-if="cat.icon" :name="categoryIcon(cat.icon)" class="h-3.5 w-3.5" />
           {{ cat.name }}
-          <span class="text-xs opacity-60">{{ cat.count }}</span>
+          <span class="text-caption1 opacity-60">{{ cat.count }}</span>
         </button>
       </div>
 
       <!-- 热门标签：分类之外的第二条浏览路径；没有标签数据时整行不渲染 -->
       <div v-if="popularTags.length" class="mt-3 flex flex-wrap items-center gap-2" data-test="popular-tags">
-        <span class="inline-flex items-center gap-1 text-xs text-ink-dim">
+        <span class="inline-flex items-center gap-1 text-caption1 text-ink-dim">
           <AppIcon name="tag" class="h-3.5 w-3.5" />
           热门标签
         </span>
@@ -135,16 +136,20 @@
         </router-link>
       </div>
 
-      <!-- 筛选 / 排序 -->
-      <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+      <!-- 筛选 / 排序
+           排序是「多选一、选项平级」——正是 HIG 分段控件的语义，交给 AppSegmented；
+           筛选是「可开可关的开关」，语义不同，保持 pill 形态——开关不该伪装成单选，
+           否则用户会以为「编辑推荐」和「最新」互斥。 -->
+      <div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
         <div class="flex flex-wrap items-center gap-2">
           <button
             v-for="f in FILTERS"
             :key="f.value"
             data-test="filter-chip"
             :data-value="f.value"
-            class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-colors"
-            :class="query.filter === f.value ? 'bg-sand font-semibold text-ink' : 'text-ink-mid hover:bg-sand/60'"
+            class="inline-flex min-h-8 items-center gap-1.5 rounded-full px-3.5 text-footnote font-medium transition-colors"
+            :class="query.filter === f.value ? 'bg-sand text-ink' : 'text-ink-mid hover:bg-sand/60'"
+            :aria-pressed="query.filter === f.value"
             @click="toggleFilter(f.value)"
           >
             <AppIcon :name="f.icon" class="h-3.5 w-3.5" />
@@ -155,8 +160,8 @@
           <span v-if="userStore.isLoggedIn" class="mx-0.5 h-5 w-px shrink-0 bg-line" aria-hidden="true"></span>
           <button
             v-if="userStore.isLoggedIn"
-            class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm transition-colors"
-            :class="onlyFavorited ? 'bg-sand font-semibold text-pine' : 'text-ink-mid hover:bg-sand/60'"
+            class="inline-flex min-h-8 items-center gap-1.5 rounded-full px-3.5 text-footnote font-medium transition-colors"
+            :class="onlyFavorited ? 'bg-sand text-pine' : 'text-ink-mid hover:bg-sand/60'"
             :aria-pressed="onlyFavorited"
             @click="toggleFavorited"
           >
@@ -167,25 +172,20 @@
           </button>
         </div>
 
-        <div class="flex items-center gap-1 text-sm">
-          <span class="mr-1 text-xs text-ink-dim">排序</span>
-          <button
-            v-for="s in SORTS"
-            :key="s.value"
-            class="rounded-full px-3 py-1.5 transition-colors"
-            :class="query.sort === s.value ? 'font-semibold text-pine' : 'text-ink-mid hover:bg-sand/60'"
-            @click="setSort(s.value)"
-          >
-            {{ s.label }}
-          </button>
-        </div>
+        <AppSegmented
+          :model-value="query.sort"
+          :options="SORTS"
+          aria-label="排序方式"
+          test-id="sort-chip"
+          @update:model-value="setSort"
+        />
       </div>
 
       <!-- 排序口径说明：只在「本周热门」下出现，否则用户看不出这个顺序是怎么来的 -->
       <p
         v-if="query.sort === 'trending'"
         data-test="trend-hint"
-        class="mt-3 text-xs text-ink-dim"
+        class="mt-3 text-caption1 text-ink-dim"
       >
         按近 7 天的活跃度排序：参与 ×3、评论 ×2、点赞 ×1；卡片上的「本周 N」就是这项得分。
       </p>
@@ -290,6 +290,7 @@ import ProjectCard from '@/components/ProjectCard.vue'
 import ProjectCardSkeleton from '@/components/ProjectCardSkeleton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
+import AppSegmented from '@/components/AppSegmented.vue'
 
 const PAGE_SIZE = 12
 // 「热门」已从筛选里去掉：它与排序里的「最热」是同一件事（都按互动量排），

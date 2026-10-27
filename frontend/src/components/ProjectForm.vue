@@ -17,7 +17,7 @@
       />
       <div class="mt-1.5 flex items-center justify-between">
         <p v-if="errors.title" class="form-error !mt-0">{{ errors.title }}</p>
-        <span class="ml-auto text-xs text-ink-dim">{{ form.title.length }}/60</span>
+        <span class="ml-auto text-caption1 text-ink-dim">{{ form.title.length }}/60</span>
       </div>
     </div>
 
@@ -42,7 +42,7 @@
         </button>
       </div>
       <p v-if="errors.categoryId" class="form-error" data-test="error-category">{{ errors.categoryId }}</p>
-      <p v-else class="mt-1.5 text-xs text-ink-dim">分类决定项目出现在广场的哪一栏，选最贴近的一个即可。</p>
+      <p v-else class="mt-1.5 text-caption1 text-ink-dim">分类决定项目出现在广场的哪一栏，选最贴近的一个即可。</p>
     </div>
 
     <!-- 介绍 -->
@@ -60,7 +60,7 @@
       ></textarea>
       <div class="mt-1.5 flex items-center justify-between">
         <p v-if="errors.description" class="form-error !mt-0">{{ errors.description }}</p>
-        <span class="ml-auto text-xs text-ink-dim">{{ form.description.length }}/2000</span>
+        <span class="ml-auto text-caption1 text-ink-dim">{{ form.description.length }}/2000</span>
       </div>
     </div>
 
@@ -79,7 +79,7 @@
           data-test="form-repo"
         />
         <p v-if="errors.repositoryUrl" class="form-error" data-test="error-repo">{{ errors.repositoryUrl }}</p>
-        <p v-else class="mt-1.5 text-xs text-ink-dim">代码或成果开源在这里，详情页会展示「查看仓库」入口。</p>
+        <p v-else class="mt-1.5 text-caption1 text-ink-dim">代码或成果开源在这里，详情页会展示「查看仓库」入口。</p>
       </div>
 
       <div>
@@ -92,14 +92,14 @@
           data-test="form-end-date"
         />
         <p v-if="errors.endDate" class="form-error" data-test="error-end-date">{{ errors.endDate }}</p>
-        <p v-else class="mt-1.5 text-xs text-ink-dim">过了这天，详情页会标「已截止」。留空表示不设截止。</p>
+        <p v-else class="mt-1.5 text-caption1 text-ink-dim">过了这天，详情页会标「已截止」。留空表示不设截止。</p>
       </div>
     </div>
 
     <!-- 标签 -->
     <div>
       <label class="form-label" for="tag">
-        标签 <span class="text-xs font-normal text-ink-dim">（单个最多 {{ TAG_MAX_LENGTH }} 字、最多 {{ TAG_MAX_COUNT }} 个，回车添加）</span>
+        标签 <span class="text-caption1 font-normal text-ink-dim">（单个最多 {{ TAG_MAX_LENGTH }} 字、最多 {{ TAG_MAX_COUNT }} 个，回车添加）</span>
       </label>
       <div class="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-cream px-3 py-2 transition-all focus-within:border-pine focus-within:ring-4 focus-within:ring-pine/10">
         <span v-for="(tag, i) in form.tags" :key="tag" class="chip !py-1" data-test="selected-tag">
@@ -119,7 +119,7 @@
           v-model.trim="tagInput"
           data-test="tag-input"
           type="text"
-          class="min-w-[8rem] flex-1 bg-transparent py-1 text-sm outline-none placeholder:text-ink-dim"
+          class="min-w-[8rem] flex-1 bg-transparent py-1 text-footnote outline-none placeholder:text-ink-dim"
           :placeholder="form.tags.length ? '' : '例如：环保、开源、线下活动'"
           :maxlength="TAG_MAX_LENGTH"
           :disabled="form.tags.length >= TAG_MAX_COUNT"
@@ -130,7 +130,7 @@
 
       <!-- 快捷选择：热门标签（有数据时）+ 冷启动候选池 -->
       <div v-if="showSuggestions" class="mt-2.5">
-        <p class="mb-1.5 text-xs text-ink-dim">试试这些常被搜索的标签，点一下就加上：</p>
+        <p class="mb-1.5 text-caption1 text-ink-dim">试试这些常被搜索的标签，点一下就加上：</p>
         <div class="flex flex-wrap gap-2" data-test="tag-suggestions">
           <button
             v-for="name in suggestedTags"
@@ -144,7 +144,7 @@
           </button>
         </div>
       </div>
-      <p v-else class="mt-1.5 text-xs text-ink-dim">
+      <p v-else class="mt-1.5 text-caption1 text-ink-dim">
         标签会进入广场的「热门标签」，是别人发现你这个项目的主要入口。
       </p>
     </div>
@@ -152,7 +152,7 @@
     <!-- 封面 -->
     <div>
       <label class="form-label">
-        封面图片 <span class="text-xs font-normal text-ink-dim">（选填）</span>
+        封面图片 <span class="text-caption1 font-normal text-ink-dim">（选填）</span>
       </label>
 
       <!-- 已有封面：预览 + 就地更换 / 移除 -->
@@ -187,13 +187,13 @@
             <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" class="opacity-25" />
             <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
           </svg>
-          <span class="text-sm">上传中…</span>
+          <span class="text-footnote">上传中…</span>
         </div>
 
         <div v-else class="absolute right-3 top-3 flex gap-2">
           <button
             type="button"
-            class="rounded-full bg-[color:var(--glass-badge)] px-3 py-1.5 text-xs font-medium text-ink shadow-sm backdrop-blur-md transition-colors hover:text-pine"
+            class="rounded-full bg-[color:var(--glass-badge)] px-3 py-1.5 text-caption1 font-medium text-ink shadow-sm backdrop-blur-md transition-colors hover:text-pine"
             data-test="cover-replace"
             @click="pickFile"
           >
@@ -203,7 +203,7 @@
           <button
             v-if="canCrop"
             type="button"
-            class="rounded-full bg-[color:var(--glass-badge)] px-3 py-1.5 text-xs font-medium text-ink shadow-sm backdrop-blur-md transition-colors hover:text-pine"
+            class="rounded-full bg-[color:var(--glass-badge)] px-3 py-1.5 text-caption1 font-medium text-ink shadow-sm backdrop-blur-md transition-colors hover:text-pine"
             data-test="cover-crop-open"
             @click="cropping = true"
           >
@@ -211,7 +211,7 @@
           </button>
           <button
             type="button"
-            class="rounded-full bg-[color:var(--glass-badge)] px-3 py-1.5 text-xs font-medium text-ink shadow-sm backdrop-blur-md transition-colors hover:text-clay"
+            class="rounded-full bg-[color:var(--glass-badge)] px-3 py-1.5 text-caption1 font-medium text-ink shadow-sm backdrop-blur-md transition-colors hover:text-clay"
             data-test="cover-remove"
             @click="removeCover"
           >
@@ -234,7 +234,7 @@
       >
         <AppIcon name="image" class="h-6 w-6" />
         <span class="font-medium">点击选择图片，或拖到这里</span>
-        <span class="text-xs text-ink-dim">支持 JPG / PNG / WebP / GIF，大图先自动压缩再上传</span>
+        <span class="text-caption1 text-ink-dim">支持 JPG / PNG / WebP / GIF，大图先自动压缩再上传</span>
       </button>
 
       <input
@@ -249,14 +249,14 @@
       <p v-if="coverBroken && form.coverImage && !uploading" class="form-error" data-test="cover-broken">
         图片无法加载，保存后将显示默认封面
       </p>
-      <p v-else-if="!form.coverImage" class="mt-1.5 text-xs text-ink-dim">
+      <p v-else-if="!form.coverImage" class="mt-1.5 text-caption1 text-ink-dim">
         不填也没关系，我们会为你生成一个漂亮的默认封面。
       </p>
 
       <!-- 外链兜底：不想上传文件的人可以直接粘一个图片地址 -->
       <button
         type="button"
-        class="mt-2 text-xs text-ink-dim transition-colors hover:text-ink"
+        class="mt-2 text-caption1 text-ink-dim transition-colors hover:text-ink"
         data-test="cover-toggle-url"
         @click="showUrlInput = !showUrlInput"
       >

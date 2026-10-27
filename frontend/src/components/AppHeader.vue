@@ -1,23 +1,34 @@
 <template>
+  <!--
+    Apple HIG 导航栏（Navigation Bar）
+
+    高度 44pt（HIG 规定的导航栏标准高度，也是最小可点区域的来源值），
+    毛玻璃材质 + 发丝线底边：内容滚过它时透出模糊底色，层级不用投影也能立住。
+
+    ⚠️ 三处被端到端脚本按值钉死，改动即撞红：
+      · button[aria-label='通知']   视觉高 ≤36px，热区上探 5px（::after -inset-1.5）
+      · button[aria-label='账号菜单'] 热区上探 3px（::after -inset-1）
+      · [data-test='unread-badge']  背景必须是 clay（深色 #FF453A / 浅色 #D70015）
+  -->
   <header class="sticky top-0 z-50 border-b border-line bg-[color:var(--glass-nav)] backdrop-blur-xl backdrop-saturate-150">
-    <div class="mx-auto flex h-12 max-w-7xl items-center gap-4 px-4 sm:px-6">
+    <div class="mx-auto flex h-11 max-w-7xl items-center gap-4 px-4 sm:px-6">
       <!-- Logo -->
-      <router-link to="/" class="flex shrink-0 items-center gap-2">
-        <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-pine">
+      <router-link to="/" class="flex shrink-0 items-center gap-2" aria-label="共创社区首页">
+        <span class="flex h-7 w-7 items-center justify-center rounded-[8px] bg-pine">
           <svg viewBox="0 0 64 64" class="h-4 w-4" aria-hidden="true">
             <path d="M32 46c0-9 0-14 0-19" stroke="white" stroke-width="4" stroke-linecap="round" fill="none" />
             <path d="M32 30c0-7 5-11.5 11.5-11.5C43.5 25.5 38.5 30 32 30z" fill="rgba(255,255,255,0.7)" />
             <path d="M32 36c0-5.6-4.2-9.5-9.5-9.5 0 5.6 4.2 9.5 9.5 9.5z" fill="white" />
           </svg>
         </span>
-        <span class="text-base font-semibold tracking-tight text-ink">共创社区</span>
+        <span class="text-headline font-semibold tracking-tight text-ink">共创社区</span>
       </router-link>
 
-      <!-- 搜索框 -->
+      <!-- 搜索框：HIG 搜索字段是胶囊形、灰底无边框，聚焦时才显形 -->
       <form class="mx-auto hidden max-w-md flex-1 md:block" @submit.prevent="handleSearch">
         <div class="relative">
           <svg
-            class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-dim"
+            class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-dim"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
           >
             <circle cx="11" cy="11" r="7" />
@@ -27,14 +38,15 @@
             v-model="keyword"
             type="search"
             placeholder="搜索感兴趣的项目…"
-            class="input rounded-full border-transparent bg-sand py-1.5 text-sm focus:border-pine focus:bg-cream"
+            class="input rounded-full border-transparent bg-sand py-1.5 text-footnote focus:border-pine focus:bg-cream"
+            aria-label="搜索项目"
           />
         </div>
       </form>
 
       <!-- 右侧操作区：窄屏必须能收缩，否则用户名一长就把整个视口撑出横向滚动条 -->
       <div class="ml-auto flex min-w-0 items-center gap-2 md:ml-0">
-        <router-link v-if="userStore.isLoggedIn" to="/publish" class="btn-primary shrink-0 !px-4 !py-2">
+        <router-link v-if="userStore.isLoggedIn" to="/publish" class="btn-primary shrink-0 !px-4 !py-1.5">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
             <path d="M12 5v14M5 12h14" />
           </svg>
@@ -42,10 +54,15 @@
           <span class="sm:hidden">发布</span>
         </router-link>
 
-        <!-- 通知铃铛（已登录） -->
+        <!-- 通知铃铛（已登录）
+             视觉 32×32，靠 ::after -inset-1.5 把命中区撑到 44×44（HIG 最小可点区域）。
+             ⚠️ 视觉盒为什么是 32 而不是 36：导航栏按 HIG 取 44pt 高，36px 的控件居中后
+             上边缘只剩 4px，而 ::after 往上探 6px 会越过视口顶边——探针点在 y=-1 处取不到
+             元素，端到端断言（盒上方 5px 命中）会失败。收到 32px 上边缘回到 6px，
+             44pt 的导航栏与 44pt 的热区两者才同时成立。 -->
         <div v-if="userStore.isLoggedIn" ref="notifRef" class="relative shrink-0">
           <button
-            class="relative flex h-9 w-9 items-center justify-center rounded-full text-ink transition-colors after:absolute after:-inset-1.5 after:rounded-full after:content-[''] hover:bg-sand"
+            class="relative flex h-8 w-8 items-center justify-center rounded-full text-ink transition-colors after:absolute after:-inset-1.5 after:rounded-full after:content-[''] hover:bg-sand"
             title="通知"
             aria-label="通知"
             @click="toggleNotif"
@@ -54,7 +71,7 @@
             <span
               v-if="unread > 0"
               data-test="unread-badge"
-              class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-clay px-1 text-[10px] font-semibold tabular-nums text-white"
+              class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-clay px-1 text-caption2 font-semibold tabular-nums text-white"
             >
               {{ unread > 99 ? '99+' : unread }}
             </span>
@@ -64,13 +81,13 @@
             <div
               v-if="notifOpen"
               data-test="notif-panel"
-              class="absolute right-0 top-full mt-2 w-80 overflow-hidden rounded-xl2 border border-[color:var(--glass-border)] bg-[color:var(--glass-menu)] shadow-pop backdrop-blur-xl backdrop-saturate-150"
+              class="absolute right-0 top-full mt-2 w-80 overflow-hidden rounded-14 border border-[color:var(--glass-border)] bg-[color:var(--glass-menu)] shadow-pop backdrop-blur-xl backdrop-saturate-150"
             >
-              <div class="flex items-center justify-between border-b border-line px-4 py-3">
-                <span class="text-sm font-semibold text-ink">通知</span>
+              <div class="flex items-center justify-between border-b border-line px-4 py-2.5">
+                <span class="text-headline font-semibold text-ink">通知</span>
                 <button
                   v-if="unread > 0"
-                  class="text-xs text-pine transition-colors hover:text-pine-deep"
+                  class="text-footnote text-pine transition-colors hover:text-pine-deep"
                   @click="markAllRead"
                 >
                   全部标为已读
@@ -87,32 +104,32 @@
                     :class="n.isRead ? '' : 'bg-pine-soft/40'"
                     @click="openNotification(n)"
                   >
-                    <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-xs font-bold text-pine-deep">
+                    <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-caption1 font-bold text-pine-deep">
                       <img v-if="n.actor?.avatar" :src="n.actor.avatar" alt="" class="h-full w-full object-cover" />
                       <template v-else>{{ (n.actor?.username || '友').slice(0, 1).toUpperCase() }}</template>
                     </span>
                     <span class="min-w-0 flex-1">
-                      <span class="block text-[13px] leading-snug text-ink">
+                      <span class="block text-footnote leading-snug text-ink">
                         <span class="font-medium">{{ n.actor?.username || '有人' }}</span>
                         {{ notificationText(n.type) }}
                         <span class="text-ink-mid">「{{ n.project?.title || '项目' }}」</span>
                       </span>
-                      <span v-if="n.commentPreview" class="mt-0.5 block truncate text-xs text-ink-dim">{{ n.commentPreview }}</span>
-                      <span class="mt-1 block text-[11px] text-ink-dim">{{ relativeTime(n.createdAt) }}</span>
+                      <span v-if="n.commentPreview" class="mt-0.5 block truncate text-caption1 text-ink-dim">{{ n.commentPreview }}</span>
+                      <span class="mt-1 block text-caption2 text-ink-dim">{{ relativeTime(n.createdAt) }}</span>
                     </span>
                     <span v-if="!n.isRead" class="mt-2 h-2 w-2 shrink-0 rounded-full bg-pine"></span>
                   </button>
                 </template>
                 <div v-else class="flex flex-col items-center gap-1.5 px-4 py-10 text-center">
                   <AppIcon name="bell" class="h-7 w-7 text-ink-dim/50" :stroke-width="1.5" />
-                  <p class="text-sm text-ink-mid">暂无通知</p>
-                  <p class="text-xs text-ink-dim">有人评论、点赞或参与你的项目时会在这里提醒你。</p>
+                  <p class="text-subhead text-ink-mid">暂无通知</p>
+                  <p class="text-caption1 text-ink-dim">有人评论、点赞或参与你的项目时会在这里提醒你。</p>
                 </div>
               </div>
 
               <router-link
                 to="/notifications"
-                class="block border-t border-line px-4 py-2.5 text-center text-xs font-medium text-pine transition-colors hover:bg-sand"
+                class="block border-t border-line px-4 py-2.5 text-center text-caption1 font-medium text-pine transition-colors hover:bg-sand"
                 @click="notifOpen = false"
               >
                 查看全部通知
@@ -121,19 +138,21 @@
           </transition>
         </div>
 
-        <!-- 已登录：用户菜单（窄屏只留头像，用户名 / 箭头从 sm 起显示） -->
+        <!-- 已登录：用户菜单（窄屏只留头像，用户名 / 箭头从 sm 起显示）
+             内边距 py-1 而非 py-1.5：44pt 导航栏里 py-1.5 会让这颗 42px 高的控件上边缘
+             只剩 1px，::after 热区顶到视口外，与铃铛是同一个几何约束。 -->
         <div v-if="userStore.isLoggedIn" ref="menuRef" class="relative shrink-0">
           <button
-            class="relative flex items-center gap-2 rounded-full border border-line bg-cream py-1.5 pl-1.5 pr-1.5 transition-colors after:absolute after:-inset-1 after:rounded-full after:content-[''] hover:border-pine sm:pr-3"
+            class="relative flex items-center gap-2 rounded-full border border-line bg-cream py-1 pl-1.5 pr-1.5 transition-colors after:absolute after:-inset-1 after:rounded-full after:content-[''] hover:border-pine sm:pr-3"
             aria-label="账号菜单"
             :aria-expanded="menuOpen"
             @click="menuOpen = !menuOpen"
           >
-            <span class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-xs font-bold text-pine-deep">
+            <span class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-caption1 font-bold text-pine-deep">
               <img v-if="avatar" :src="avatar" alt="" class="h-full w-full object-cover" />
               <template v-else>{{ initial }}</template>
             </span>
-            <span class="hidden max-w-[6rem] truncate text-sm text-ink sm:inline">{{ userStore.username }}</span>
+            <span class="hidden max-w-[6rem] truncate text-footnote text-ink sm:inline">{{ userStore.username }}</span>
             <svg class="hidden h-3.5 w-3.5 text-ink-dim transition-transform sm:block" :class="{ 'rotate-180': menuOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <path d="m6 9 6 6 6-6" />
             </svg>
@@ -142,7 +161,7 @@
           <transition name="menu">
             <div
               v-if="menuOpen"
-              class="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-[color:var(--glass-border)] bg-[color:var(--glass-menu)] py-1.5 shadow-pop backdrop-blur-xl backdrop-saturate-150"
+              class="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-10 border border-[color:var(--glass-border)] bg-[color:var(--glass-menu)] py-1.5 shadow-pop backdrop-blur-xl backdrop-saturate-150"
             >
               <router-link to="/profile" class="menu-item" @click="menuOpen = false">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -178,14 +197,14 @@
         <!-- 未登录 -->
         <template v-else>
           <router-link to="/login" class="btn-ghost">登录</router-link>
-          <router-link to="/register" class="btn-primary !px-4 !py-2">注册</router-link>
+          <router-link to="/register" class="btn-primary !px-4 !py-1.5">注册</router-link>
         </template>
       </div>
     </div>
 
-    <!-- 移动端搜索 -->
+    <!-- 移动端搜索：导航栏放不下时下移一行，而不是把图标挤没 -->
     <form class="border-t border-line px-4 py-2 md:hidden" @submit.prevent="handleSearch">
-      <input v-model="keyword" type="search" placeholder="搜索感兴趣的项目…" class="input rounded-full py-2" />
+      <input v-model="keyword" type="search" placeholder="搜索感兴趣的项目…" class="input rounded-full py-2" aria-label="搜索项目" />
     </form>
   </header>
 </template>
@@ -324,12 +343,12 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .menu-item {
-  @apply flex items-center gap-2.5 px-4 py-2 text-sm text-ink transition-colors hover:bg-sand;
+  @apply flex items-center gap-2.5 px-4 py-2 text-footnote text-ink transition-colors hover:bg-sand;
 }
 
 .menu-enter-active,
 .menu-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .menu-enter-from,
 .menu-leave-to {

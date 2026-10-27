@@ -24,12 +24,12 @@
       <transition name="bar">
         <div
           v-if="scrolled"
-          class="fixed inset-x-0 top-12 z-40 border-b border-[color:var(--glass-border)] bg-[color:var(--glass-nav)] backdrop-blur-xl backdrop-saturate-150"
+          class="fixed inset-x-0 top-11 z-40 border-b border-[color:var(--glass-border)] bg-[color:var(--glass-nav)] backdrop-blur-xl backdrop-saturate-150"
         >
           <div class="mx-auto flex h-12 max-w-5xl items-center gap-3 px-4 sm:px-6">
-            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{{ project.title }}</span>
+            <span class="min-w-0 flex-1 truncate text-footnote font-semibold text-ink">{{ project.title }}</span>
             <button
-              class="btn-ghost !px-3 !py-1.5 text-sm"
+              class="btn-ghost !px-3 !py-1.5 text-footnote"
               :class="liked ? '!text-clay' : ''"
               :disabled="acting"
               @click="handleLike"
@@ -40,7 +40,7 @@
               {{ project.likeCount }}
             </button>
             <button
-              class="btn-ghost !px-3 !py-1.5 text-sm"
+              class="btn-ghost !px-3 !py-1.5 text-footnote"
               title="查看评论"
               @click="scrollToComments"
             >
@@ -48,7 +48,7 @@
               {{ commentCount }}
             </button>
             <button
-              class="btn-ghost !px-3 !py-1.5 text-sm"
+              class="btn-ghost !px-3 !py-1.5 text-footnote"
               :class="[favorited ? '!text-pine' : '', { 'fav-pop': favoritePulse }]"
               :title="favorited ? '取消收藏' : '收藏项目'"
               :disabled="acting"
@@ -59,7 +59,7 @@
               </svg>
             </button>
             <button
-              class="!px-4 !py-1.5 text-sm"
+              class="!px-4 !py-1.5 text-footnote"
               :class="participated ? 'btn-secondary' : 'btn-primary'"
               :disabled="acting"
               @click="handleParticipate"
@@ -71,7 +71,7 @@
       </transition>
 
       <!-- 面包屑 -->
-      <nav class="mb-5 flex items-center gap-1.5 text-sm text-ink-dim">
+      <nav class="mb-5 flex items-center gap-1.5 text-footnote text-ink-dim">
         <router-link to="/" class="transition-colors hover:text-pine">项目广场</router-link>
         <span>/</span>
         <router-link
@@ -100,17 +100,17 @@
           </span>
         </div>
         <div class="absolute left-4 top-4 flex gap-2">
-          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="star" class="h-3 w-3 text-amber-warm" />编辑推荐</span>
-          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="flame" class="h-3 w-3 text-clay" />热门</span>
+          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-1 text-caption1 font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="star" class="h-3 w-3 text-amber-warm" />编辑推荐</span>
+          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-1 text-caption1 font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="flame" class="h-3 w-3 text-clay" />热门</span>
         </div>
       </div>
 
       <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_300px]">
         <!-- 主内容 -->
         <div class="min-w-0">
-          <h1 class="text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">{{ project.title }}</h1>
+          <h1 class="text-title2 font-bold leading-tight tracking-tight text-ink sm:text-title1">{{ project.title }}</h1>
 
-          <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-dim" data-test="detail-meta">
+          <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-footnote text-ink-dim" data-test="detail-meta">
             <span v-if="project.categoryName" class="chip">{{ project.categoryName }}</span>
             <!-- 这里刻意用「相对时间」而不是绝对日期：精确日期已经由右侧规格条的
                  「发布日期」承担，同一屏里再放一个绝对日期等于同一件事说两遍。
@@ -139,7 +139,7 @@
             :href="repoUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="mt-4 inline-flex items-center gap-1.5 text-sm text-ink-dim underline decoration-ink-dim/30 underline-offset-4 transition-colors hover:text-ink hover:decoration-ink/60"
+            class="mt-4 inline-flex items-center gap-1.5 text-footnote text-ink-dim underline decoration-ink-dim/30 underline-offset-4 transition-colors hover:text-ink hover:decoration-ink/60"
             data-test="detail-repo"
           >
             <AppIcon name="external-link" class="h-4 w-4" />
@@ -160,17 +160,14 @@
             </router-link>
           </div>
 
-          <div v-reveal class="card mt-6 p-6 sm:p-8">
-            <h2 class="mb-5 flex items-center gap-2 text-lg font-semibold text-ink">
-              <span class="h-4 w-1 rounded-full bg-pine"></span>
-              项目介绍
-            </h2>
+          <div v-reveal class="hig-card mt-6 p-6 sm:p-8">
+            <AppSectionHeader title="项目介绍" icon="book-open" />
             <!-- 苹果式分层排版：首段导语 17px 深色强调，后续段落 15px 次级灰 -->
             <div class="space-y-4">
               <p
                 v-for="(para, i) in descriptionParagraphs"
                 :key="i"
-                :class="i === 0 ? 'text-[17px] font-medium leading-relaxed text-ink' : 'text-[15px] leading-loose text-ink-mid'"
+                :class="i === 0 ? 'text-headline font-medium leading-relaxed text-ink' : 'text-subhead leading-loose text-ink-mid'"
               >
                 {{ para }}
               </p>
@@ -183,24 +180,7 @@
           <!-- 操作卡（磨砂玻璃材质） -->
           <div class="rounded-xl2 border border-[color:var(--glass-border)] bg-[color:var(--glass-card)] p-5 shadow-card backdrop-blur-xl backdrop-saturate-150">
             <!-- 规格条：苹果官网参数式发丝线网格 -->
-            <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line">
-              <div class="bg-cream py-3.5 text-center">
-                <p class="text-2xl font-semibold tabular-nums text-ink">{{ project.participantCount }}</p>
-                <p class="mt-0.5 text-xs text-ink-mid">共创伙伴</p>
-              </div>
-              <div class="bg-cream py-3.5 text-center">
-                <p class="text-2xl font-semibold tabular-nums text-ink">{{ project.likeCount }}</p>
-                <p class="mt-0.5 text-xs text-ink-mid">收获点赞</p>
-              </div>
-              <div class="bg-cream py-3.5 text-center" data-test="detail-views">
-                <p class="text-2xl font-semibold tabular-nums text-ink">{{ project.viewCount ?? 0 }}</p>
-                <p class="mt-0.5 text-xs text-ink-mid">浏览次数</p>
-              </div>
-              <div class="bg-cream py-3.5 text-center" data-test="detail-created">
-                <p class="text-2xl font-semibold tabular-nums text-ink">{{ createdShort }}</p>
-                <p class="mt-0.5 text-xs text-ink-mid">发布日期</p>
-              </div>
-            </div>
+            <AppStatGrid :items="specItems" :cols="2" test-id="detail-spec" />
 
             <div class="mt-4 space-y-2.5">
               <button
@@ -238,7 +218,7 @@
 
             <!-- 创建者操作 -->
             <div v-if="isOwner" class="mt-4 border-t border-line pt-4">
-              <p class="mb-2 text-xs text-ink-dim">你是该项目的创建者</p>
+              <p class="mb-2 text-caption1 text-ink-dim">你是该项目的创建者</p>
               <div class="space-y-2">
                 <router-link
                   :to="`/project/${project.id}/edit`"
@@ -256,10 +236,10 @@
           </div>
 
           <!-- 创建者卡：名字可点进 TA 的公开主页 -->
-          <div class="card p-5">
-            <p class="mb-3 text-xs font-medium tracking-wide text-ink-dim">发起人</p>
+          <div class="hig-card p-5">
+            <p class="mb-3 text-caption2 font-semibold tracking-wide text-ink-dim">发起人</p>
             <div class="flex items-center gap-3">
-              <span class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-base font-bold text-pine-deep">
+              <span class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-callout font-bold text-pine-deep">
                 <img v-if="project.creator?.avatar" :src="project.creator.avatar" alt="" class="h-full w-full object-cover" />
                 <template v-else>{{ (project.creator?.username || '友').slice(0, 1).toUpperCase() }}</template>
               </span>
@@ -273,13 +253,13 @@
                   {{ project.creator?.username || '匿名共创者' }}
                 </router-link>
                 <p v-else class="truncate font-medium text-ink">匿名共创者</p>
-                <p class="text-xs text-ink-dim">项目发起人</p>
+                <p class="text-caption1 text-ink-dim">项目发起人</p>
               </div>
             </div>
             <router-link
               v-if="project.creator?.id"
               :to="`/user/${project.creator.id}`"
-              class="btn-ghost mt-3 w-full text-sm"
+              class="btn-ghost mt-3 w-full text-footnote"
               data-test="detail-creator-home"
             >
               看看 TA 的其他项目
@@ -315,8 +295,11 @@ import { useUserStore } from '@/store/user'
 import { getUserFlag, setUserFlag } from '@/utils/storage'
 import { toast } from '@/composables/useToast'
 import { useFavoritePulse } from '@/composables/useFavoritePulse'
+import { confirm } from '@/composables/useConfirm'
 import EmptyState from '@/components/EmptyState.vue'
 import AppIcon from '@/components/AppIcon.vue'
+import AppStatGrid from '@/components/AppStatGrid.vue'
+import AppSectionHeader from '@/components/AppSectionHeader.vue'
 import CommentSection from '@/components/CommentSection.vue'
 import ProjectParticipants from '@/components/ProjectParticipants.vue'
 import RelatedProjects from '@/components/RelatedProjects.vue'
@@ -413,6 +396,15 @@ const endDateShort = computed(() => {
   if (!m) return ''
   return `${m[1]} 年 ${Number(m[2])} 月 ${Number(m[3])} 日`
 })
+
+// 规格条四格。data-test 逐格固定：端到端脚本按 detail-views / detail-created
+// 直接取格子里的读数（不是按位置取），名字换了脚本就定位不到。
+const specItems = computed(() => [
+  { label: '共创伙伴', value: project.value?.participantCount ?? 0 },
+  { label: '收获点赞', value: project.value?.likeCount ?? 0 },
+  { label: '浏览次数', value: project.value?.viewCount ?? 0, test: 'detail-views' },
+  { label: '发布日期', value: createdShort.value, test: 'detail-created' }
+])
 
 // 滚过封面后浮现顶部玻璃操作条（apple.com 产品页式）
 const scrolled = ref(false)
@@ -563,8 +555,16 @@ const handleFavorite = async () => {
   }
 }
 
+// 破坏性操作走 HIG 警告框而不是原生 confirm：原生对话框不跟主题、读不到文案，
+// 且在端到端脚本里会被自动 dismiss —— 等于「点了删除会发生什么」根本没被测到。
 const handleDelete = async () => {
-  if (!window.confirm('确定删除该项目吗？此操作不可恢复。')) return
+  const ok = await confirm({
+    title: '删除这个项目？',
+    message: '项目及其下的评论会一并删除，此操作不可恢复。',
+    confirmLabel: '删除',
+    destructive: true
+  })
+  if (!ok) return
   acting.value = true
   try {
     await projectApi.deleteProject(project.value.id)
