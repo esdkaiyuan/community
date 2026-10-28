@@ -771,6 +771,29 @@ python scripts/verify_security_page.py  # 分段控件 tab + 筛选 chip
 顺带订正：此前 README 把「收藏」也列为通知类型，但 ENUM 里根本没有 `favorite`，
 收藏通知从未存在过——是文档笔误，不是功能缺失。
 
+## 软删除的连锁后果：关联表计数必须显式排除
+
+`projects` 用 Sequelize 的 `paranoid`（`deleted_at`）软删除，而所有挂在项目上的
+关联表（收藏 / 点赞 / 参与 / 评论）外键写的是 `ON DELETE CASCADE`。**级联只在物理
+删除时触发**，软删是 `UPDATE projects SET deleted_at = ...`，关联行一行都不会少。
+
+于是任何「数关联行」的地方都必须自己排除软删项目，否则同一个数字会出现两套口径。
+这个坑踩过一次：收藏列表用 LEFT JOIN 取数、再在内存里 `.filter(row => row.project)`
+过滤掉软删项，但 `count` 没有跟着过滤——`total` 与列表条数分叉，「加载更多」永远
+显示；个人中心的 `favoriteCount` 更是直接 `ProjectFavorite.count`，把已删项目算进去。
+
+**约定：涉及项目关联的计数一律走 INNER JOIN**（`include: { required: true }`），
+让 paranoid 的 `deleted_at IS NULL` 自动生效，计数与列表天然同口径。
+收藏的计数已收在 `services/favoriteCount.service.js`，别在别处再写一份。
+
+两个相关取舍，都是刻意的，别"顺手优化"：
+
+- **封面回收用 `paranoid: false` 数引用**（`cover.service.js:28`）。软删项目也算
+  「还引用着这张图」——项目可恢复，提前删图会让恢复变残缺。所以软删项目的封面
+  交给人工决策，不自动回收。
+- **收藏关系不随项目软删清理**。清掉就分不清「从未收藏」和「收藏的项目被删了」，
+  恢复项目时也无法还原收藏。
+
 ## 深色模式逐页走查
 
 深色主题（`prefers-color-scheme: dark` 令牌翻转）此前骨架健全，但组件层有 3 处
