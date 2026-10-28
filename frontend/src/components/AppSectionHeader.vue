@@ -13,19 +13,18 @@
   <div class="mb-4 flex items-end justify-between gap-3">
     <div class="flex min-w-0 items-baseline gap-2">
       <AppIcon v-if="icon" :name="icon" class="h-4 w-4 shrink-0 self-center text-ink-dim" />
+      <!-- 计数必须留在 <h2> **内部**：「我的收藏（2）」是完整的一个标题，
+           拆到标题外等于把附属信息从标题语义里摘出去 —— 读屏读不到，
+           get_by_role("heading") 也取不到（verify_favorites 就是这么断言的，
+           拆出去后 "（2）" 不在 inner_text 里，断言直接变红）。
+           countTestId：存量脚本按 created-count / joined-count 直接取计数。 -->
       <h2 class="truncate text-title3 font-semibold text-ink">
-        {{ title }}
+        {{ title }}<span
+          v-if="count !== null"
+          :data-test="countTestId || undefined"
+          class="ml-1 text-footnote font-normal tabular-nums text-ink-dim"
+        >（{{ count }}）</span>
       </h2>
-      <!-- 计数是「次要信息」：HIG 次级色 + 常规字重，不与标题争注意力。
-           countTestId：存量脚本按 created-count / joined-count 直接取计数，
-           抽成组件后名字必须能落得住，否则断言定位不到。 -->
-      <span
-        v-if="count !== null"
-        :data-test="countTestId || undefined"
-        class="shrink-0 text-footnote font-normal tabular-nums text-ink-dim"
-      >
-        （{{ count }}）
-      </span>
     </div>
 
     <!-- 右侧操作（查看全部 / 发布新项目…） -->
