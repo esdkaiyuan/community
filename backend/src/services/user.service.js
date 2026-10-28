@@ -1,12 +1,15 @@
 const bcrypt = require('bcryptjs')
 const { Op } = require('sequelize')
-const { User, Comment, Project, ProjectParticipant, ProjectFavorite, sequelize } = require('../models')
+const { User, Comment, Project, ProjectParticipant, sequelize } = require('../models')
 const { generateToken } = require('../utils/jwt')
 const { clampInt, MAX_PAGE } = require('../utils/pagination')
 const { stripEmoji, stripControlChars } = require('../utils/textSanitize')
 const ApiError = require('../utils/ApiError')
 const activityLogService = require('./activityLog.service')
 const securityEventService = require('./securityEvent.service')
+// 收藏计数单独抽成不依赖 project.service 的模块，否则这里反向 require
+// favorite.service 会形成 user ➜ favorite ➜ project ➜ user 的循环
+const { countVisibleFavorites } = require('./favoriteCount.service')
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -328,7 +331,7 @@ exports.getMyStats = async (userId) => {
   const [projectCount, commentCount, favoriteCount, likeReceived] = await Promise.all([
     Project.count({ where: { creator_id: userId } }),
     Comment.count({ where: { user_id: userId } }),
-    ProjectFavorite.count({ where: { user_id: userId } }),
+    countVisibleFavorites(userId),
     countLikeReceived(userId)
   ])
 
