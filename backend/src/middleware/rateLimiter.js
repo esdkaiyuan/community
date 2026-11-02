@@ -48,4 +48,21 @@ const emailCodeLimiter = rateLimit({
   message: { code: 429, message: '验证码发送过于频繁，请稍后再试' }
 })
 
-module.exports = { apiLimiter, authLimiter, uploadLimiter, passwordLimiter, emailCodeLimiter }
+// 加密项目解锁：密码是唯一的访问凭据，必须限流挡住批量猜密码。
+// 与登录同档（30 次 / 15 分钟）而不复用 authLimiter —— 否则解锁失败会吃掉登录额度。
+const unlockLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { code: 429, message: '尝试次数过多，请 15 分钟后再试' }
+})
+
+module.exports = {
+  apiLimiter,
+  authLimiter,
+  uploadLimiter,
+  passwordLimiter,
+  emailCodeLimiter,
+  unlockLimiter
+}

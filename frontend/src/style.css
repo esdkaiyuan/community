@@ -7,8 +7,12 @@
    · 结构层：HIG 字号阶 / 8pt 栅格 / 44pt 触控 / 焦点环 / 减弱动态
    · 表层：暖纸面、墨线手绘框、不对称圆角、错位硬投影
    · 点缀：电光青、等宽终端标签、极淡网格与扫描线
-   深色 = 跟随系统 prefers-color-scheme；paper 的深色值被 verify_dark_mode.py 钉死 */
+   明暗 = <html data-theme="light|dark">，由 useTheme 解析「跟随系统 / 浅色 / 深色」后写入；
+          paper 的深色值被 verify_dark_mode.py 钉死
+   主题色 = <html data-accent="pine|azure|moss|iris">，只替换 pine 四件套，
+          clay（危险/点赞）与 green（成功）是语义色，不随主题变化 */
 :root {
+  color-scheme: light;
   --c-paper: 244 241 233; /* #F4F1E9 暖纸面 */
   --c-cream: 253 252 248; /* #FDFCF8 纸卡面 */
   --c-sand: 236 232 222; /* #ECE8DE 浅填充分区 */
@@ -40,32 +44,72 @@
   --glass-border: rgba(20, 22, 26, 0.1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --c-paper: 0 0 0; /* 纯黑页面底（脚本钉死） */
-    --c-cream: 18 20 25; /* #121419 纸卡面 */
-    --c-sand: 30 33 39; /* #1E2127 */
-    --c-ink: 242 239 230; /* #F2EFE6 */
-    --c-ink-mid: 167 173 182; /* #A7ADB6 */
-    --c-ink-dim: 127 135 145; /* #7F8791 */
-    --c-pine: 91 224 235; /* #5BE0EB 荧光青 */
-    --c-pine-deep: 151 241 248; /* #97F1F8 */
-    --c-pine-soft: 13 42 48; /* #0D2A30 */
-    --c-pine-tint: 10 32 37; /* #0A2025 */
-    --c-amber-warm: 255 174 66; /* #FFAE42 */
-    --c-amber-soft: 58 44 26;
-    --c-clay: 255 69 58; /* #FF453A（脚本钉死） */
-    --c-green: 48 209 88; /* #30D158（脚本钉死） */
-    --c-line: 38 42 48; /* #262A30 */
-    --c-line-strong: 55 61 69; /* #373D45 */
-    --paper-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
-    --glass-nav: rgba(6, 8, 10, 0.78);
-    --glass-card: rgba(18, 20, 25, 0.76);
-    --glass-menu: rgba(24, 27, 32, 0.94);
-    --glass-toast: rgba(24, 27, 32, 0.92);
-    --glass-badge: rgba(30, 33, 39, 0.86);
-    --glass-border: rgba(242, 239, 230, 0.12);
-  }
+/* 强调色（浅色）：只改 pine 四件套。默认 pine 即上方的电光青，无需覆盖 */
+:root[data-accent='azure'] {
+  --c-pine: 10 91 181; /* #0A5BB5 静谧蓝 */
+  --c-pine-deep: 7 70 140; /* #07468C */
+  --c-pine-soft: 227 240 255; /* #E3F0FF */
+  --c-pine-tint: 243 248 255; /* #F3F8FF */
+}
+:root[data-accent='moss'] {
+  --c-pine: 14 122 75; /* #0E7A4B 苔原绿 */
+  --c-pine-deep: 7 94 57; /* #075E39 */
+  --c-pine-soft: 223 244 233; /* #DFF4E9 */
+  --c-pine-tint: 241 250 245; /* #F1FAF5 */
+}
+:root[data-accent='iris'] {
+  --c-pine: 107 63 184; /* #6B3FB8 鸢尾紫 */
+  --c-pine-deep: 84 44 150; /* #542C96 */
+  --c-pine-soft: 239 230 255; /* #EFE6FF */
+  --c-pine-tint: 247 242 255; /* #F7F2FF */
+}
+
+/* 深色：由 data-theme 驱动，手动「深色」与「跟随系统」解析结果共用一个块 */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --c-paper: 0 0 0; /* 纯黑页面底（脚本钉死） */
+  --c-cream: 18 20 25; /* #121419 纸卡面 */
+  --c-sand: 30 33 39; /* #1E2127 */
+  --c-ink: 242 239 230; /* #F2EFE6 */
+  --c-ink-mid: 167 173 182; /* #A7ADB6 */
+  --c-ink-dim: 127 135 145; /* #7F8791 */
+  --c-pine: 91 224 235; /* #5BE0EB 荧光青 */
+  --c-pine-deep: 151 241 248; /* #97F1F8 */
+  --c-pine-soft: 13 42 48; /* #0D2A30 */
+  --c-pine-tint: 10 32 37; /* #0A2025 */
+  --c-amber-warm: 255 174 66; /* #FFAE42 */
+  --c-amber-soft: 58 44 26;
+  --c-clay: 255 69 58; /* #FF453A（脚本钉死） */
+  --c-green: 48 209 88; /* #30D158（脚本钉死） */
+  --c-line: 38 42 48; /* #262A30 */
+  --c-line-strong: 55 61 69; /* #373D45 */
+  --paper-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+  --glass-nav: rgba(6, 8, 10, 0.78);
+  --glass-card: rgba(18, 20, 25, 0.76);
+  --glass-menu: rgba(24, 27, 32, 0.94);
+  --glass-toast: rgba(24, 27, 32, 0.92);
+  --glass-badge: rgba(30, 33, 39, 0.86);
+  --glass-border: rgba(242, 239, 230, 0.12);
+}
+
+/* 深色 + 强调色：必须排在深色基础块之后，同特异性下后者胜出 */
+:root[data-theme='dark'][data-accent='azure'] {
+  --c-pine: 108 182 255; /* #6CB6FF */
+  --c-pine-deep: 168 212 255; /* #A8D4FF */
+  --c-pine-soft: 16 40 63; /* #10283F */
+  --c-pine-tint: 11 27 43; /* #0B1B2B */
+}
+:root[data-theme='dark'][data-accent='moss'] {
+  --c-pine: 76 217 154; /* #4CD99A */
+  --c-pine-deep: 134 239 192; /* #86EFC0 */
+  --c-pine-soft: 12 46 34; /* #0C2E22 */
+  --c-pine-tint: 8 34 26; /* #08221A */
+}
+:root[data-theme='dark'][data-accent='iris'] {
+  --c-pine: 196 166 255; /* #C4A6FF */
+  --c-pine-deep: 224 209 255; /* #E0D1FF */
+  --c-pine-soft: 39 26 63; /* #271A3F */
+  --c-pine-tint: 27 18 44; /* #1B122C */
 }
 
 @layer base {
@@ -323,6 +367,55 @@
   .btn-inverse-outline {
     @apply inline-flex items-center justify-center gap-1.5 border border-white/25 bg-transparent px-5 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50;
     border-radius: var(--sketch-radius-sm);
+  }
+
+  /* ============================================================
+     长文档排版（用户协议 / 隐私政策 / 管理条例 / 帮助中心共用）
+     ============================================================ */
+
+  /* 正文：HIG 阅读字号 + 松弛行高，次级墨色比纯黑更耐读 */
+  .doc-prose {
+    @apply text-subhead leading-[1.9] text-ink-mid;
+  }
+  .doc-prose > section + section {
+    @apply mt-10;
+  }
+  /* 锚点跳转时给吸顶页头留出视口高度 */
+  .doc-prose section[id] {
+    scroll-margin-top: 96px;
+  }
+  .doc-prose h2 {
+    @apply mb-3 font-brand text-title3 font-bold tracking-normal text-ink;
+  }
+  .doc-prose h3 {
+    @apply mb-2 mt-7 text-headline font-semibold text-ink;
+  }
+  .doc-prose p + p {
+    @apply mt-3;
+  }
+  .doc-prose ul {
+    @apply mt-3 list-disc space-y-2 pl-5;
+  }
+  .doc-prose ol {
+    @apply mt-3 list-decimal space-y-2 pl-5;
+  }
+  .doc-prose li::marker {
+    @apply text-pine;
+  }
+  .doc-prose a {
+    @apply font-medium text-pine underline decoration-pine/30 decoration-1 underline-offset-2 transition-colors hover:text-pine-deep hover:decoration-pine;
+    overflow-wrap: anywhere;
+  }
+  .doc-prose strong {
+    @apply font-semibold text-ink;
+  }
+  .doc-prose code {
+    @apply rounded-md bg-sand px-1.5 py-0.5 font-mono text-caption1 text-ink;
+  }
+  /* 需重点提示的段落：左侧暖琥珀发丝线 + 极淡底，不抢正文 */
+  .doc-prose .doc-note {
+    @apply my-4 rounded-10 bg-amber-soft/70 px-4 py-3 text-footnote leading-relaxed text-ink-mid;
+    border-left: 2px solid rgb(var(--c-amber-warm) / 0.7);
   }
 }
 

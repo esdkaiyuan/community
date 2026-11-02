@@ -90,26 +90,39 @@
 
           <span
             v-else
-            class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-footnote font-bold text-pine-deep"
+            class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full"
+            :class="n.type === 'system' ? 'bg-amber-soft text-amber-warm' : 'bg-pine-soft text-pine-deep'"
           >
-            <img v-if="n.actor?.avatar" :src="n.actor.avatar" alt="" class="h-full w-full object-cover" />
+            <AppIcon v-if="n.type === 'system'" name="bell" class="h-[18px] w-[18px]" />
+            <img v-else-if="n.actor?.avatar" :src="n.actor.avatar" alt="" class="h-full w-full object-cover" />
             <template v-else>{{ (n.actor?.username || '友').slice(0, 1).toUpperCase() }}</template>
           </span>
 
           <span class="min-w-0 flex-1">
             <span class="block text-subhead leading-snug text-ink">
-              <span class="font-medium">{{ n.actor?.username || '有人' }}</span>
-              {{ notificationText(n.type) }}
-              <span class="text-ink-mid">「{{ n.project?.title || '项目' }}」</span>
+              <template v-if="n.type === 'system'">
+                <span class="font-medium">平台公告</span>
+              </template>
+              <template v-else>
+                <span class="font-medium">{{ n.actor?.username || '有人' }}</span>
+                {{ notificationText(n.type) }}
+                <span class="text-ink-mid">「{{ n.project?.title || '项目' }}」</span>
+              </template>
             </span>
-            <span v-if="n.commentPreview" class="mt-1 block truncate text-footnote text-ink-mid">
+            <span
+              v-if="n.type === 'system' && n.message"
+              class="mt-1 block whitespace-pre-line break-words text-footnote leading-relaxed text-ink-mid"
+            >
+              {{ n.message }}
+            </span>
+            <span v-else-if="n.commentPreview" class="mt-1 block truncate text-footnote text-ink-mid">
               {{ n.commentPreview }}
             </span>
             <span class="mt-1.5 flex items-center gap-2 text-caption1 text-ink-dim">
               <span>{{ relativeTime(n.createdAt) }}</span>
               <span>{{ typeLabel(n.type) }}</span>
               <span class="text-pine-deep opacity-0 transition-opacity group-hover:opacity-100">
-                {{ selectMode ? '' : '前往查看 ›' }}
+                {{ selectMode || n.type === 'system' ? '' : '前往查看 ›' }}
               </span>
             </span>
           </span>
@@ -170,9 +183,10 @@ const route = useRoute()
 const router = useRouter()
 
 // 通知类型：取值与后端 Notification.type 的 ENUM 一致（schema.sql 同源）。
-// 六项已超出分段控件的舒适区，故做成 chip 行而不是塞进 AppSegmented
+// 七项已超出分段控件的舒适区，故做成 chip 行而不是塞进 AppSegmented
 const TYPE_OPTIONS = [
   { value: 'all', label: '全部' },
+  { value: 'system', label: '公告' },
   { value: 'comment', label: '评论' },
   { value: 'reply', label: '回复' },
   { value: 'like', label: '点赞' },
@@ -319,6 +333,8 @@ const openNotification = async (n) => {
       total.value = Math.max(0, total.value - 1)
     }
   }
+  // 平台公告的正文就在当前列表里，点开只标记已读，不做原地跳转
+  if (n.type === 'system') return
   router.push(notificationTarget(n))
 }
 

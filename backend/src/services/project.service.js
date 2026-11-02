@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs')
 const { Op } = require('sequelize')
 const sequelize = require('../config/database')
 const { Project, Category, User, ProjectParticipant, ProjectLike, ProjectFavorite, ProjectView } = require('../models')
@@ -10,27 +11,50 @@ const activityLogService = require('./activityLog.service')
 const { clampInt, MAX_PAGE } = require('../utils/pagination')
 const { bumpCounter } = require('../utils/counter')
 
+// 访问加密级别：none-公开；repo-仓库地址加密；project-整个项目加密
+const LOCK_LEVELS = ['none', 'repo', 'project']
+const LOCK_PASSWORD_MIN_LENGTH = 6
+const LOCK_PASSWORD_MAX_LENGTH = 64
+
 // 数据库行 -> 前端数据形状（camelCase）
-const toClientProject = (p, extra = {}) => {
+//
+// viewerId 用于判断「查看者是不是发起人」：发起人永远能看到自己的完整项目，
+// 无需输入密码；unlocked 表示当前请求已经通过密码校验（仅解锁接口使用）。
+// 加密字段的脱敏必须在这里做 —— 列表 / 详情 / 相关推荐都会复用这个出口，
+// 任何一处漏掉都会把仓库地址或整篇介绍直接送到前端。
+const toClientProject = (p, extra = {}, { viewerId = null, unlocked = false } = {}) => {
   const row = p.toJSON ? p.toJSON() : p
+  const lockLevel = LOCK_LEVELS.includes(row.lock_level) ? row.lock_level : 'none'
+  const isOwner = viewerId != null && Number(row.creator_id) === Number(viewerId)
+  // 只有「加密 + 非发起人 + 本次请求未解锁」三者同时成立时，内容才需要遮住
+  const lockActive = lockLevel !== 'none' && !isOwner && !unlocked
+  const projectLocked = lockLevel === 'project' && lockActive
+
   return {
     id: row.id,
     title: row.title,
-    description: row.description,
+    // 整项目加密：介绍与标签都不下发；仓库加密正常展示项目内容，只隐藏仓库地址
+    description: projectLocked ? '' : row.description,
     coverImage: row.cover_image,
     categoryId: row.category_id,
     categoryName: row.category ? row.category.name : null,
-    tags: Array.isArray(row.tags) ? row.tags : [],
+    tags: projectLocked ? [] : Array.isArray(row.tags) ? row.tags : [],
     participantCount: row.participant_count || 0,
     likeCount: row.like_count || 0,
     commentCount: row.comment_count || 0,
     viewCount: row.view_count || 0,
     isRecommend: !!row.is_recommend,
+    // 管理台下架标记：公开列表与详情已过滤，管理台列表据此显示状态
+    isHidden: !!row.is_hidden,
     isHot: !!row.is_hot,
     // 仓库地址与截止日期：线上一直有真实数据但模型没声明，所以此前取不到（死列）。
     // 现接成真功能 —— 前端据此渲染「查看仓库」入口与「已截止」标记。
-    repositoryUrl: row.repository_url || null,
+    repositoryUrl: lockActive ? null : row.repository_url || null,
     endDate: row.end_date || null,
+    // 加密标记：lockLevel 给卡片徽标用，locked / repoLocked 给前端区分锁定形态
+    lockLevel,
+    locked: projectLocked,
+    repoLocked: lockActive,
     // 近 7 天活跃度：只有列表按 sort=trending 查询时才带出来
     ...(row.trendScore === undefined || row.trendScore === null
       ? {}
@@ -133,6 +157,38 @@ const normalizeTags = (tags) => {
   return result
 }
 
+// ---- 访问加密 ----
+// 加密级别只接受三个值，未知值一律拒绝（不能静默退化成公开）
+const normalizeLockLevel = (raw) => {
+  if (raw === undefined || raw === null || raw === '') return 'none'
+  const level = String(raw).trim().toLowerCase()
+  if (!LOCK_LEVELS.includes(level)) throw ApiError.badRequest('加密级别不合法')
+  return level
+}
+
+// 与账号密码同一套长度边界（6~64），但密码原样使用、不做 trim ——
+// 前后空格也是密码的一部分，静默修剪会让用户下次原样输入却解不开
+const assertLockPassword = (password) => {
+  if (typeof password !== 'string' || password.length < LOCK_PASSWORD_MIN_LENGTH) {
+    throw ApiError.badRequest(`加密密码至少 ${LOCK_PASSWORD_MIN_LENGTH} 位`)
+  }
+  if (password.length > LOCK_PASSWORD_MAX_LENGTH) {
+    throw ApiError.badRequest(`加密密码最多 ${LOCK_PASSWORD_MAX_LENGTH} 位`)
+  }
+  return password
+}
+
+// 每个账号最多 1 个加密项目：先预检查给出可读错误，数据库唯一槽位再兜并发
+const assertEncryptionSlotFree = async (creatorId, excludeProjectId = null) => {
+  const where = { creator_id: creatorId, lock_level: { [Op.ne]: 'none' } }
+  if (excludeProjectId) where.id = { [Op.ne]: excludeProjectId }
+  const used = await Project.count({ where })
+  if (used >= 1) throw ApiError.conflict('每个账号最多只能创建 1 个加密项目')
+}
+
+// lock_slot_user_id 的唯一索引冲突统一翻译成人话，避免用户看到 500
+const isLockSlotConflict = (error) => error && error.name === 'SequelizeUniqueConstraintError'
+
 // 分类在线上是 NOT NULL：不校验的话 MySQL 会直接抛 1048，前端只能看到 500
 const assertCategoryExists = async (categoryId) => {
   if (!categoryId) throw ApiError.badRequest('请选择项目分类')
@@ -169,7 +225,7 @@ exports.listProjects = async ({
   const limit = clampInt(pageSize, { max: 50, fallback: 12 })
   const offset = (page - 1) * limit
 
-  const where = {}
+  const where = { is_hidden: 0 }
   if (categoryId) where.category_id = categoryId
   if (creatorId) where.creator_id = creatorId
   // 筛选只认「编辑推荐」：这个标记位由 scripts/refresh-project-flags.js 维护。
@@ -185,15 +241,29 @@ exports.listProjects = async ({
       sequelize.where(
         sequelize.fn('JSON_CONTAINS', sequelize.col('Project.tags'), JSON.stringify(tag)),
         1
-      )
+      ),
+      // 整项目加密的标签对外不可见，不能成为筛选入口（否则能反推出它的标签）
+      { lock_level: { [Op.ne]: 'project' } }
     ]
   }
   if (search) {
+    // 标题可以搜（广场卡片本来就展示标题）；介绍与标签仅对非整项目加密的项目开放，
+    // 否则搜索命中等同于把隐藏内容当作探针一条条试出来
     where[Op.or] = [
       { title: { [Op.like]: `%${search}%` } },
-      { description: { [Op.like]: `%${search}%` } },
+      {
+        [Op.and]: [
+          { description: { [Op.like]: `%${search}%` } },
+          { lock_level: { [Op.ne]: 'project' } }
+        ]
+      },
       // 关键词也命中标签：搜「开源」能找到打了该标签的项目
-      { tags: { [Op.like]: `%${search}%` } }
+      {
+        [Op.and]: [
+          { tags: { [Op.like]: `%${search}%` } },
+          { lock_level: { [Op.ne]: 'project' } }
+        ]
+      }
     ]
   }
 
@@ -264,7 +334,11 @@ exports.listProjects = async ({
 
   return {
     projects: rows.map((row) =>
-      toClientProject(row, favoritedIds ? { favorited: favoritedIds.has(row.id) } : {})
+      toClientProject(
+        row,
+        favoritedIds ? { favorited: favoritedIds.has(row.id) } : {},
+        { viewerId: currentUserId }
+      )
     ),
     total: count,
     page,
@@ -288,6 +362,7 @@ exports.listPopularTags = async ({ limit = 12 } = {}) => {
       WHERE p.deleted_at IS NULL
         AND p.tags IS NOT NULL
         AND JSON_VALID(p.tags)
+        AND p.lock_level <> 'project'
       GROUP BY jt.tag_name
       ORDER BY cnt DESC, jt.tag_name ASC
       LIMIT ${max}`
@@ -307,6 +382,9 @@ const RELATED_POOL = 60 // 候选池上限：够排序即可，不必把整表�
 
 exports.listRelatedProjects = async (id, { limit = 3 } = {}) => {
   const project = await getProjectOr404(id)
+  // 整项目加密：推荐理由（sharedTags）会直接把它的标签泄漏出去，
+  // 所以在内容解锁之前直接不返回推荐，而不是返回一份「理由被打码」的列表
+  if (project.lock_level === 'project') return []
   const max = clampInt(limit, { max: 12, fallback: 3 })
 
   // 原样大小写用于 SQL 收窄（JSON_CONTAINS 大小写敏感），小写副本只用于比对
@@ -332,6 +410,8 @@ exports.listRelatedProjects = async (id, { limit = 3 } = {}) => {
   const rows = await Project.findAll({
     where: {
       id: { [Op.ne]: project.id },
+      // 整项目加密的项目不进推荐池：推荐理由依赖标签，而标签本身是隐藏内容
+      lock_level: { [Op.ne]: 'project' },
       [Op.or]: candidates
     },
     include: [
@@ -393,14 +473,40 @@ const recordProjectView = async (projectId, userId) => {
   }
 }
 
-exports.getProjectDetail = async (id, currentUserId) => {
+// 详情构建：公开路由与「密码解锁」共用。
+//   · unlocked=true 表示密码校验已通过，可以下发完整内容（仅解锁接口会传）
+//   · countView=false 用于解锁：详情页首次打开已经记过一次浏览，解锁不该再 +1
+exports.getProjectDetail = async (
+  id,
+  currentUserId,
+  { unlocked = false, countView = true } = {}
+) => {
   const project = await getProjectOr404(id)
+  // 下架的项目对公开接口等同于不存在：否则知道 id 的人仍能直接打开，
+  // 「下架」就只是一种首页排序上的隐藏，而不是内容处置。
+  if (Number(project.is_hidden) === 1) throw ApiError.notFound('项目不存在')
+
+  const isOwner =
+    currentUserId != null && Number(project.creator_id) === Number(currentUserId)
+  const fullAccess = isOwner || unlocked
+  const fullLocked = project.lock_level === 'project' && !fullAccess
 
   // 浏览量异步累加，不阻塞响应。登录用户终身去重，游客每次 +1。
-  if (currentUserId) {
-    recordProjectView(id, currentUserId)
-  } else {
-    bumpViewCount(id)
+  if (countView) {
+    if (currentUserId) {
+      recordProjectView(id, currentUserId)
+    } else {
+      bumpViewCount(id)
+    }
+  }
+
+  // 整项目加密：连共创名单都不查 —— 参与者身份同样属于项目内容
+  if (fullLocked) {
+    return toClientProject(
+      project,
+      { participants: [] },
+      { viewerId: currentUserId, unlocked }
+    )
   }
 
   const [participantRows, participantTotal, liked, participated, favorited] = await Promise.all([
@@ -434,11 +540,12 @@ exports.getProjectDetail = async (id, currentUserId) => {
     extra.favorited = !!favorited
   }
 
-  return toClientProject(project, extra)
+  return toClientProject(project, extra, { viewerId: currentUserId, unlocked })
 }
 
 exports.listParticipants = async (id, { page = 1, pageSize = 24 } = {}) => {
-  await getProjectOr404(id)
+  const project = await getProjectOr404(id)
+  if (Number(project.is_hidden) === 1) throw ApiError.notFound('项目不存在')
   page = clampInt(page, { max: MAX_PAGE, fallback: 1 })
   const limit = clampInt(pageSize, { max: 60, fallback: 24 })
   const offset = (page - 1) * limit
@@ -494,7 +601,8 @@ const cleanEndDate = (val) => {
 }
 
 exports.createProject = async ({
-  title, description, coverImage, categoryId, tags, creatorId, repositoryUrl, endDate, req
+  title, description, coverImage, categoryId, tags, creatorId, repositoryUrl, endDate,
+  lockLevel, lockPassword, req
 }) => {
   const cleanTitle = stripEmoji(String(title ?? '')).trim()
   if (!cleanTitle) throw ApiError.badRequest('标题为必填项')
@@ -511,16 +619,40 @@ exports.createProject = async ({
   }
   await assertCategoryExists(categoryId)
 
-  const project = await Project.create({
-    title: cleanTitle,
-    description: cleanDescription,
-    cover_image: coverImage || null,
-    category_id: categoryId,
-    creator_id: creatorId,
-    repository_url: cleanRepositoryUrl(repositoryUrl),
-    end_date: cleanEndDate(endDate),
-    tags: normalizeTags(tags)
-  })
+  const cleanLockLevel = normalizeLockLevel(lockLevel)
+  const cleanRepo = cleanRepositoryUrl(repositoryUrl)
+  if (cleanLockLevel === 'repo' && !cleanRepo) {
+    throw ApiError.badRequest('仓库加密需要先填写仓库地址')
+  }
+
+  let lockPasswordHash = null
+  if (cleanLockLevel !== 'none') {
+    assertLockPassword(lockPassword)
+    await assertEncryptionSlotFree(creatorId)
+    lockPasswordHash = await bcrypt.hash(lockPassword, 10)
+  }
+
+  let project
+  try {
+    project = await Project.create({
+      title: cleanTitle,
+      description: cleanDescription,
+      cover_image: coverImage || null,
+      category_id: categoryId,
+      creator_id: creatorId,
+      repository_url: cleanRepo,
+      end_date: cleanEndDate(endDate),
+      tags: normalizeTags(tags),
+      lock_level: cleanLockLevel,
+      lock_password_hash: lockPasswordHash,
+      lock_slot_user_id: cleanLockLevel === 'none' ? null : creatorId
+    })
+  } catch (error) {
+    if (isLockSlotConflict(error)) {
+      throw ApiError.conflict('每个账号最多只能创建 1 个加密项目')
+    }
+    throw error
+  }
 
   await ProjectParticipant.create({ project_id: project.id, user_id: creatorId, role: 'creator' })
   // 发起人自己也是一名共创者：计数列从 0 起，不补这一下列表里会永远少 1，
@@ -532,11 +664,14 @@ exports.createProject = async ({
   // 所以「日志写失败」不会变成用户的发布失败。
   await activityLogService.logProjectCreated({ creatorId, project, req })
 
-  return toClientProject(project)
+  return toClientProject(project, {}, { viewerId: creatorId })
 }
 
 exports.updateProject = async (
-  id, userId, { title, description, coverImage, categoryId, tags, repositoryUrl, endDate }, req
+  id, userId, {
+    title, description, coverImage, categoryId, tags, repositoryUrl, endDate,
+    lockLevel, lockPassword
+  }, req
 ) => {
   const project = await getProjectOr404(id)
   if (project.creator_id !== userId) throw ApiError.forbidden('无权修改此项目')
@@ -554,7 +689,8 @@ exports.updateProject = async (
     category_id: project.category_id,
     repository_url: project.repository_url,
     end_date: project.end_date,
-    tags: JSON.stringify(project.tags)
+    tags: JSON.stringify(project.tags),
+    lock_level: project.lock_level || 'none'
   }
 
   if (title !== undefined) {
@@ -580,7 +716,43 @@ exports.updateProject = async (
   // 传空数组即清空标签（编辑页允许把标签删光）
   if (tags !== undefined && Array.isArray(tags)) project.tags = normalizeTags(tags)
 
-  await project.save()
+  // ---- 访问加密 ----
+  const currentLockLevel = project.lock_level || 'none'
+  // 不传 lockLevel 视为「保持原状」：老前端 / 只改标题的请求不会顺手把加密关掉
+  const nextLockLevel = lockLevel === undefined ? currentLockLevel : normalizeLockLevel(lockLevel)
+
+  let nextLockPasswordHash = project.lock_password_hash
+  if (nextLockLevel === 'none') {
+    nextLockPasswordHash = null
+  } else {
+    const hasNewPassword = typeof lockPassword === 'string' && lockPassword.length > 0
+    if (hasNewPassword) {
+      assertLockPassword(lockPassword)
+      nextLockPasswordHash = await bcrypt.hash(lockPassword, 10)
+    } else if (!nextLockPasswordHash) {
+      throw ApiError.badRequest('请设置加密密码')
+    }
+    // 从公开切换成加密才需要抢槽位；本来就是加密项目时编辑密码不受配额影响
+    if (currentLockLevel === 'none') {
+      await assertEncryptionSlotFree(project.creator_id, project.id)
+    }
+    if (nextLockLevel === 'repo' && !project.repository_url) {
+      throw ApiError.badRequest('仓库加密需要先填写仓库地址')
+    }
+  }
+
+  project.lock_level = nextLockLevel
+  project.lock_password_hash = nextLockPasswordHash
+  project.lock_slot_user_id = nextLockLevel === 'none' ? null : project.creator_id
+
+  try {
+    await project.save()
+  } catch (error) {
+    if (isLockSlotConflict(error)) {
+      throw ApiError.conflict('每个账号最多只能创建 1 个加密项目')
+    }
+    throw error
+  }
 
   // 回收放在 save 之后：回收本身失败不影响本次编辑的结果，也不该让接口报错
   if (coverImage !== undefined && previousCover && previousCover !== project.cover_image) {
@@ -589,7 +761,9 @@ exports.updateProject = async (
 
   // 只有真改动了才留痕：空 PUT（什么都没变）写一条「改动了 无」只是噪音。
   // 字段名是代码里写死的常量，不来自用户输入。
-  const changedFields = ['title', 'description', 'cover_image', 'category_id', 'tags'].filter((key) => {
+  const changedFields = [
+    'title', 'description', 'cover_image', 'category_id', 'tags', 'lock_level'
+  ].filter((key) => {
     const now = key === 'tags' ? JSON.stringify(project.tags) : project[key]
     return String(before[key]) !== String(now)
   })
@@ -597,19 +771,76 @@ exports.updateProject = async (
     await activityLogService.logProjectUpdated({ userId, project, changedFields, req })
   }
 
-  return toClientProject(project)
+  return toClientProject(project, {}, { viewerId: userId })
 }
 
 exports.deleteProject = async (id, userId, req) => {
   const project = await getProjectOr404(id)
   if (project.creator_id !== userId) throw ApiError.forbidden('无权删除此项目')
+  // 软删除后行仍在表里，唯一槽位必须先释放，否则这个账号再也建不了新的加密项目
+  if (project.lock_slot_user_id != null) {
+    project.lock_slot_user_id = null
+    await project.save()
+  }
   await project.destroy()
   // 日志在删除之后写：项目已软删除，日志表刻意不挂外键，所以留着不受影响
   await activityLogService.logProjectDeleted({ userId, project, req })
 }
 
-exports.likeProject = async (id, userId) => {
+// 当前账号的加密项目配额：发布页据此提前禁用「加密」选项并给出说明
+exports.getEncryptionStatus = async (userId) => {
+  const row = await Project.findOne({
+    where: { creator_id: userId, lock_level: { [Op.ne]: 'none' } },
+    attributes: ['id', 'title', 'lock_level']
+  })
+  return {
+    hasEncryptedProject: !!row,
+    project: row ? { id: row.id, title: row.title, lockLevel: row.lock_level } : null
+  }
+}
+
+// 密码解锁：仓库加密只回仓库地址；整项目加密回完整详情。
+// 发起人不需要密码（自己的项目永远可见），但仍走同一接口以便前端逻辑统一。
+exports.unlockProject = async (id, password, currentUserId) => {
   const project = await getProjectOr404(id)
+  if (Number(project.is_hidden) === 1) throw ApiError.notFound('项目不存在')
+
+  const lockLevel = LOCK_LEVELS.includes(project.lock_level) ? project.lock_level : 'none'
+  if (lockLevel === 'none') throw ApiError.badRequest('该项目未设置加密')
+
+  const isOwner =
+    currentUserId != null && Number(project.creator_id) === Number(currentUserId)
+
+  if (!isOwner) {
+    if (typeof password !== 'string' || !password) throw ApiError.badRequest('请输入密码')
+    if (!project.lock_password_hash) throw ApiError.badRequest('该项目暂未设置密码')
+    const matched = await bcrypt.compare(password, project.lock_password_hash)
+    if (!matched) throw ApiError.forbidden('密码不正确，请重试')
+  }
+
+  if (lockLevel === 'repo') {
+    return {
+      unlocked: true,
+      lockLevel,
+      repositoryUrl: project.repository_url || null
+    }
+  }
+
+  const detail = await exports.getProjectDetail(id, currentUserId, {
+    unlocked: true,
+    // 打开详情页时已经记过一次浏览，解锁不应再 +1
+    countView: false
+  })
+  return {
+    unlocked: true,
+    lockLevel,
+    repositoryUrl: detail.repositoryUrl || null,
+    project: detail
+  }
+}
+
+exports.likeProject = async (id, userId) => {
+  await getProjectOr404(id)
 
   const existing = await ProjectLike.findOne({ where: { project_id: id, user_id: userId } })
   if (existing) throw ApiError.conflict('已点赞过该项目')
@@ -621,7 +852,7 @@ exports.likeProject = async (id, userId) => {
 }
 
 exports.unlikeProject = async (id, userId) => {
-  const project = await getProjectOr404(id)
+  await getProjectOr404(id)
 
   const existing = await ProjectLike.findOne({ where: { project_id: id, user_id: userId } })
   if (!existing) throw ApiError.badRequest('尚未点赞该项目')
@@ -674,7 +905,7 @@ exports.participateProject = async (id, userId) => {
 }
 
 exports.cancelParticipate = async (id, userId) => {
-  const project = await getProjectOr404(id)
+  await getProjectOr404(id)
 
   const participant = await ProjectParticipant.findOne({ where: { project_id: id, user_id: userId } })
   if (!participant) throw ApiError.badRequest('未参与此项目')

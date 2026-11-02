@@ -6,6 +6,7 @@ const categoryRoutes = require('./category.routes')
 const notificationRoutes = require('./notification.routes')
 const uploadRoutes = require('./upload.routes')
 const activityLogRoutes = require('./activityLog.routes')
+const adminRoutes = require('./admin.routes')
 
 router.use('/users', userRoutes)
 router.use('/projects', projectRoutes)
@@ -13,6 +14,7 @@ router.use('/categories', categoryRoutes)
 router.use('/notifications', notificationRoutes)
 router.use('/uploads', uploadRoutes)
 router.use('/logs', activityLogRoutes)
+router.use('/admin', adminRoutes)
 
 // 健康检查
 router.get('/health', (_req, res) => {

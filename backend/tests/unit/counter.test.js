@@ -11,7 +11,7 @@ const fakeModel = (value) => {
     update: async (payload, opts) => {
       state.updates.push({ payload, opts })
     },
-    findByPk: async (_id, _opts) => ({ get: () => state.value })
+    findByPk: async () => ({ get: () => state.value })
   }
 }
 

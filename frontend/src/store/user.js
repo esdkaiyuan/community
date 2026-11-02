@@ -12,7 +12,10 @@ export const useUserStore = defineStore('user', {
     isLoggedIn: (state) => !!state.token,
     username: (state) => state.userInfo?.username || '',
     avatar: (state) => state.userInfo?.avatar || '',
-    userId: (state) => state.userInfo?.id ?? null
+    userId: (state) => state.userInfo?.id ?? null,
+    // 管理台入口的唯一判据。真正的权限校验在后端（users.is_admin 每次请求回查），
+    // 这里只决定「菜单里要不要露出入口」，不承担安全职责。
+    isAdmin: (state) => !!state.userInfo?.isAdmin
   },
 
   actions: {

@@ -119,17 +119,32 @@
                     :class="n.isRead ? '' : 'bg-pine-soft/40'"
                     @click="openNotification(n)"
                   >
-                    <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pine-soft text-caption1 font-bold text-pine-deep">
-                      <img v-if="n.actor?.avatar" :src="n.actor.avatar" alt="" class="h-full w-full object-cover" />
+                    <span
+                      class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full"
+                      :class="n.type === 'system' ? 'bg-amber-soft text-amber-warm' : 'bg-pine-soft text-pine-deep'"
+                    >
+                      <AppIcon v-if="n.type === 'system'" name="bell" class="h-4 w-4" />
+                      <img v-else-if="n.actor?.avatar" :src="n.actor.avatar" alt="" class="h-full w-full object-cover" />
                       <template v-else>{{ (n.actor?.username || '友').slice(0, 1).toUpperCase() }}</template>
                     </span>
                     <span class="min-w-0 flex-1">
                       <span class="block text-footnote leading-snug text-ink">
-                        <span class="font-medium">{{ n.actor?.username || '有人' }}</span>
-                        {{ notificationText(n.type) }}
-                        <span class="text-ink-mid">「{{ n.project?.title || '项目' }}」</span>
+                        <template v-if="n.type === 'system'">
+                          <span class="font-medium">平台公告</span>
+                        </template>
+                        <template v-else>
+                          <span class="font-medium">{{ n.actor?.username || '有人' }}</span>
+                          {{ notificationText(n.type) }}
+                          <span class="text-ink-mid">「{{ n.project?.title || '项目' }}」</span>
+                        </template>
                       </span>
-                      <span v-if="n.commentPreview" class="mt-0.5 block truncate text-caption1 text-ink-dim">{{ n.commentPreview }}</span>
+                      <span
+                        v-if="n.type === 'system' && n.message"
+                        class="mt-0.5 block line-clamp-2 text-caption1 leading-snug text-ink-mid"
+                      >
+                        {{ n.message }}
+                      </span>
+                      <span v-else-if="n.commentPreview" class="mt-0.5 block truncate text-caption1 text-ink-dim">{{ n.commentPreview }}</span>
                       <span class="mt-1 block text-caption2 text-ink-dim">{{ relativeTime(n.createdAt) }}</span>
                     </span>
                     <span v-if="!n.isRead" class="mt-2 h-2 w-2 shrink-0 rounded-full bg-pine"></span>
@@ -191,6 +206,15 @@
                   <path d="m9 12 2 2 4-4" />
                 </svg>
                 账号安全
+              </router-link>
+              <router-link to="/appearance" class="menu-item" @click="menuOpen = false" data-test="appearance-entry">
+                <AppIcon name="palette" class="h-4 w-4" />
+                外观
+              </router-link>
+              <!-- 管理台入口只对管理员露出；是否真的有权限由后端每次请求判定 -->
+              <router-link v-if="userStore.isAdmin" to="/admin" class="menu-item" @click="menuOpen = false" data-test="admin-entry">
+                <AppIcon name="shield" class="h-4 w-4" />
+                管理台
               </router-link>
               <router-link to="/publish" class="menu-item" @click="menuOpen = false">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">

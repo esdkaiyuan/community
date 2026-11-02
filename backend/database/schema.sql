@@ -40,10 +40,10 @@
 --   mysql -u<用户> -p <库名> < backend/database/schema.sql
 --   node backend/database/seed.js        # 写入 8 条分类种子
 --
--- 「线上遗留列」说明：users.status/is_admin、categories.project_count/status、
--- projects.status/repository_url/end_date/access_type/access_password 这些列在线上
--- 确实存在（部分还有真实数据），但当前代码库零读写。保留声明是为了让新环境建库
--- 结果与生产**逐列一致**；启用还是清理属产品决策，详见 docs/功能与数据设计审计报告.md。
+-- 「线上遗留列」说明：users.status/is_admin 已接入管理台（账号停用与管理员权限）；
+-- categories.project_count/status、projects.status/access_type/access_password 在线上
+-- 确实存在但当前代码库零读写。保留声明是为了让新环境建库结果与生产**逐列一致**；
+-- 启用还是清理属产品决策，详见 docs/功能与数据设计审计报告.md。
 -- ============================================================================
 
 
@@ -63,10 +63,12 @@ CREATE TABLE IF NOT EXISTS users (
     token_version INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '会话版本: 改密后 +1，旧令牌作废',
     avatar VARCHAR(255) DEFAULT NULL COMMENT '头像URL',
     bio TEXT COMMENT '个人简介',
-    -- 【线上遗留】有数据（1 个管理员、38 行 status=1），但全仓零读写：
-    -- 本项目还没有角色体系，也没有账号停用流程。
-    status TINYINT DEFAULT 1 COMMENT '状态: 1-正常, 0-禁用（线上遗留，代码未使用）',
-    is_admin TINYINT DEFAULT 0 COMMENT '是否管理员: 1-是, 0-否（线上遗留，代码未使用）',
+    -- 账号状态：1 正常 / 0 停用。管理台停用后：
+    --   · 登录接口拒绝（user.service 的 assertAccountActive）
+    --   · 已签发的 JWT 也立即失效（auth 中间件每次请求回查这一列）
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '账号状态: 1-正常, 0-停用',
+    -- 管理员标记：唯一权限来源。auth 中间件每次请求回查，因此撤权无需换发令牌。
+    is_admin TINYINT NOT NULL DEFAULT 0 COMMENT '是否管理员: 1-是, 0-否',
     created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
@@ -129,13 +131,24 @@ CREATE TABLE IF NOT EXISTS projects (
     -- 标签的唯一真源。CHARACTER SET utf8mb4_bin 是为了让 JSON_CONTAINS 按码点精确
     -- 匹配而不是按 collation 模糊匹配（否则「AI」可能匹配上「ai」）。
     tags LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '标签数组（JSON 字符串）',
-    -- 【线上遗留】repository_url 线上甚至有 10 个项目在用，但全仓零读写 ——
-    -- 不是「功能没做完」，是这个字段没有任何代码碰过。end_date / access_type /
-    -- access_password 同理（access_password 线上全为空）。
-    repository_url VARCHAR(255) DEFAULT NULL COMMENT '仓库地址（线上遗留，代码未使用）',
+    -- 仓库地址：详情页「查看仓库」入口的数据源。lock_level='repo' 时对外脱敏，
+    -- 需要输入密码解锁后才返回。
+    repository_url VARCHAR(255) DEFAULT NULL COMMENT '仓库地址',
     end_date DATE DEFAULT NULL COMMENT '截止日期（线上遗留，代码未使用）',
+    -- access_type / access_password 是旧世界的遗留加密方案，全仓零读写。
+    -- 真正生效的是下面的 lock_* 三列，不要在这里重复造功能。
     access_type VARCHAR(20) DEFAULT 'public' COMMENT '访问类型: public/password/private（线上遗留，代码未使用）',
     access_password VARCHAR(255) DEFAULT NULL COMMENT '访问密码（线上遗留，代码未使用）',
+    -- 访问加密：none-公开；repo-仅仓库地址需要密码；project-整个项目需要密码。
+    -- 密码只存 bcrypt 哈希，明文绝不入库。
+    lock_level VARCHAR(16) NOT NULL DEFAULT 'none' COMMENT '访问加密级别: none-公开, repo-加密仓库, project-整项目加密',
+    lock_password_hash VARCHAR(255) DEFAULT NULL COMMENT '加密访问密码的 bcrypt 哈希',
+    -- 加密项目槽位：创建时写入 creator_id，取消加密/软删除时置 NULL。
+    -- 唯一索引是并发兜底 —— 只靠 count 预检查的话，两个并发发布能同时通过。
+    lock_slot_user_id INT DEFAULT NULL COMMENT '加密项目槽位：创建者ID，保证每账号最多 1 个加密项目',
+    -- 管理员下架标记（与历史遗留的 status 刻意分开）：
+    -- status 在旧数据里恒为 0，语义不可靠；下架是管理台独有的状态，必须能被精确查询。
+    is_hidden TINYINT NOT NULL DEFAULT 0 COMMENT '管理员下架: 1-已下架(公开列表不可见), 0-正常',
     deleted_at TIMESTAMP NULL DEFAULT NULL COMMENT '删除时间(软删除)',
     created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -149,6 +162,10 @@ CREATE TABLE IF NOT EXISTS projects (
     KEY idx_like_count (like_count),
     KEY idx_participant_count (participant_count),
     KEY idx_deleted_at (deleted_at),
+    KEY idx_hidden (is_hidden),
+    -- 每账号最多 1 个加密项目的最终防线（名称与迁移脚本保持一致）。
+    -- MySQL 唯一索引允许多行 NULL，所以公开项目（槽位为空）不受影响。
+    UNIQUE KEY uniq_lock_slot_user_id (lock_slot_user_id),
     -- ⚠️ 线上这条外键**没有** ON DELETE 子句（即 RESTRICT），别想当然写成 SET NULL：
     -- 有项目挂着的分类删不掉，这是有意的约束。
     FOREIGN KEY (category_id) REFERENCES categories(id),
@@ -210,9 +227,12 @@ CREATE TABLE IF NOT EXISTS notifications (
     user_id INT UNSIGNED NOT NULL COMMENT '接收人',
     actor_id INT UNSIGNED NOT NULL COMMENT '触发者',
     -- mention：评论内容里 @ 到了用户（comment.service 的 extractMentions）
-    type ENUM('comment', 'reply', 'like', 'participate', 'mention') NOT NULL,
-    project_id INT UNSIGNED NOT NULL,
+    -- system：管理员从管理台发出的站内公告（没有关联项目，正文在 message 列）
+    type ENUM('comment', 'reply', 'like', 'participate', 'mention', 'system') NOT NULL,
+    project_id INT UNSIGNED DEFAULT NULL,
     comment_id INT UNSIGNED DEFAULT NULL,
+    -- 系统公告正文。互动通知的正文仍来自评论快照，此列只服务 type=system
+    message VARCHAR(255) DEFAULT NULL,
     is_read TINYINT DEFAULT 0,
     created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     -- ⚠️ PRIMARY KEY (id) 不能漏：AUTO_INCREMENT 列必须被定义为键，

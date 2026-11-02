@@ -22,7 +22,7 @@ const { ProjectFavorite, Project } = require('../models')
 const countVisibleFavorites = (userId) =>
   ProjectFavorite.count({
     where: { user_id: userId },
-    include: [{ model: Project, as: 'project', required: true, attributes: [] }],
+    include: [{ model: Project, as: 'project', required: true, attributes: [], where: { is_hidden: 0 } }],
     distinct: true
   })
 

@@ -23,7 +23,14 @@ const ACTIONS = Object.freeze({
   COMMENT_DELETE: 'comment.delete',
   USER_REGISTER: 'user.register',
   USER_PROFILE_UPDATE: 'user.profile.update',
-  USER_PASSWORD_UPDATE: 'user.password.update'
+  USER_PASSWORD_UPDATE: 'user.password.update',
+  // 管理台动作：与普通用户动作刻意分开，日志里能一眼看出「这是管理员行使权限」，
+  // 也让 /logs 的筛选不会把「作者编辑自己的项目」和「管理员下架别人的项目」混为一谈。
+  ADMIN_PROJECT_UPDATE: 'admin.project.update',
+  ADMIN_PROJECT_DELETE: 'admin.project.delete',
+  ADMIN_USER_UPDATE: 'admin.user.update',
+  ADMIN_NOTICE_SEND: 'admin.notice.send',
+  ADMIN_NOTIFICATION_DELETE: 'admin.notification.delete'
 })
 const ACTION_VALUES = Object.freeze(Object.values(ACTIONS))
 
@@ -33,7 +40,7 @@ const ACTION_VALUES = Object.freeze(Object.values(ACTIONS))
 //   - 通知已读：既非内容也非状态变更，只是读游标。
 // 如果哪天要做「异常行为检测」，正确的做法是单独一张行为流水表 + 聚合，而不是往审计
 // 日志里灌明细 —— 审计日志要「每条都值得人读一遍」。
-const TARGET_TYPES = Object.freeze(['project', 'comment', 'user'])
+const TARGET_TYPES = Object.freeze(['project', 'comment', 'user', 'notification'])
 
 // 每个动作允许出现在 detail 里的键（未列出的键一律丢弃）
 const DETAIL_KEYS = Object.freeze({
@@ -46,7 +53,14 @@ const DETAIL_KEYS = Object.freeze({
   [ACTIONS.USER_PROFILE_UPDATE]: ['changed', 'usernameFrom', 'usernameTo'],
   // 改密刻意**没有任何 detail 键**：密码的任何形态（明文 / 长度 / 哈希）都不进日志。
   // 白名单为空 = 调用方多传什么都进不来，比「记得别传」可靠。
-  [ACTIONS.USER_PASSWORD_UPDATE]: []
+  [ACTIONS.USER_PASSWORD_UPDATE]: [],
+  // 管理台动作同样只记「改了什么」，不复制内容：项目标题/用户名是快照，
+  // 公告正文只留 60 字预览（完整内容在 notifications 表里）。
+  [ACTIONS.ADMIN_PROJECT_UPDATE]: ['title', 'changed'],
+  [ACTIONS.ADMIN_PROJECT_DELETE]: ['title'],
+  [ACTIONS.ADMIN_USER_UPDATE]: ['username', 'changed'],
+  [ACTIONS.ADMIN_NOTICE_SEND]: ['message', 'audience', 'recipients'],
+  [ACTIONS.ADMIN_NOTIFICATION_DELETE]: ['type', 'message', 'recipient']
 })
 
 const SUMMARY_MAX = 255
@@ -226,6 +240,88 @@ exports.logUserPasswordChanged = ({ userId, req }) =>
     targetId: userId,
     userId,
     summary: '修改了登录密码',
+    req
+  })
+
+// ---- 管理台动作：全部由管理员发起，target 指向被处置的对象 ----
+
+// 字段名到中文的映射只在这里维护一份，管理台接口传英文键即可，
+// 避免「摘要文案」散落在 controller / service 里越写越乱。
+const ADMIN_PROJECT_FIELD_LABELS = {
+  is_hidden: '下架状态',
+  is_recommend: '推荐标记'
+}
+
+exports.logAdminProjectUpdated = ({ userId, project, changedFields = [], req }) => {
+  const labels = changedFields.map((key) => ADMIN_PROJECT_FIELD_LABELS[key] || key)
+  return record({
+    action: ACTIONS.ADMIN_PROJECT_UPDATE,
+    targetType: 'project',
+    targetId: project.id,
+    projectId: project.id,
+    userId,
+    summary: `管理台调整项目「${preview(project.title)}」：${labels.join('、') || '无变更'}`,
+    detail: { title: project.title, changed: changedFields },
+    req
+  })
+}
+
+exports.logAdminProjectDeleted = ({ userId, project, req }) =>
+  record({
+    action: ACTIONS.ADMIN_PROJECT_DELETE,
+    targetType: 'project',
+    targetId: project.id,
+    projectId: project.id,
+    userId,
+    summary: `管理台删除项目「${preview(project.title)}」`,
+    detail: { title: project.title },
+    req
+  })
+
+// 用户处置摘要必须说清「变成了什么」，只写「调整了账号状态」等于没说。
+// 这里从 changedFields 反推出可读结果，状态值由调用方传真实的新值。
+const describeUserAdminChanges = (changedFields, status, isAdmin) => {
+  const parts = []
+  if (changedFields.includes('status')) parts.push(Number(status) === 0 ? '停用账号' : '恢复账号')
+  if (changedFields.includes('is_admin')) parts.push(Number(isAdmin) === 1 ? '授予管理员' : '撤销管理员')
+  return parts.join('、') || '无变更'
+}
+
+exports.logAdminUserUpdated = ({ userId, targetUser, changedFields = [], status, isAdmin, req }) =>
+  record({
+    action: ACTIONS.ADMIN_USER_UPDATE,
+    targetType: 'user',
+    targetId: targetUser.id,
+    userId,
+    summary:
+      `管理台调整用户「${preview(targetUser.username)}」：` +
+      describeUserAdminChanges(changedFields, status, isAdmin),
+    detail: { username: targetUser.username, changed: changedFields },
+    req
+  })
+
+exports.logAdminNoticeSent = ({ userId, message, audience, recipients, req }) =>
+  record({
+    action: ACTIONS.ADMIN_NOTICE_SEND,
+    targetType: 'notification',
+    // 广播没有单条通知 id 可指：target_id 留空，detail 里记收件人数
+    targetId: null,
+    userId,
+    summary: `发送站内公告给 ${recipients} 位用户：${preview(message)}`,
+    detail: { message: preview(message), audience, recipients },
+    req
+  })
+
+exports.logAdminNotificationDeleted = ({ userId, notification, recipientName, req }) =>
+  record({
+    action: ACTIONS.ADMIN_NOTIFICATION_DELETE,
+    targetType: 'notification',
+    targetId: notification.id,
+    userId,
+    summary:
+      `删除通知（接收人「${preview(recipientName) || '未知'}」，类型 ${notification.type}）` +
+      (notification.message ? `：${preview(notification.message)}` : ''),
+    detail: { type: notification.type, message: notification.message, recipient: recipientName },
     req
   })
 

@@ -21,10 +21,16 @@ const extractToken = (req) => {
 //
 // 代价是一次主键查询。受保护接口本来就要查库，多一次 PK lookup 可忽略；
 // optionalAuth 只在「请求里真的带了 token」时才查 —— 未登录刷广场不产生任何额外查询。
-const isSessionActive = async (userId, tokenVersion) => {
-  const user = await User.findByPk(userId, { attributes: ['id', 'token_version'] })
-  if (!user) return false
-  return Number(user.token_version || 0) === Number(tokenVersion || 0)
+//
+// 同一行查询顺带把 status / is_admin 取出来：管理台的停用与撤权必须**立即**生效，
+// 不能等旧 JWT 过期；角色也不写进令牌，避免「撤权后旧令牌仍自称管理员」。
+const findActiveSession = async (userId, tokenVersion) => {
+  const user = await User.findByPk(userId, {
+    attributes: ['id', 'token_version', 'status', 'is_admin']
+  })
+  if (!user) return null
+  if (Number(user.token_version || 0) !== Number(tokenVersion || 0)) return null
+  return user
 }
 
 // 强制认证
@@ -74,7 +80,7 @@ const auth = async (req, _res, next) => {
   // 在别的标签页 / 别的设备上留着的旧令牌（改密后第一次请求就会撞上），记了是自刷噪音。
   let active
   try {
-    active = await isSessionActive(decoded.userId, decoded.tv)
+    active = await findActiveSession(decoded.userId, decoded.tv)
   } catch (error) {
     // 查库失败**不能**当成「会话失效」：那会把一次数据库抖动变成全员登出
     // （前端收到 401 就清本地会话）。转成 500，前端对 5xx 只提示「服务暂时不可用」，
@@ -83,8 +89,11 @@ const auth = async (req, _res, next) => {
     return next(new Error('会话状态校验失败'))
   }
   if (!active) return next(ApiError.unauthorized('登录状态已失效，请重新登录'))
+  // 停用账号：不换发令牌也会在这里被挡住。用 403 而不是 401 —— 这不是登录过期，
+  // 前端拦截器遇到 401 会清会话并跳登录页，停用账号再登录也只会得到同一句提示。
+  if (Number(active.status) === 0) return next(ApiError.forbidden('账号已被停用，请联系管理员'))
 
-  req.user = { userId: decoded.userId }
+  req.user = { userId: active.id, isAdmin: Number(active.is_admin) === 1 }
   return next()
 }
 
@@ -102,8 +111,9 @@ const optionalAuth = async (req, _res, next) => {
   if (!token) return next()
   try {
     const decoded = verifyToken(token)
-    if (await isSessionActive(decoded.userId, decoded.tv)) {
-      req.user = { userId: decoded.userId }
+    const active = await findActiveSession(decoded.userId, decoded.tv)
+    if (active && Number(active.status) !== 0) {
+      req.user = { userId: active.id, isAdmin: Number(active.is_admin) === 1 }
     }
   } catch {
     // 无效 / 过期 / 已被改密作废的 token 一律视为未登录，不阻断请求
@@ -111,4 +121,12 @@ const optionalAuth = async (req, _res, next) => {
   next()
 }
 
-module.exports = { auth, optionalAuth }
+// 管理员守卫：必须排在 auth 之后。角色来自上一步的数据库回查，不读 JWT 载荷，
+// 所以「撤权」与「停用」都不需要额外让旧令牌失效（见 auth.js 顶部的说明）。
+const requireAdmin = (req, _res, next) => {
+  if (!req.user) return next(ApiError.unauthorized('未提供认证令牌'))
+  if (!req.user.isAdmin) return next(ApiError.forbidden('需要管理员权限'))
+  return next()
+}
+
+module.exports = { auth, optionalAuth, requireAdmin }

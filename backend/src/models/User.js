@@ -36,6 +36,19 @@ const User = sequelize.define('User', {
   bio: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  // 账号状态：1 正常 / 0 停用（管理台停用后，登录与既有会话都会被拒绝）
+  status: {
+    type: DataTypes.TINYINT,
+    allowNull: false,
+    defaultValue: 1
+  },
+  // 管理员标记：唯一权限来源。auth 中间件每次请求都会回查这一列，
+  // 因此撤权后既有 JWT 不需要换发也会立即失效（见 middleware/auth.js）
+  is_admin: {
+    type: DataTypes.TINYINT,
+    allowNull: false,
+    defaultValue: 0
   }
 }, {
   tableName: 'users',

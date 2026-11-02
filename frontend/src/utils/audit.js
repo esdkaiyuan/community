@@ -21,7 +21,13 @@ export const ACTION_ICONS = {
   'comment.delete': 'trash-2',
   'user.register': 'user',
   'user.profile.update': 'user',
-  'user.password.update': 'lock'
+  'user.password.update': 'lock',
+  // 管理台动作：与后端 ACTIONS 中的 admin.* 逐字对应
+  'admin.project.update': 'pencil',
+  'admin.project.delete': 'trash-2',
+  'admin.user.update': 'users',
+  'admin.notice.send': 'bell',
+  'admin.notification.delete': 'trash-2'
 }
 
 export const actionIcon = (action) => ACTION_ICONS[action] || 'info'

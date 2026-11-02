@@ -113,6 +113,27 @@
             <p v-if="errors.confirm" class="form-error">{{ errors.confirm }}</p>
           </div>
 
+          <!-- 协议签署：必须由用户主动勾选，未勾选不放行注册。
+               三个链接都开新标签，避免用户读协议时丢掉已填好的表单。 -->
+          <div>
+            <label
+              class="flex cursor-pointer items-start gap-2.5 rounded-xl border px-3.5 py-3 text-footnote leading-relaxed transition-colors"
+              :class="errors.agreed ? 'border-clay/60 bg-clay/5' : 'border-line/70 bg-sand/25 hover:border-ink/20'"
+            >
+              <input
+                v-model="form.agreed"
+                type="checkbox"
+                class="mt-[3px] h-4 w-4 shrink-0 cursor-pointer rounded accent-pine"
+                data-test="register-agree"
+                @change="errors.agreed = ''"
+              />
+              <!-- 整段保持单行：中文句子一旦在标签之间换行，模板会把换行压成空格，
+                   渲染出「我已阅读并同意 《用户协议》」这种多余间隔。 -->
+              <span class="text-ink-mid">我已阅读并同意<router-link to="/terms" target="_blank" class="font-medium text-pine hover:underline" @click.stop>《用户协议》</router-link>、<router-link to="/privacy" target="_blank" class="font-medium text-pine hover:underline" @click.stop>《隐私政策》</router-link>与<router-link to="/community-rules" target="_blank" class="font-medium text-pine hover:underline" @click.stop>《平台管理条例》</router-link>，并承诺遵守平台规则。</span>
+            </label>
+            <p v-if="errors.agreed" class="form-error">{{ errors.agreed }}</p>
+          </div>
+
           <button type="submit" class="btn-primary w-full !py-3" :disabled="submitting || sending">
             <svg v-if="submitting" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" class="opacity-25" />
@@ -140,8 +161,8 @@ import AuthBrandPanel from '@/components/AuthBrandPanel.vue'
 const router = useRouter()
 const userStore = useUserStore()
 
-const form = reactive({ username: '', email: '', code: '', password: '', confirm: '' })
-const errors = reactive({ username: '', email: '', code: '', password: '', confirm: '' })
+const form = reactive({ username: '', email: '', code: '', password: '', confirm: '', agreed: false })
+const errors = reactive({ username: '', email: '', code: '', password: '', confirm: '', agreed: '' })
 const submitting = ref(false)
 const { sending, canSend, buttonLabel, send } = useEmailCode()
 
@@ -155,7 +176,15 @@ const validate = () => {
   errors.code = /^\d{6}$/.test(form.code) ? '' : '请输入 6 位邮箱验证码'
   errors.password = form.password.length >= PASSWORD_MIN_LENGTH ? '' : `密码至少 ${PASSWORD_MIN_LENGTH} 位`
   errors.confirm = form.confirm === form.password ? '' : '两次输入的密码不一致'
-  return !errors.username && !errors.email && !errors.code && !errors.password && !errors.confirm
+  errors.agreed = form.agreed ? '' : '请先阅读并同意《用户协议》《隐私政策》与《平台管理条例》'
+  return (
+    !errors.username &&
+    !errors.email &&
+    !errors.code &&
+    !errors.password &&
+    !errors.confirm &&
+    !errors.agreed
+  )
 }
 
 const handleSendCode = async () => {

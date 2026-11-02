@@ -20,6 +20,22 @@ exports.getProjectById = asyncHandler(async (req, res) => {
   ok(res, data, '获取项目详情成功')
 })
 
+// 加密项目配额：发布页据此提前提示「每账号最多 1 个」
+exports.getEncryptionStatus = asyncHandler(async (req, res) => {
+  const data = await projectService.getEncryptionStatus(req.user.userId)
+  ok(res, data, '获取加密项目配额成功')
+})
+
+// 密码解锁：仓库加密返回仓库地址，整项目加密返回完整详情
+exports.unlockProject = asyncHandler(async (req, res) => {
+  const data = await projectService.unlockProject(
+    req.params.id,
+    req.body?.password,
+    req.user?.userId
+  )
+  ok(res, data, '解锁成功')
+})
+
 // 热门标签（广场入口用）：公开接口
 exports.getProjectTags = asyncHandler(async (req, res) => {
   const data = await projectService.listPopularTags({ limit: req.query.limit })

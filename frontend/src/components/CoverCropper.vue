@@ -5,6 +5,14 @@
       没有遮罩、没有可拖拽的把手 —— 少一层抽象，用户不用去理解
       「框外是暗的」和「框内是保留的」两者之间的关系。
     -->
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <p class="mono-label">CARD VIEW</p>
+        <p class="mt-1 text-caption1 text-ink-dim">框内就是卡片最终展示的封面</p>
+      </div>
+      <span class="cover-crop__ratio shrink-0">{{ COVER_ASPECT_LABEL }}</span>
+    </div>
+
     <div
       ref="frameEl"
       class="relative aspect-[16/9] w-full cursor-grab touch-none select-none overflow-hidden rounded-xl bg-ink/5 ring-1 ring-line active:cursor-grabbing"
@@ -33,6 +41,15 @@
         <div class="absolute left-0 top-1/3 h-px w-full bg-white/25" />
         <div class="absolute left-0 top-2/3 h-px w-full bg-white/25" />
       </div>
+
+      <!-- 只在还没开始拖动时提示一次，拖起来就隐去，不挡画面 -->
+      <span
+        v-if="ready && !dragging"
+        class="cover-crop__hint pointer-events-none"
+        aria-hidden="true"
+      >
+        按住拖动 · 所见即所得
+      </span>
 
       <div
         v-if="!ready"
@@ -72,7 +89,7 @@
     </div>
 
     <p class="mt-2 text-caption1 text-ink-dim">
-      按住图片拖动即可调整位置。封面在列表里按 {{ COVER_ASPECT_LABEL }} 展示，框里留下什么就显示什么。
+      按住图片拖动即可调整位置。框里留下的画面会按 {{ COVER_ASPECT_LABEL }} 原样出现在广场卡片、相关推荐和详情页头图上。
     </p>
 
     <div class="mt-3 flex items-center justify-end gap-3">
@@ -132,6 +149,7 @@ const zoom = ref(1)
 const pan = ref({ x: 0, y: 0 })
 const encoding = ref(false)
 const ready = ref(false)
+const dragging = ref(false)
 
 const locked = computed(() => props.busy || encoding.value)
 
@@ -198,6 +216,7 @@ let drag = null
 const onDown = (event) => {
   if (locked.value || !ready.value) return
   drag = { id: event.pointerId, x: event.clientX, y: event.clientY, px: pan.value.x, py: pan.value.y }
+  dragging.value = true
   frameEl.value?.setPointerCapture?.(event.pointerId)
 }
 const onMove = (event) => {
@@ -214,6 +233,7 @@ const onMove = (event) => {
 const onUp = (event) => {
   if (!drag || event.pointerId !== drag.id) return
   drag = null
+  dragging.value = false
   try {
     frameEl.value?.releasePointerCapture?.(event.pointerId)
   } catch {
@@ -267,3 +287,20 @@ watch(frame, () => {
   pan.value = clampPan(pan.value.x, pan.value.y, disp.value.w, disp.value.h, frame.value.w, frame.value.h)
 })
 </script>
+
+<style scoped>
+/* 比例标签：和卡片封面用的是同一个口径 */
+.cover-crop__ratio {
+  @apply rounded-full px-2.5 py-1 font-mono text-caption2 font-semibold tracking-[0.12em] text-pine;
+  border: 1px solid rgb(var(--c-pine) / 0.35);
+  background: rgb(var(--c-pine-soft) / 0.7);
+}
+
+/* 框内提示：浮在画面上方，不参与拖动命中 */
+.cover-crop__hint {
+  @apply absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 font-mono text-caption2 tracking-[0.06em] text-white;
+  background: rgba(8, 9, 12, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(6px);
+}
+</style>

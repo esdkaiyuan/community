@@ -9,7 +9,7 @@ const PROJECT_ATTRS = ['id', 'title']
 // ⚠️ 白名单外的入参「静默忽略」（当作不筛选）而不是 400：与既有 filter 参数保持同一
 // 语义（filter 传 'unread' 之外的值也是当 all）。理由有两条——这是只读筛选，非法值
 // 不构成安全事件；且将来 ENUM 扩展时前端传新值只会被忽略，不会突然开始报错。
-const NOTIFICATION_TYPES = ['comment', 'reply', 'like', 'participate', 'mention']
+const NOTIFICATION_TYPES = ['comment', 'reply', 'like', 'participate', 'mention', 'system']
 
 // 创建通知（fire-and-forget：失败不影响主流程；自己触发的不通知自己）
 exports.notify = ({ userId, type, actorId, projectId, commentId = null }) => {
@@ -53,7 +53,9 @@ exports.list = async ({ userId, page = 1, pageSize = 15, unreadOnly = false, typ
     where,
     include: [
       { model: User, as: 'actor', attributes: ACTOR_ATTRS },
-      { model: Project, as: 'project', attributes: PROJECT_ATTRS },
+      // 系统公告的 project_id 为空（不指向任何项目），必须显式 required: false，
+      // 否则 LEFT JOIN 会被降级成 INNER JOIN，公告整批查不出来
+      { model: Project, as: 'project', attributes: PROJECT_ATTRS, required: false },
       // ⚠️ Comment 带 defaultScope(status = 1)，Sequelize 会因此把该关联当成 INNER JOIN，
       // 于是 comment_id 为 NULL 的通知（如「参与共创」）被整行过滤掉 —— 必须显式 required: false
       { model: Comment, as: 'comment', attributes: ['id', 'content'], required: false }
@@ -78,7 +80,9 @@ exports.list = async ({ userId, page = 1, pageSize = 15, unreadOnly = false, typ
         project: row.project,
         // 评论 / 回复 / 点赞类通知带上评论 id，前端才能深链直达那一条，而不是停在评论区顶部
         commentId: row.comment_id || null,
-        commentPreview: row.comment?.content?.slice(0, 60) || null
+        commentPreview: row.comment?.content?.slice(0, 60) || null,
+        // 只有系统公告有正文；互动通知的正文来自评论快照或项目本身
+        message: row.message || null
       }
     }),
     total: count,

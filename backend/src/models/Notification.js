@@ -25,15 +25,21 @@ const Notification = sequelize.define(
     },
     type: {
       // mention：评论内容里 @ 到了用户（见 comment.service 的 extractMentions）
-      type: DataTypes.ENUM('comment', 'reply', 'like', 'participate', 'mention'),
+      // system：管理员从管理台发出的站内公告，没有关联项目（project_id 为空）
+      type: DataTypes.ENUM('comment', 'reply', 'like', 'participate', 'mention', 'system'),
       allowNull: false
     },
     project_id: {
       type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false
+      allowNull: true
     },
     comment_id: {
       type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true
+    },
+    // 系统公告正文。互动类通知的正文仍来自评论快照，此列只服务 type=system
+    message: {
+      type: DataTypes.STRING(255),
       allowNull: true
     },
     is_read: {
@@ -50,6 +56,7 @@ const Notification = sequelize.define(
   }
 )
 
+Notification.belongsTo(User, { foreignKey: 'user_id', as: 'recipient' })
 Notification.belongsTo(User, { foreignKey: 'actor_id', as: 'actor' })
 Notification.belongsTo(Project, { foreignKey: 'project_id', as: 'project' })
 Notification.belongsTo(Comment, { foreignKey: 'comment_id', as: 'comment' })

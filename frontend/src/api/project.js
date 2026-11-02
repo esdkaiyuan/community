@@ -10,6 +10,12 @@ export const getProjectTags = (params) => request.get('/projects/tags', { params
 // 项目详情
 export const getProject = (id) => request.get(`/projects/${id}`)
 
+// 加密项目配额（每个账号最多 1 个加密项目；发布页提前提示）
+export const getEncryptionStatus = () => request.get('/projects/encryption-status')
+
+// 密码解锁：仓库加密返回 { repositoryUrl }，整项目加密返回 { project }
+export const unlockProject = (id, password) => request.post(`/projects/${id}/unlock`, { password })
+
 // 共创伙伴名单（分页）
 export const getProjectParticipants = (id, params) => request.get(`/projects/${id}/participants`, { params })
 

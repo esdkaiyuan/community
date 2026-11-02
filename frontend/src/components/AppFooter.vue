@@ -1,7 +1,7 @@
 <template>
   <footer class="mt-20 border-t border-line/70 bg-paper">
     <div class="site-shell py-12 sm:py-14">
-      <div class="grid gap-10 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.6fr))]">
+      <div class="grid gap-10 lg:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,0.55fr))]">
         <!-- 品牌 -->
         <div>
           <div class="flex items-center gap-3">
@@ -20,6 +20,7 @@
           <p class="mt-5 max-w-sm text-footnote leading-relaxed text-ink-mid">
             连接想法与能力，让每一个好创意都能找到同行者。发布项目、参与共创，一起把想法变成现实。
           </p>
+          <p class="mt-3 font-mono text-caption2 uppercase tracking-[0.16em] text-ink-dim">// Always building · Open collaboration</p>
         </div>
 
         <div>
@@ -46,13 +47,30 @@
             <li><router-link to="/profile" class="transition-colors hover:text-pine">个人中心</router-link></li>
             <li><router-link to="/notifications" class="transition-colors hover:text-pine">通知</router-link></li>
             <li><router-link to="/security" class="transition-colors hover:text-pine">账号安全</router-link></li>
+            <li><router-link to="/appearance" class="transition-colors hover:text-pine" data-test="appearance-footer">外观设置</router-link></li>
+          </ul>
+        </div>
+
+        <div>
+          <p class="font-mono text-caption1 font-semibold uppercase tracking-[0.16em] text-ink-dim">// 规则与帮助</p>
+          <ul class="mt-4 space-y-2.5 text-footnote text-ink-mid">
+            <li><router-link to="/terms" class="transition-colors hover:text-pine">用户协议</router-link></li>
+            <li><router-link to="/privacy" class="transition-colors hover:text-pine">隐私政策</router-link></li>
+            <li><router-link to="/community-rules" class="transition-colors hover:text-pine">平台管理条例</router-link></li>
+            <li><router-link to="/help" class="transition-colors hover:text-pine">帮助中心</router-link></li>
           </ul>
         </div>
       </div>
 
       <div class="mt-12 flex flex-col gap-3 border-t border-line/70 pt-6 text-caption1 text-ink-dim sm:flex-row sm:items-center sm:justify-between">
         <p>© {{ year }} 共创社区 · 一起想，一起做</p>
-        <p class="font-mono uppercase tracking-[0.14em]">// Always building · Open collaboration</p>
+        <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span>内容由社区成员发布</span>
+          <span aria-hidden="true">·</span>
+          <router-link to="/community-rules" class="transition-colors hover:text-pine">平台管理条例</router-link>
+          <span aria-hidden="true">·</span>
+          <router-link to="/community-rules#report" class="transition-colors hover:text-pine">举报与申诉</router-link>
+        </p>
       </div>
     </div>
   </footer>

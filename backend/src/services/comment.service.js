@@ -63,7 +63,8 @@ exports.listComments = async ({ projectId, page = 1, pageSize = 20, currentUserI
   const offset = (page - 1) * limit
 
   const project = await Project.findByPk(projectId)
-  if (!project) throw ApiError.notFound('项目不存在')
+  // 下架项目等同不存在：评论读写都不该继续为其服务
+  if (!project || Number(project.is_hidden) === 1) throw ApiError.notFound('项目不存在')
 
   const isProjectOwner = currentUserId != null && project.creator_id === currentUserId
   const canDelete = (userId) => isProjectOwner || (currentUserId != null && userId === currentUserId)
@@ -180,7 +181,8 @@ exports.locateComment = async ({ projectId, commentId, pageSize = 10 }) => {
 
 exports.createComment = async ({ projectId, content, userId, parentId, req }) => {
   const project = await Project.findByPk(projectId)
-  if (!project) throw ApiError.notFound('项目不存在')
+  // 下架项目等同不存在：评论读写都不该继续为其服务
+  if (!project || Number(project.is_hidden) === 1) throw ApiError.notFound('项目不存在')
 
   const cleaned = stripEmoji(content)
   if (!cleaned) throw ApiError.badRequest('评论内容不能为空')
@@ -252,7 +254,8 @@ exports.createComment = async ({ projectId, content, userId, parentId, req }) =>
 
 exports.deleteComment = async ({ projectId, commentId, userId, req }) => {
   const project = await Project.findByPk(projectId)
-  if (!project) throw ApiError.notFound('项目不存在')
+  // 下架项目等同不存在：评论读写都不该继续为其服务
+  if (!project || Number(project.is_hidden) === 1) throw ApiError.notFound('项目不存在')
 
   const comment = await Comment.findOne({
     where: { id: commentId, project_id: projectId }

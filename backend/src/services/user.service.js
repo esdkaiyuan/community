@@ -168,8 +168,19 @@ const toClientUser = (user) => ({
   username: user.username,
   email: user.email,
   avatar: user.avatar || '',
-  bio: user.bio || ''
+  bio: user.bio || '',
+  // 前端据此决定是否显示「管理台」入口。真正的权限判断在后端 requireAdmin，
+  // 这里的字段只是让界面不必对着无权访问的入口干瞪眼。
+  isAdmin: Number(user.is_admin) === 1
 })
+
+// 停用账号的统一拦截点：本地登录、验证码登录、外部镜像回写三处都会过这里。
+// 用 403 而不是 401——401 会让前端清掉本地会话直接跳登录页，
+// 用户重新输一遍密码还是被拒，反而像是「密码错了」。
+const assertAccountActive = (user) => {
+  if (!user) return
+  if (Number(user.status) === 0) throw ApiError.forbidden('该账号已被停用，请联系管理员')
+}
 
 // 原有账号密码注册的唯一实现；邮箱验证注册成功后也复用它，避免两套校验慢慢漂移。
 const createLocalUser = async ({ username, email, password, req }) => {
@@ -229,6 +240,8 @@ exports.login = async ({ email, password }, req) => {
   //    本地镜像的哈希在注册 / 重置 / 改密时都会与外部同步，所以这一步不是「第二套身份」，
   //    而是缓存 —— 既避免所有用户共用服务器 IP 撞外部登录限流，也保证外部服务抖动时能登录。
   if (user && (await bcrypt.compare(password, user.password_hash))) {
+    // 密码正确才检查停用状态：先查状态会变成「拿任意邮箱试探是否被封」的枚举口子
+    assertAccountActive(user)
     return { user: toClientUser(user), token: generateToken(user.id, user.token_version) }
   }
 
@@ -248,6 +261,7 @@ exports.login = async ({ email, password }, req) => {
       mirrored.password_hash = await bcrypt.hash(password, 10)
       await mirrored.save()
     }
+    assertAccountActive(mirrored)
     return { user: toClientUser(mirrored), token: generateToken(mirrored.id, mirrored.token_version) }
   }
 
@@ -348,6 +362,8 @@ exports.loginWithEmailCode = async ({ email, code }, req) => {
     },
     req
   )
+  // 验证码能收到说明邮箱确实是本人的，此时再明确告诉他「账号被停用」不算泄露
+  assertAccountActive(user)
   return { user: toClientUser(user), token: generateToken(user.id, user.token_version) }
 }
 
@@ -378,7 +394,13 @@ exports.resetPasswordWithEmailCode = async ({ email, code, password, confirmPass
 exports.getProfile = async (userId) => {
   const user = await User.findByPk(userId, { attributes: { exclude: ['password_hash'] } })
   if (!user) throw ApiError.notFound('用户不存在')
-  return user
+  // 返回普通对象而不是模型实例：模型字段是 snake_case（is_admin / token_version），
+  // 前端只认 camelCase，直接序列化出去前端永远读不到 isAdmin。
+  const row = user.toJSON()
+  return {
+    ...row,
+    isAdmin: Number(row.is_admin) === 1
+  }
 }
 
 exports.updateProfile = async (userId, { username, avatar, bio }, req) => {
@@ -548,7 +570,7 @@ const countLikeReceived = async (userId) => {
 // 个人数据概览：发布数 / 评论数 / 收藏数 / 收到的点赞（项目点赞 + 评论点赞）
 exports.getMyStats = async (userId) => {
   const [projectCount, commentCount, favoriteCount, likeReceived] = await Promise.all([
-    Project.count({ where: { creator_id: userId } }),
+    Project.count({ where: { creator_id: userId, is_hidden: 0 } }),
     Comment.count({ where: { user_id: userId } }),
     countVisibleFavorites(userId),
     countLikeReceived(userId)
@@ -570,7 +592,7 @@ exports.getPublicProfile = async (userId) => {
   if (!user) throw ApiError.notFound('用户不存在')
 
   const [projectCount, joinedCount, likeReceived] = await Promise.all([
-    Project.count({ where: { creator_id: userId } }),
+    Project.count({ where: { creator_id: userId, is_hidden: 0 } }),
     // 「参与共创」不含自己发起的：否则与上面的发布数重复计数
     ProjectParticipant.count({ where: { user_id: userId, role: { [Op.ne]: 'creator' } } }),
     countLikeReceived(userId)

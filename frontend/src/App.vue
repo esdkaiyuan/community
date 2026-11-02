@@ -31,9 +31,14 @@ import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import ToastHost from '@/components/ToastHost.vue'
 import AppConfirmHost from '@/components/AppConfirmHost.vue'
+import { useTheme } from '@/composables/useTheme'
 
 const route = useRoute()
 const isAuthLayout = computed(() => Boolean(route.meta.authLayout))
+
+// 外观在应用根部初始化一次：data-theme / data-accent 由它写入，
+// 「跟随系统」的 matchMedia 监听也必须常驻，否则只有打开 /appearance 时才响应系统切换。
+useTheme()
 
 // 启动时若已有 token，拉一次用户信息校验有效性（失效由拦截器统一登出）
 const userStore = useUserStore()

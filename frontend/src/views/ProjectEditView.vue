@@ -1,16 +1,46 @@
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-    <div class="mb-8">
-      <p class="eyebrow">Edit</p>
-      <h1 class="mt-3 font-brand text-[clamp(2rem,3vw,2.8rem)] font-bold tracking-normal text-ink">编辑项目</h1>
-      <p class="mt-2 text-footnote text-ink-mid">改完立即生效，新加的标签会同步进广场的「热门标签」。</p>
-    </div>
+  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <nav class="mb-4 flex min-w-0 items-center gap-1.5 text-footnote text-ink-dim">
+      <router-link to="/" class="shrink-0 transition-colors hover:text-pine">项目广场</router-link>
+      <span class="shrink-0">/</span>
+      <router-link
+        v-if="project"
+        :to="`/project/${project.id}`"
+        class="hidden shrink-0 transition-colors hover:text-pine sm:inline"
+      >
+        {{ project.title }}
+      </router-link>
+      <span v-if="project" class="hidden shrink-0 sm:inline">/</span>
+      <span class="truncate text-ink-mid">编辑</span>
+    </nav>
 
     <!-- 骨架：拉详情期间避免表单闪现又回填 -->
-    <div v-if="loading" class="card space-y-5 p-6 sm:p-8" data-test="edit-loading">
-      <div class="skeleton h-9 w-full"></div>
-      <div class="skeleton h-9 w-2/3"></div>
-      <div class="skeleton h-40 w-full"></div>
+    <div
+      v-if="loading"
+      class="overflow-hidden rounded-22 border border-line bg-cream shadow-card"
+      data-test="edit-loading"
+    >
+      <div class="flex items-center gap-3 border-b border-line bg-sand/40 px-6 py-4">
+        <div class="flex gap-1.5">
+          <span class="h-2.5 w-2.5 rounded-full bg-line-strong"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-line-strong"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-line-strong"></span>
+        </div>
+        <div class="skeleton h-4 w-32"></div>
+      </div>
+      <div class="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div class="space-y-6">
+          <div class="skeleton h-11 w-full"></div>
+          <div class="skeleton h-24 w-full"></div>
+          <div class="skeleton h-44 w-full"></div>
+          <div class="skeleton h-28 w-full"></div>
+        </div>
+        <div class="hidden space-y-3 lg:block">
+          <div class="skeleton aspect-[16/9] w-full"></div>
+          <div class="skeleton h-4 w-2/3"></div>
+          <div class="skeleton h-4 w-full"></div>
+        </div>
+      </div>
     </div>
 
     <EmptyState

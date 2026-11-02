@@ -44,6 +44,24 @@ const Project = sequelize.define('Project', {
     type: DataTypes.DATEONLY,
     allowNull: true
   },
+  // 访问加密：none-公开；repo-仅仓库地址需要密码；project-整个项目需要密码。
+  // 密码只存 bcrypt 哈希，明文绝不入库。
+  lock_level: {
+    type: DataTypes.STRING(16),
+    allowNull: false,
+    defaultValue: 'none'
+  },
+  lock_password_hash: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  // 唯一槽位：加密项目创建时写入 creator_id，取消加密/删除时置 NULL。
+  // 用数据库唯一索引兜住并发 —— 只靠 count 预检查的话，两个并发发布能同时通过。
+  lock_slot_user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    unique: true
+  },
   tags: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -67,6 +85,13 @@ const Project = sequelize.define('Project', {
   },
   is_hot: {
     type: DataTypes.TINYINT,
+    defaultValue: 0
+  },
+  // 管理员下架标记（与历史遗留的 status 刻意分开）：
+  // status 在旧数据里恒为 0，语义不可靠；下架是管理台独有的状态，必须能被精确查询。
+  is_hidden: {
+    type: DataTypes.TINYINT,
+    allowNull: false,
     defaultValue: 0
   },
   like_count: {

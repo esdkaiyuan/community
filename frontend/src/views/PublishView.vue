@@ -1,12 +1,16 @@
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-    <div class="mb-8">
-      <p class="eyebrow">Create</p>
-      <h1 class="mt-3 font-brand text-[clamp(2rem,3vw,2.8rem)] font-bold tracking-normal text-ink">发布项目</h1>
-      <p class="mt-2 text-footnote text-ink-mid">把你的想法写下来，让志同道合的人找到你。</p>
-    </div>
+  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <nav class="mb-4 flex items-center gap-1.5 text-footnote text-ink-dim">
+      <router-link to="/" class="transition-colors hover:text-pine">项目广场</router-link>
+      <span>/</span>
+      <span class="text-ink-mid">发布项目</span>
+    </nav>
 
     <ProjectForm mode="create" />
+
+    <p class="mt-5 text-center font-mono text-caption2 uppercase tracking-[0.14em] text-ink-dim">
+      // ONE IDEA, ONE CO-CREATOR
+    </p>
   </div>
 </template>
 

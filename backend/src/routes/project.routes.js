@@ -3,15 +3,19 @@ const router = express.Router()
 const projectController = require('../controllers/project.controller')
 const commentController = require('../controllers/comment.controller')
 const { auth, optionalAuth } = require('../middleware/auth')
+const { unlockLimiter } = require('../middleware/rateLimiter')
 
 // 公开路由（列表/详情用可选认证，登录用户可拿到 favorited 状态与「只看收藏」筛选）
 router.get('/', optionalAuth, projectController.getProjects)
-// 注意：必须排在 /:id 之前，否则会被当成 id = 'tags' 的项目详情
+// 注意：必须排在 /:id 之前，否则会被当成 id = 'tags' / 'encryption-status' 的项目详情
 router.get('/tags', projectController.getProjectTags)
+router.get('/encryption-status', auth, projectController.getEncryptionStatus)
 router.get('/:id', optionalAuth, projectController.getProjectById)
 router.get('/:id/participants', projectController.getProjectParticipants)
 // 相关推荐（详情页底部的「继续浏览」入口）：公开接口
 router.get('/:id/related', projectController.getProjectRelated)
+// 密码解锁：公开（知道密码即可查看，不强制登录），但必须限流防猜密码
+router.post('/:id/unlock', optionalAuth, unlockLimiter, projectController.unlockProject)
 
 // 项目评论（嵌套路由，参数与详情页一致使用 :id）
 router.get('/:id/comments', optionalAuth, commentController.getComments)

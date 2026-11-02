@@ -41,6 +41,23 @@
           <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full border border-[#5BE0EB]/25 bg-[#0A0C10]/75 px-2.5 py-0.5 text-caption2 font-medium text-white shadow-sm backdrop-blur-md">
             <AppIcon name="flame" class="h-3 w-3 text-clay" />热门
           </span>
+          <!-- 访问加密：仓库加密与整项目加密都用同一枚锁标，文案区分程度 -->
+          <span
+            v-if="project.lockLevel === 'repo'"
+            data-test="card-lock"
+            class="inline-flex items-center gap-1 rounded-full border border-[#5BE0EB]/25 bg-[#0A0C10]/75 px-2.5 py-0.5 text-caption2 font-medium text-white shadow-sm backdrop-blur-md"
+            title="仓库地址需要密码才能查看"
+          >
+            <AppIcon name="lock" class="h-3 w-3 text-amber-warm" />加密仓库
+          </span>
+          <span
+            v-else-if="project.lockLevel === 'project'"
+            data-test="card-lock"
+            class="inline-flex items-center gap-1 rounded-full border border-[#5BE0EB]/25 bg-[#0A0C10]/75 px-2.5 py-0.5 text-caption2 font-medium text-white shadow-sm backdrop-blur-md"
+            title="项目内容需要密码才能查看"
+          >
+            <AppIcon name="lock" class="h-3 w-3 text-amber-warm" />加密项目
+          </span>
           <!-- 本周活跃度：只在按「本周热门」排序时出现，用来解释「为什么它排在前面」 -->
           <span
             v-if="trend > 0"
@@ -64,7 +81,17 @@
         <h3 class="line-clamp-2 font-brand text-title3 font-semibold leading-snug tracking-normal text-ink transition-colors group-hover:text-pine">
           {{ project.title }}
         </h3>
-        <p class="mt-1.5 line-clamp-2 min-h-[2.5rem] text-subhead leading-relaxed text-ink-mid">
+        <!-- 整项目加密：介绍由接口清空，这里换成一句明确的锁定说明，
+             而不是留一块看起来像「没写介绍」的空白 -->
+        <p
+          v-if="project.locked"
+          data-test="card-locked-note"
+          class="mt-1.5 flex min-h-[2.5rem] items-center gap-1.5 text-subhead leading-relaxed text-ink-dim"
+        >
+          <AppIcon name="lock" class="h-3.5 w-3.5 shrink-0" />
+          项目内容已加密，输入密码后查看
+        </p>
+        <p v-else class="mt-1.5 line-clamp-2 min-h-[2.5rem] text-subhead leading-relaxed text-ink-mid">
           {{ project.description }}
         </p>
 

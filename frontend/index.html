@@ -8,8 +8,31 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- 手写体：霞鹜文楷（Klee One 骨架），只用于品牌字与标题；正文仍走系统 SF / 苹方 -->
     <link href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" rel="stylesheet" />
-    <meta name="theme-color" content="#F4F1E9" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F4F1E9" />
+    <!-- 外观预置：在首屏绘制前把明暗 / 强调色写到 <html>，避免「先白后黑」的闪烁。
+         逻辑必须与 src/composables/useTheme.js 保持一致（同样的 key、同样的合法值）。
+         脚本失败时退回浅色 + 电光青，页面照常可用。 -->
+    <script>
+      ;(function () {
+        var root = document.documentElement
+        try {
+          var mode = localStorage.getItem('community-theme-mode') || 'system'
+          var accent = localStorage.getItem('community-theme-accent') || 'pine'
+          if (mode !== 'system' && mode !== 'light' && mode !== 'dark') mode = 'system'
+          if (['pine', 'azure', 'moss', 'iris'].indexOf(accent) < 0) accent = 'pine'
+          var dark =
+            mode === 'dark' ||
+            (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          root.dataset.theme = dark ? 'dark' : 'light'
+          root.dataset.accent = accent
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', dark ? '#000000' : '#F4F1E9')
+        } catch (e) {
+          root.dataset.theme = 'light'
+          root.dataset.accent = 'pine'
+        }
+      })()
+    </script>
     <meta
       name="description"
       content="共创社区 —— 一起想，一起做。发布你的创意项目，找到志同道合的伙伴，让想法落地生根。"
