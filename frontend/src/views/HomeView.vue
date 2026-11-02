@@ -68,27 +68,130 @@
         </div>
 
         <div class="cosmic-panel aspect-[4/3]">
-          <!-- 手绘星座连线：赛博感来自工程图纸，不是霓虹堆叠 -->
+          <!-- 前景是一张手绘草稿纸：灯泡 → 搭把手 → 小房子，三个大图块把
+               「创意 / 互助 / 合作」画清楚；星图退到纸外做环境，不抢主体 -->
           <svg class="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 400 300" fill="none" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-            <path d="M40 220 120 170 175 205 250 130 330 165" stroke="#5BE0EB" stroke-width="1.2" stroke-linecap="round" opacity="0.55" />
-            <path d="M120 170 95 110 160 70 250 130" stroke="#5BE0EB" stroke-width="1" stroke-linecap="round" opacity="0.32" />
-            <path d="M30 60c30 6 46 14 62 32" stroke="#5BE0EB" stroke-width="1" stroke-dasharray="4 6" opacity="0.3" />
-            <path d="M285 240c25-10 48-10 78 2" stroke="#5BE0EB" stroke-width="1" stroke-dasharray="5 7" opacity="0.28" />
-            <circle cx="120" cy="170" r="3" fill="#5BE0EB" opacity="0.85" />
-            <circle cx="250" cy="130" r="4" fill="#BFF5FA" opacity="0.9" />
-            <circle cx="330" cy="165" r="2.5" fill="#BFF5FA" opacity="0.7" />
-            <circle cx="95" cy="110" r="2" fill="#BEF264" opacity="0.7" />
-            <text x="126" y="190" fill="#BFF5FA" font-size="8" font-family="monospace" opacity="0.7">A-01</text>
-            <text x="256" y="152" fill="#BFF5FA" font-size="8" font-family="monospace" opacity="0.55">B-07</text>
+            <!-- 背景星图：压到极淡，只在纸的四角露出来 -->
+            <g opacity="0.3">
+              <path d="M10 238 62 204 96 222 140 192" stroke="#5BE0EB" stroke-width="0.9" stroke-linecap="round" opacity="0.5" />
+              <path d="M278 252 332 222 384 236" stroke="#5BE0EB" stroke-width="0.8" stroke-linecap="round" opacity="0.4" />
+              <path d="M12 64 52 90 84 66" stroke="#5BE0EB" stroke-width="0.8" stroke-linecap="round" opacity="0.35" />
+              <path d="M342 42 372 58 392 44" stroke="#5BE0EB" stroke-width="0.8" stroke-linecap="round" opacity="0.32" />
+              <circle cx="62" cy="204" r="2" fill="#5BE0EB" opacity="0.65" />
+              <circle cx="140" cy="192" r="2.4" fill="#BFF5FA" opacity="0.7" />
+              <circle cx="332" cy="222" r="1.8" fill="#BFF5FA" opacity="0.55" />
+              <circle cx="52" cy="90" r="1.5" fill="#BEF264" opacity="0.5" />
+            </g>
+
+            <!-- 纸：先铺一层错位影子，再盖上暖白纸面，前后层次拉开 -->
+            <g transform="rotate(-1.2 200 132)">
+              <path
+                d="M34 62 C 128 55, 286 56, 364 64 C 371 104, 370 164, 364 208 C 272 215, 132 213, 40 207 C 31 160, 30 100, 34 62 Z"
+                fill="rgba(0, 0, 0, 0.5)"
+                transform="translate(6 7)"
+              />
+              <path
+                d="M34 62 C 128 55, 286 56, 364 64 C 371 104, 370 164, 364 208 C 272 215, 132 213, 40 207 C 31 160, 30 100, 34 62 Z"
+                fill="#F6F1E5"
+                stroke="#14161A"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              />
+
+              <!-- 草稿本格线：极淡，只交代纸的材质 -->
+              <g stroke="#14161A" stroke-width="0.5" opacity="0.08">
+                <path d="M48 112 H352" />
+                <path d="M48 168 H352" />
+              </g>
+
+              <!-- 页眉 -->
+              <text x="48" y="86" fill="#14161A" font-size="13" font-family="LXGW WenKai, KaiTi, serif" opacity="0.72">共创草图</text>
+              <text x="352" y="84" text-anchor="end" fill="#14161A" font-size="7.5" font-family="monospace" opacity="0.42">// SKETCH 01</text>
+              <path d="M48 94 C 130 92, 268 93, 352 92" stroke="#14161A" stroke-width="0.9" opacity="0.16" />
+
+              <!-- 01 一个想法：最大的灯泡，放在最左 -->
+              <circle cx="94" cy="126" r="17.5" fill="#FFFDF8" stroke="#14161A" stroke-width="1.7" />
+              <path d="M86 143 L102 143 M88 148 L100 148 M90 152 L98 152" stroke="#14161A" stroke-width="1.4" stroke-linecap="round" />
+              <path d="M88 133 C 88 121, 100 121, 100 133" stroke="#0B7285" stroke-width="1.6" stroke-linecap="round" />
+              <path
+                d="M94 104 V98 M79 112 L74 107 M109 112 L114 107 M71 126 H65 M117 126 H123"
+                stroke="#14161A"
+                stroke-width="1.1"
+                stroke-linecap="round"
+                opacity="0.55"
+              />
+              <path d="M124 100 V108 M120 104 H128" stroke="#0B7285" stroke-width="1.1" stroke-linecap="round" opacity="0.75" />
+
+              <!-- 02 搭把手：一个人伸手，把另一个人拉上来 -->
+              <path d="M150 171 C 172 168, 214 169, 250 170" stroke="#14161A" stroke-width="1.1" stroke-linecap="round" opacity="0.35" />
+              <circle cx="174" cy="110" r="6.5" fill="#FFFDF8" stroke="#14161A" stroke-width="1.5" />
+              <path d="M174 116 V142" stroke="#14161A" stroke-width="1.6" stroke-linecap="round" />
+              <path d="M174 120 L164 132" stroke="#14161A" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M174 120 C 181 122, 192 125, 198 126" stroke="#14161A" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M174 142 L166 164 M174 142 L182 164" stroke="#14161A" stroke-width="1.5" stroke-linecap="round" />
+
+              <circle cx="214" cy="140" r="6" fill="#FFFDF8" stroke="#14161A" stroke-width="1.5" />
+              <path d="M214 146 V166" stroke="#14161A" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M214 150 C 208 142, 202 133, 198 126" stroke="#14161A" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M214 152 L224 160" stroke="#14161A" stroke-width="1.4" stroke-linecap="round" />
+              <path d="M214 166 L206 171 M214 166 L224 171" stroke="#14161A" stroke-width="1.4" stroke-linecap="round" />
+
+              <!-- 拉住的那一下，用青色描出来 -->
+              <path d="M194 129 C 197 123, 201 123, 204 127" stroke="#0B7285" stroke-width="1.6" stroke-linecap="round" />
+              <ellipse cx="197" cy="127" rx="16" ry="12" stroke="#0B7285" stroke-width="1" stroke-dasharray="3 4" opacity="0.45" />
+              <path d="M232 166 C 238 156, 235 148, 229 143" stroke="#0B7285" stroke-width="1" stroke-dasharray="4 4" stroke-linecap="round" opacity="0.45" />
+              <path d="M229 143 L223 141 M229 143 L230 150" stroke="#0B7285" stroke-width="1" stroke-linecap="round" opacity="0.45" />
+
+              <!-- 03 一起建成：带旗子的小房子，旁边有人在施工 -->
+              <g transform="translate(-12 0)">
+                <path d="M330 112 V98" stroke="#14161A" stroke-width="1.4" stroke-linecap="round" />
+                <path d="M330 100 L346 104 L330 109 Z" fill="rgba(11, 114, 133, 0.16)" stroke="#0B7285" stroke-width="1.2" />
+                <path d="M300 138 L330 112 L360 138" stroke="#14161A" stroke-width="1.8" stroke-linejoin="round" />
+                <path d="M304 138 V172 H356 V138" stroke="#14161A" stroke-width="1.5" stroke-linejoin="round" />
+                <path d="M322 172 V150 H338 V172" stroke="#14161A" stroke-width="1.4" stroke-linejoin="round" />
+                <circle cx="335" cy="161" r="1.2" fill="#14161A" />
+                <rect x="309" y="143" width="12" height="11" stroke="#14161A" stroke-width="1.3" />
+                <path d="M315 143 V154 M309 148.5 H321" stroke="#14161A" stroke-width="1.2" opacity="0.65" />
+
+                <circle cx="366" cy="144" r="4.5" fill="#FFFDF8" stroke="#14161A" stroke-width="1.4" />
+                <path d="M366 148 V161 M366 161 L361 171 M366 161 L371 171" stroke="#14161A" stroke-width="1.4" stroke-linecap="round" />
+                <path d="M366 151 L359 145 M366 151 L373 146" stroke="#14161A" stroke-width="1.3" stroke-linecap="round" />
+              </g>
+
+              <!-- 三段之间的虚线箭头 -->
+              <path d="M128 150 C 136 146, 142 146, 148 148" stroke="#0B7285" stroke-width="1.1" stroke-dasharray="4 4" stroke-linecap="round" opacity="0.7" />
+              <path d="M148 148 L143 145 M148 148 L143 151" stroke="#0B7285" stroke-width="1.1" stroke-linecap="round" opacity="0.7" />
+              <path d="M256 150 C 265 144, 273 145, 282 148" stroke="#0B7285" stroke-width="1.1" stroke-dasharray="4 4" stroke-linecap="round" opacity="0.7" />
+              <path d="M282 148 L277 145 M282 148 L277 151" stroke="#0B7285" stroke-width="1.1" stroke-linecap="round" opacity="0.7" />
+
+              <!-- 标签：和首页标题同一支手写体 -->
+              <text x="94" y="186" text-anchor="middle" fill="#14161A" font-size="11" font-family="LXGW WenKai, KaiTi, serif" opacity="0.78">01 一个想法</text>
+              <text x="201" y="186" text-anchor="middle" fill="#14161A" font-size="11" font-family="LXGW WenKai, KaiTi, serif" opacity="0.78">02 搭把手</text>
+              <text x="318" y="186" text-anchor="middle" fill="#14161A" font-size="11" font-family="LXGW WenKai, KaiTi, serif" opacity="0.78">03 一起建成</text>
+
+              <!-- 胶带与卷角：让纸真的像被贴在桌面上 -->
+              <g transform="rotate(-7 56 60)">
+                <rect x="30" y="54" width="50" height="12" fill="rgba(20, 22, 26, 0.09)" stroke="rgba(20, 22, 26, 0.2)" stroke-width="0.9" />
+              </g>
+              <g transform="rotate(5 342 202)">
+                <rect x="318" y="196" width="48" height="10" fill="rgba(20, 22, 26, 0.08)" stroke="rgba(20, 22, 26, 0.18)" stroke-width="0.9" />
+              </g>
+              <path d="M40 207 L59 201 L46 191 Z" fill="rgba(20, 22, 26, 0.07)" stroke="rgba(20, 22, 26, 0.22)" stroke-width="0.8" />
+            </g>
+
+            <!-- 纸外的青色星点：前景最后加一层铅笔屑似的点缀 -->
+            <path d="M22 82 V91 M17.5 86.5 H26.5" stroke="#5BE0EB" stroke-width="1" stroke-linecap="round" opacity="0.45" />
+            <path d="M384 214 V222 M380 218 H388" stroke="#5BE0EB" stroke-width="1" stroke-linecap="round" opacity="0.4" />
+            <circle cx="383" cy="60" r="1.4" fill="#5BE0EB" opacity="0.4" />
           </svg>
           <div class="relative flex h-full flex-col justify-between p-5 sm:p-6">
             <div class="flex items-start justify-between gap-3">
-              <span class="cosmic-chip">Star Map · 01</span>
-              <span class="cosmic-chip">地球 · 你在这里</span>
+              <span class="cosmic-chip">Sketch · 01</span>
+              <span class="cosmic-chip max-[359px]:hidden">创意 → 互助 → 合作</span>
             </div>
             <div>
-              <p class="font-brand text-[22px] font-semibold text-white">一个创意，连起一群同路人</p>
-              <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white/55">// one idea connects a co-creator</p>
+              <p class="font-brand text-[clamp(17px,5.3vw,22px)] font-semibold text-white">一个创意，连起一群同路人</p>
+              <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white/55 max-[359px]:hidden">// one idea connects a co-creator</p>
             </div>
           </div>
         </div>
