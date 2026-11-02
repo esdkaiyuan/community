@@ -45,7 +45,7 @@
 - **项目详情**：浏览量、发布日期、点赞 / 收藏 / 参与、共创者名单、相关推荐
 - **评论**：评论与回复树、评论点赞、深链定位、@ 提及高亮与补全
 - **评论富文本**：仅支持粗体、行内代码、围栏代码块，纯插值渲染（零 `v-html`）
-- **用户认证**：登录 / 注册、登录态持久化
+- **用户认证**：密码登录 / 邮箱验证码登录、密码注册 / 邮箱验证码注册、找回密码、登录态持久化
 - **个人中心**：我的发布、我的参与、我的收藏、我的评论、资料编辑、改密
 - **他人主页**：TA 发布的 / TA 参与的，可下钻到广场筛选视图
 - **通知中心**：类型筛选、已读筛选、单条 / 批量标记已读、评论深链
@@ -55,6 +55,7 @@
 ### 后端
 
 - **认证**：JWT；`token_version` 支持改密后旧令牌全部作废
+- **统一身份认证**：邮箱验证码发送 / 注册 / 登录 / 忘记密码；外部服务是身份唯一真源，本地 `users` 表按邮箱保存业务外键所需的镜像
 - **用户**：注册 / 登录 / 资料 / 改密 / 我的评论 / 我的统计 / 我的收藏 / 公开主页
 - **项目**：列表、详情、创建、编辑、软删除；分类、标签、搜索、排序、热门标签、相关推荐
 - **互动**：点赞、收藏、参与（含创建者退出保护）
@@ -99,7 +100,8 @@
 | --- | --- | --- |
 | `/` | HomeView | 首页 / 广场 |
 | `/login` | LoginView | 登录 |
-| `/register` | RegisterView | 注册 |
+| `/register` | RegisterView | 注册（邮箱验证码） |
+| `/forgot-password` | ForgotPasswordView | 邮箱验证码找回密码 |
 | `/project/:id` | ProjectDetailView | 项目详情 |
 | `/publish` | PublishView | 发布项目（需登录） |
 | `/project/:id/edit` | ProjectEditView | 编辑项目（需登录） |
@@ -140,7 +142,7 @@ community/
 ## 质量保障
 
 - **后端单元测试**：`backend/tests/unit/`，5 个文件 / 55 项，`npm test` 运行
-- **端到端验证**：39 个 `scripts/verify_*.py` + `audit_frontend_ui.py`，由 `scripts/run_verify_suite.py` 顺序执行
+- **端到端验证**：40 个 `scripts/verify_*.py` + `audit_frontend_ui.py`，由 `scripts/run_verify_suite.py` 顺序执行
 - **接口巡检**：`scripts/audit_backend_api.py` 用坏输入矩阵检查全端点不产生 5xx
 - **结构一致性**：`scripts/verify_schema_consistency.py` 校验 `schema.sql` ↔ 线上库 ↔ Sequelize 模型
 - **CI**：`.github/workflows/verify.yml` 在全新 MySQL 8.4 环境建库、跑单测与全量验证套件
@@ -160,6 +162,7 @@ cd frontend && npm run dev    # :3001
 2. 后端用 PM2 托管（`backend/ecosystem.config.js`），配置 Nginx 反向代理
 3. MySQL 定期备份；上传目录纳入备份
 4. 生产环境必须显式配置 `JWT_SECRET`，凭据只放环境变量或 `backend/.env`
+5. 邮箱验证服务需要 `EMAIL_VERIFY_BASE_URL` 与 `EMAIL_VERIFY_API_KEY`（Key 只授予 `auth`、`verify`）
 
 ## 已知遗留项（产品决策，未擅自启用或删除）
 

@@ -53,6 +53,32 @@
           </div>
 
           <div>
+            <label class="form-label" for="code">邮箱验证码</label>
+            <div class="flex gap-2">
+              <input
+                id="code"
+                v-model.trim="form.code"
+                type="text"
+                class="input"
+                placeholder="6 位数字验证码"
+                inputmode="numeric"
+                maxlength="6"
+                autocomplete="one-time-code"
+              />
+              <button
+                type="button"
+                class="btn-secondary shrink-0 whitespace-nowrap !px-3 !py-2.5 text-footnote"
+                :disabled="!canSend"
+                @click="handleSendCode"
+              >
+                {{ buttonLabel }}
+              </button>
+            </div>
+            <p v-if="errors.code" class="form-error">{{ errors.code }}</p>
+            <p v-else class="mt-1.5 text-caption1 text-ink-dim">验证码 5 分钟内有效；未收到请检查垃圾箱。</p>
+          </div>
+
+          <div>
             <label class="form-label" for="password">密码</label>
             <input
               id="password"
@@ -92,7 +118,7 @@
             <p v-if="errors.confirm" class="form-error">{{ errors.confirm }}</p>
           </div>
 
-          <button type="submit" class="btn-primary w-full !py-3" :disabled="submitting">
+          <button type="submit" class="btn-primary w-full !py-3" :disabled="submitting || sending">
             <svg v-if="submitting" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" class="opacity-25" />
               <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
@@ -110,6 +136,8 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { toast } from '@/composables/useToast'
+import { useEmailCode } from '@/composables/useEmailCode'
+import { isValidEmail } from '@/utils/email'
 import { stripEmoji } from '@/utils/text'
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordStrength } from '@/utils/password'
 import AppIcon from '@/components/AppIcon.vue'
@@ -117,9 +145,10 @@ import AppIcon from '@/components/AppIcon.vue'
 const router = useRouter()
 const userStore = useUserStore()
 
-const form = reactive({ username: '', email: '', password: '', confirm: '' })
-const errors = reactive({ username: '', email: '', password: '', confirm: '' })
+const form = reactive({ username: '', email: '', code: '', password: '', confirm: '' })
+const errors = reactive({ username: '', email: '', code: '', password: '', confirm: '' })
 const submitting = ref(false)
+const { sending, canSend, buttonLabel, send } = useEmailCode()
 
 // 密码强度与上下界都来自 utils/password.js —— 与「账号安全 → 登录密码」共用一份口径，
 // 免得两处各写一套慢慢漂移（一处改成 8 位、另一处还写着 6 位）
@@ -127,10 +156,20 @@ const strength = computed(() => passwordStrength(form.password))
 
 const validate = () => {
   errors.username = form.username.length >= 2 && form.username.length <= 20 ? '' : '用户名需 2-20 个字符'
-  errors.email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '' : '请输入有效的邮箱地址'
+  errors.email = isValidEmail(form.email) ? '' : '请输入有效的邮箱地址'
+  errors.code = /^\d{6}$/.test(form.code) ? '' : '请输入 6 位邮箱验证码'
   errors.password = form.password.length >= PASSWORD_MIN_LENGTH ? '' : `密码至少 ${PASSWORD_MIN_LENGTH} 位`
   errors.confirm = form.confirm === form.password ? '' : '两次输入的密码不一致'
-  return !errors.username && !errors.email && !errors.password && !errors.confirm
+  return !errors.username && !errors.email && !errors.code && !errors.password && !errors.confirm
+}
+
+const handleSendCode = async () => {
+  errors.email = ''
+  try {
+    await send(form.email)
+  } catch (error) {
+    errors.email = error.response?.data?.message || error.message || '验证码发送失败，请稍后重试'
+  }
 }
 
 const handleSubmit = async () => {
@@ -138,12 +177,13 @@ const handleSubmit = async () => {
   // 服务端会做同样的归一化，这里先做一次是为了让用户**在表单里就看见**自己被改成了什么，
   // 而不是提交成功后悄悄换掉一个名字。
   form.username = stripEmoji(form.username)
-  if (!validate() || submitting.value) return
+  if (!validate() || submitting.value || sending.value) return
   submitting.value = true
   try {
-    await userStore.register({
+    await userStore.registerWithEmailCode({
       username: form.username,
       email: form.email,
+      code: form.code,
       password: form.password
     })
     toast(`欢迎加入共创社区，${userStore.username}！`)
@@ -155,4 +195,3 @@ const handleSubmit = async () => {
   }
 }
 </script>
-

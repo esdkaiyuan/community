@@ -6,6 +6,15 @@ export const register = (data) => request.post('/users/register', data)
 // 登录
 export const login = (data) => request.post('/users/login', data)
 
+// 统一身份认证服务：邮箱验证码发送 / 注册 / 登录 / 找回密码。
+// silent：这几类错误都要就地显示在输入框旁（验证码错误、发送太频繁），
+// 不应该再叠一张全局提示。
+export const sendEmailCode = (data) => request.post('/users/email/send-code', data, { silent: true })
+export const registerWithEmailCode = (data) => request.post('/users/register/email', data)
+export const loginWithEmailCode = (data) => request.post('/users/login/email', data, { silent: true })
+export const resetPasswordWithEmailCode = (data) =>
+  request.post('/users/password/reset', data, { silent: true })
+
 // 获取当前用户信息
 export const getMe = () => request.get('/users/me')
 

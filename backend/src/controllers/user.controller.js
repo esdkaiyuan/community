@@ -14,6 +14,26 @@ exports.login = asyncHandler(async (req, res) => {
   ok(res, data, '登录成功')
 })
 
+exports.sendEmailCode = asyncHandler(async (req, res) => {
+  const data = await userService.sendEmailCode(req.body)
+  ok(res, data, '验证码已发送，请查收邮箱')
+})
+
+exports.registerWithEmailCode = asyncHandler(async (req, res) => {
+  const data = await userService.registerWithEmailCode(req.body, req)
+  created(res, data, data.adjusted ? '注册成功（用户名里的表情符号等非法字符已自动移除）' : '注册成功')
+})
+
+exports.loginWithEmailCode = asyncHandler(async (req, res) => {
+  const data = await userService.loginWithEmailCode(req.body, req)
+  ok(res, data, '登录成功')
+})
+
+exports.resetPasswordWithEmailCode = asyncHandler(async (req, res) => {
+  const data = await userService.resetPasswordWithEmailCode(req.body, req)
+  ok(res, data, '密码已重置，请使用新密码登录')
+})
+
 exports.getProfile = asyncHandler(async (req, res) => {
   const user = await userService.getProfile(req.user.userId)
   ok(res, user, '获取用户信息成功')

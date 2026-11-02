@@ -15,6 +15,7 @@
 - [ ] 数据库密码：`<见 backend/.env，切勿写入仓库>`
 - [ ] 访问权限：本地服务器
 - [ ] 已导入数据库结构（`mysql ... < backend/database/schema.sql`，再执行 `node backend/database/seed.js`）
+- [ ] 已配置 `EMAIL_VERIFY_BASE_URL` 与 `EMAIL_VERIFY_API_KEY`（邮箱验证码注册 / 登录 / 找回密码需要）
 
 ---
 

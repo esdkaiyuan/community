@@ -25,6 +25,15 @@ const env = {
   jwt: {
     secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+  },
+
+  // 统一身份认证服务（邮箱验证码 / 密码登录 / 密码重置）。
+  // 外部 API Key 只放环境变量，绝不写进代码或仓库；缺省时相关接口返回 503，
+  // 不影响本项目原有的账号密码登录。
+  emailVerify: {
+    baseUrl: process.env.EMAIL_VERIFY_BASE_URL || 'https://email.esdkaiyuan.online/api/v1',
+    apiKey: process.env.EMAIL_VERIFY_API_KEY || '',
+    timeoutMs: parseInt(process.env.EMAIL_VERIFY_TIMEOUT_MS || '10000', 10)
   }
 }
 

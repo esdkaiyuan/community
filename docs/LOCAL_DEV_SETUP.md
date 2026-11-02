@@ -27,6 +27,11 @@ DB_PASSWORD=你的MySQL密码
 DB_NAME=community_platform
 JWT_SECRET=本地开发用随机字符串
 JWT_EXPIRES_IN=7d
+
+# 邮箱验证服务（可选；不配则验证码注册/登录/找回密码返回 503）
+EMAIL_VERIFY_BASE_URL=https://email.esdkaiyuan.online/api/v1
+EMAIL_VERIFY_API_KEY=sk-你的外部Key
+EMAIL_VERIFY_TIMEOUT_MS=10000
 ```
 
 `.env` 已被 `.gitignore` 忽略，不要提交。

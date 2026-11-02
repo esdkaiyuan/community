@@ -1,3 +1,4 @@
+const crypto = require('node:crypto')
 const bcrypt = require('bcryptjs')
 const { Op } = require('sequelize')
 const { User, Comment, Project, ProjectParticipant, sequelize } = require('../models')
@@ -5,13 +6,18 @@ const { generateToken } = require('../utils/jwt')
 const { clampInt, MAX_PAGE } = require('../utils/pagination')
 const { stripEmoji, stripControlChars } = require('../utils/textSanitize')
 const ApiError = require('../utils/ApiError')
+const createLogger = require('../utils/logger')
 const activityLogService = require('./activityLog.service')
 const securityEventService = require('./securityEvent.service')
+const emailAuthService = require('./emailAuth.service')
 // 收藏计数单独抽成不依赖 project.service 的模块，否则这里反向 require
 // favorite.service 会形成 user ➜ favorite ➜ project ➜ user 的循环
 const { countVisibleFavorites } = require('./favoriteCount.service')
 
+const log = createLogger('user')
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_CODE_RE = /^\d{6}$/
 
 // 密码边界。**注册与改密必须共用同一对常量与同一个断言函数** —— 分开写迟早漂移
 // （本仓库在用户名上就吃过一次：register 不 trim、updateProfile 会 trim）。
@@ -92,6 +98,71 @@ const normalizeBio = (raw) => {
   return { value, adjusted: value !== original.trim() }
 }
 
+const normalizeEmail = (raw) => {
+  const email = String(raw ?? '').trim()
+  if (!EMAIL_RE.test(email)) throw ApiError.badRequest('邮箱格式不正确')
+  return email
+}
+
+const normalizeEmailCode = (raw) => {
+  const code = String(raw ?? '').trim()
+  if (!EMAIL_CODE_RE.test(code)) throw ApiError.badRequest('请输入 6 位邮箱验证码')
+  return code
+}
+
+const pickUsername = (raw) => {
+  try {
+    return normalizeUsername(raw).value
+  } catch {
+    return ''
+  }
+}
+
+// 外部身份中心只保证邮箱唯一，不保证昵称可用；本地 users.username 有唯一约束，
+// 所以首次用验证码登录、而本地还没有镜像账号时，需要在这里生成一个可用用户名。
+const buildUniqueUsername = async (email, nickname) => {
+  const emailPrefix = String(email || '')
+    .split('@')[0]
+    .replace(/[^A-Za-z0-9_\u4e00-\u9fa5-]/g, '')
+    .slice(0, 20)
+  let base = pickUsername(nickname) || pickUsername(emailPrefix)
+  if (!base) base = `user${crypto.randomBytes(2).toString('hex')}`
+  if (base.length < 2) base = `user${base}`.slice(0, 20)
+  if (base.length > 20) base = base.slice(0, 20)
+
+  let candidate = base
+  for (let i = 0; i < 20; i += 1) {
+    const exists = await User.findOne({ where: { username: candidate }, attributes: ['id'] })
+    if (!exists) return candidate
+    const suffix = crypto.randomBytes(2).toString('hex')
+    candidate = `${base.slice(0, 20 - suffix.length)}${suffix}`
+  }
+  throw ApiError.conflict('无法生成可用用户名，请在个人资料中修改后重试')
+}
+
+// 外部用户 -> 本地镜像。邮箱是两边唯一的稳定关联键；本地行只服务于项目 / 评论外键。
+// 首次用验证码登录时自动建行，密码列写随机哈希（用户之后可以用「忘记密码」设置密码）。
+const findOrCreateLocalUserFromExternal = async ({ email, nickname }, req) => {
+  const cleanEmail = normalizeEmail(email)
+  const existing = await User.findOne({ where: { email: cleanEmail } })
+  if (existing) return { user: existing, created: false }
+
+  const username = await buildUniqueUsername(cleanEmail, nickname)
+  const passwordHash = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10)
+  try {
+    const user = await User.create({ username, email: cleanEmail, password_hash: passwordHash })
+    await activityLogService.logUserRegistered({ userId: user.id, user, req })
+    return { user, created: true }
+  } catch (error) {
+    // 两个并发首登同时建行：唯一键兜底，输的那一方回头读赢家的行
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      const raced = await User.findOne({ where: { email: cleanEmail } })
+      if (raced) return { user: raced, created: false }
+    }
+    throw error
+  }
+}
+
 const toClientUser = (user) => ({
   id: user.id,
   username: user.username,
@@ -100,37 +171,34 @@ const toClientUser = (user) => ({
   bio: user.bio || ''
 })
 
+// 原有账号密码注册的唯一实现；邮箱验证注册成功后也复用它，避免两套校验慢慢漂移。
+const createLocalUser = async ({ username, email, password, req }) => {
+  if (!username || !email || !password) {
+    throw ApiError.badRequest('用户名、邮箱和密码为必填项')
+  }
+  const { value: name, adjusted } = normalizeUsername(username)
+  const cleanEmail = normalizeEmail(email)
+  assertPassword(password)
+
+  const existing = await User.findOne({
+    where: { [Op.or]: [{ username: name }, { email: cleanEmail }] }
+  })
+  if (existing) {
+    const conflict = ApiError.conflict('用户名或邮箱已被注册')
+    conflict.targetUserId = existing.id
+    throw conflict
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10)
+  const user = await User.create({ username: name, email: cleanEmail, password_hash: passwordHash })
+  const token = generateToken(user.id, user.token_version)
+  await activityLogService.logUserRegistered({ userId: user.id, user, req })
+  return { user: toClientUser(user), token, adjusted }
+}
+
 exports.register = async ({ username, email, password }, req) => {
   try {
-    if (!username || !email || !password) {
-      throw ApiError.badRequest('用户名、邮箱和密码为必填项')
-    }
-    // 归一化在长度校验之前：`"🎯🎯"` 这类「看着 2 个字符、剥完全没了」的名字要在这里被拒
-    const { value: name, adjusted } = normalizeUsername(username)
-    if (!EMAIL_RE.test(email)) {
-      throw ApiError.badRequest('邮箱格式不正确')
-    }
-    assertPassword(password)
-
-    const existing = await User.findOne({ where: { [Op.or]: [{ username: name }, { email }] } })
-    if (existing) {
-      const conflict = ApiError.conflict('用户名或邮箱已被注册')
-      // 挂一个非响应字段：安全事件想知道「撞上的是哪个账号」（账号枚举的命中记录），
-      // 但对外文案必须保持模糊（否则注册接口就成了查号器）。响应序列化只取
-      // statusCode / message，多挂一个属性不会漏给用户。
-      conflict.targetUserId = existing.id
-      throw conflict
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10)
-    const user = await User.create({ username: name, email, password_hash: passwordHash })
-    const token = generateToken(user.id, user.token_version)
-
-    // 注册是审计时间线的起点（后面所有日志靠 user_id 串起来），必须留痕。
-    // 写入失败只 warn，绝不把注册带崩 —— 见 activityLog.service 的约定。
-    await activityLogService.logUserRegistered({ userId: user.id, user, req })
-
-    return { user: toClientUser(user), token, adjusted }
+    return await createLocalUser({ username, email, password, req })
   } catch (error) {
     // 走成功的路径在上面 return 掉了，能落到这里的都是「被拒」。
     // 被拒的注册同样要留痕：撞库、账号枚举、批量注册试探全靠这一条线索。
@@ -154,22 +222,157 @@ exports.login = async ({ email, password }, req) => {
     throw ApiError.badRequest('邮箱和密码为必填项')
   }
 
-  const user = await User.findOne({ where: { email } })
-  if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-    // 登录失败是本表最重要的信号：它才是「暴力破解 / 撞库」的直接证据。
-    // 账号存在时记下 target_user_id（「有人在打这个账号」），不存在时只留脱敏标识。
-    // 对外文案刻意不区分这两种情况（防账号枚举），日志里也保持同一口径。
-    await securityEventService.logLoginRejected({
-      account: email,
-      targetUserId: user ? user.id : null,
-      reason: '邮箱或密码错误',
-      req
-    })
-    throw ApiError.unauthorized('邮箱或密码错误')
+  const cleanEmail = String(email).trim()
+  const user = await User.findOne({ where: { email: cleanEmail } })
+
+  // 1) 本地镜像先比一次：命中就直接放行。
+  //    本地镜像的哈希在注册 / 重置 / 改密时都会与外部同步，所以这一步不是「第二套身份」，
+  //    而是缓存 —— 既避免所有用户共用服务器 IP 撞外部登录限流，也保证外部服务抖动时能登录。
+  if (user && (await bcrypt.compare(password, user.password_hash))) {
+    return { user: toClientUser(user), token: generateToken(user.id, user.token_version) }
   }
 
-  const token = generateToken(user.id, user.token_version)
-  return { user: toClientUser(user), token }
+  // 2) 本地没有 / 密码对不上，再问统一身份中心。
+  //    典型场景：用户是在别的接入方改的密码，或本地还没有镜像账号。
+  const external = await emailAuthService.passwordLogin({ email: cleanEmail, password })
+  if (external.ok) {
+    const { user: mirrored, created } = await findOrCreateLocalUserFromExternal(
+      {
+        email: external.user?.email || cleanEmail,
+        nickname: external.user?.nickname
+      },
+      req
+    )
+    // 外部验证通过后把这次密码回写本地镜像，下次本地比较就能命中
+    if (created || !(await bcrypt.compare(password, mirrored.password_hash))) {
+      mirrored.password_hash = await bcrypt.hash(password, 10)
+      await mirrored.save()
+    }
+    return { user: toClientUser(mirrored), token: generateToken(mirrored.id, mirrored.token_version) }
+  }
+
+  // 登录失败是本表最重要的信号：它才是「暴力破解 / 撞库」的直接证据。
+  // 账号存在时记下 target_user_id（「有人在打这个账号」），不存在时只留脱敏标识。
+  // 对外文案刻意不区分这两种情况（防账号枚举），日志里也保持同一口径。
+  await securityEventService.logLoginRejected({
+    account: cleanEmail,
+    targetUserId: user ? user.id : null,
+    reason: '邮箱或密码错误',
+    req
+  })
+  // 对外统一 401：外部服务不可用时 passwordLogin 已经记了 warn 日志，运维能在服务端定位；
+  // 不能把 503 抛给用户 —— 登录失败本来就该是 401，安全事件也要按 auth.login.rejected 归类。
+  throw ApiError.unauthorized('邮箱或密码错误')
+}
+
+// 发送邮箱验证码（注册 / 验证码登录 / 找回密码共用）
+exports.sendEmailCode = async ({ email }) => {
+  const cleanEmail = normalizeEmail(email)
+  await emailAuthService.sendCode(cleanEmail)
+  return { sent: true }
+}
+
+// 邮箱验证码注册：先在外部身份中心完成「验证码 + 密码」注册，再建本地镜像。
+exports.registerWithEmailCode = async ({ username, email, password, code }, req) => {
+  const cleanEmail = normalizeEmail(email)
+  const cleanCode = normalizeEmailCode(code)
+  // 先做本地校验，避免把无效资料带到外部、白白消耗验证码
+  const { value: name, adjusted } = normalizeUsername(username)
+  assertPassword(password)
+
+  const existing = await User.findOne({
+    where: { [Op.or]: [{ username: name }, { email: cleanEmail }] }
+  })
+  if (existing) {
+    const conflict = ApiError.conflict('用户名或邮箱已被注册')
+    conflict.targetUserId = existing.id
+    throw conflict
+  }
+
+  try {
+    await emailAuthService.register({ email: cleanEmail, code: cleanCode, password, nickname: name })
+  } catch (error) {
+    // 外部已有同邮箱账号时允许幂等注册：用同一密码登录验证后，继续补本地镜像。
+    const alreadyRegistered = /已注册|已存在|already/i.test(error.message || '')
+    if (!alreadyRegistered) throw error
+    const external = await emailAuthService.passwordLogin({ email: cleanEmail, password })
+    if (!external.ok) {
+      throw ApiError.conflict('该邮箱已在邮箱服务注册，请直接登录或使用验证码登录')
+    }
+  }
+
+  try {
+    const result = await createLocalUser({ username: name, email: cleanEmail, password, req })
+    // createLocalUser 收到的已经是归一化后的名字，adjusted 会是 false；
+    // 这里把「原始输入确实被改过」的事实补回去，前端才能提示用户。
+    return { ...result, adjusted: result.adjusted || adjusted }
+  } catch (error) {
+    if (error.statusCode >= 400 && error.statusCode < 500) {
+      await securityEventService.logRegisterRejected({
+        account: name,
+        targetUserId: error.targetUserId,
+        reason: error.message,
+        req
+      })
+    }
+    throw error
+  }
+}
+
+// 邮箱验证码登录：验证成功后若本地还没有镜像账号，自动建一行（密码列写随机哈希）。
+exports.loginWithEmailCode = async ({ email, code }, req) => {
+  const cleanEmail = normalizeEmail(email)
+  const cleanCode = normalizeEmailCode(code)
+
+  let verified
+  try {
+    verified = await emailAuthService.verifyCode({ email: cleanEmail, code: cleanCode })
+  } catch (error) {
+    if (error.statusCode === 400) {
+      await securityEventService.logLoginRejected({
+        account: cleanEmail,
+        reason: '邮箱验证码无效',
+        req
+      })
+    }
+    throw error
+  }
+
+  const profile = verified.sessionToken
+    ? await emailAuthService.getProfile(verified.sessionToken)
+    : null
+  const { user } = await findOrCreateLocalUserFromExternal(
+    {
+      email: verified.user?.email || profile?.email || cleanEmail,
+      nickname: profile?.nickname || verified.user?.nickname
+    },
+    req
+  )
+  return { user: toClientUser(user), token: generateToken(user.id, user.token_version) }
+}
+
+// 忘记密码：外部身份中心重置密码并吊销其会话；本地镜像同步新哈希并 +1 会话版本，
+// 这样本地签发的旧令牌也会立即失效。
+exports.resetPasswordWithEmailCode = async ({ email, code, password, confirmPassword }, req) => {
+  const cleanEmail = normalizeEmail(email)
+  const cleanCode = normalizeEmailCode(code)
+  const next = assertPassword(password)
+  if (next !== confirmPassword) throw ApiError.badRequest('两次输入的密码不一致')
+
+  await emailAuthService.resetPassword({ email: cleanEmail, code: cleanCode, password: next })
+
+  const user = await User.findOne({ where: { email: cleanEmail } })
+  if (user) {
+    await User.update(
+      {
+        password_hash: await bcrypt.hash(next, 10),
+        token_version: sequelize.literal('token_version + 1')
+      },
+      { where: { id: user.id } }
+    )
+    await activityLogService.logUserPasswordChanged({ userId: user.id, req })
+  }
+  return { reset: true }
 }
 
 exports.getProfile = async (userId) => {
@@ -270,6 +473,22 @@ exports.changePassword = async (userId, { oldPassword, newPassword }, req) => {
     },
     { where: { id: userId } }
   )
+
+  // 外部身份中心也改一次，避免两边密码分叉。
+  // ⚠️ 失败只记日志，绝不回滚本地改密：外部服务抖动不该把用户锁在门外。
+  // 历史账号可能还没进外部中心，passwordLogin 返回 invalid 属于正常情况。
+  try {
+    const sync = await emailAuthService.changePassword({
+      email: user.email,
+      oldPassword: current,
+      newPassword: next
+    })
+    if (!sync.ok && sync.reason === 'failed') {
+      log.warn('外部密码同步失败，本地改密已生效:', user.email)
+    }
+  } catch (error) {
+    log.warn('外部密码同步异常，本地改密已生效:', error.message)
+  }
 
   const fresh = await User.findByPk(userId, { attributes: ['id', 'token_version'] })
 

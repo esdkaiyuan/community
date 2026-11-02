@@ -38,4 +38,14 @@ const passwordLimiter = rateLimit({
   message: { code: 429, message: '尝试次数过多，请 15 分钟后再试' }
 })
 
-module.exports = { apiLimiter, authLimiter, uploadLimiter, passwordLimiter }
+// 邮箱验证码发送：外部服务本身有「同一邮箱 60 秒一次」的限制，
+// 这里再加一层按 IP 的闸门，避免脚本换邮箱地址刷爆邮件额度。
+const emailCodeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { code: 429, message: '验证码发送过于频繁，请稍后再试' }
+})
+
+module.exports = { apiLimiter, authLimiter, uploadLimiter, passwordLimiter, emailCodeLimiter }

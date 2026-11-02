@@ -1,6 +1,6 @@
 # verify 套件 CI —— scripts/run_verify_suite.py 的一键云端版
 #
-# 本仓库 40 个验证脚本（39 个 verify_*.py + 1 个全站巡检）在本地是「红证→修复→绿」纪律的
+# 本仓库 41 个验证脚本（40 个 verify_*.py + 1 个全站巡检）在本地是「红证→修复→绿」纪律的
 # 执行器；此 workflow 把它们搬进 GitHub Actions：全新 ubuntu + 全新 MySQL，
 # 任何「本机能过、干净环境过不了」的隐式依赖都会在这里现形。
 #
@@ -27,7 +27,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 90 # 40 个脚本顺序跑（Playwright 占大头），本地实测全量约 40-60 分钟
+    timeout-minutes: 90 # 41 个脚本顺序跑（Playwright 占大头），本地实测全量约 40-60 分钟
 
     services:
       mysql:
@@ -94,7 +94,7 @@ jobs:
           mysql -h 127.0.0.1 -uco_creation_esdk -pci_verify_only co_creation_esdk < backend/database/schema.sql
           node backend/database/seed.js
 
-      - name: 跑验证套件（40 个脚本顺序执行）
+      - name: 跑验证套件（41 个脚本顺序执行）
         run: python scripts/run_verify_suite.py
 
       - name: 上传失败现场（仅失败时）

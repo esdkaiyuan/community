@@ -24,6 +24,10 @@ CREATE DATABASE community_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 DB_PASSWORD=你的MySQL密码
 ```
 
+邮箱验证码注册 / 登录 / 找回密码还需要配置统一身份认证服务的 Key，
+见下方「[邮箱验证与统一身份认证](#邮箱验证与统一身份认证)」；不配置时这三类入口返回 503，
+原有账号密码登录不受影响。
+
 ### 2. 初始化数据库
 
 在 MySQL 中执行建库脚本，再跑种子脚本：
@@ -102,6 +106,7 @@ npm run dev
 - [x] 安全事件（登录失败 / 注册被拒 / 令牌无效留痕，账号脱敏 + 按来源聚合，绝不记密码）
 - [x] 账号安全页（`/security`）—— 把「针对我的失败尝试」「我的操作」与「登录密码」合在一页，含类型筛选与聚合次数
 - [x] 自助修改登录密码（`PUT /users/password`）—— 改密后**此前签发的所有令牌立即失效**（其他设备需重新登录），当前设备换发新令牌不受影响
+- [x] 邮箱验证码注册 / 验证码登录 / 忘记密码（统一身份认证服务，见下方专节）
 
 ### 待完善的功能
 
@@ -418,6 +423,46 @@ bcrypt 哈希 → 把 `users.token_version` **原子 +1** → 写一条 `user.pa
 登录页共用，后端 `PASSWORD_MIN_LENGTH` / `PASSWORD_MAX_LENGTH` 与之逐字一致，
 `verify_password_change.py` 解析三处源码直接比对（含输入框的 `maxlength`），不靠人工同步。
 
+## 邮箱验证与统一身份认证
+
+用户身份接入了统一身份认证服务（`https://email.esdkaiyuan.online/api/v1`）：
+注册、密码登录、验证码登录、忘记密码都以它为准。**外部服务是用户身份的唯一真源**；
+本地 `users` 表只作为项目 / 评论等业务外键所需的镜像，按 `email` 与外部用户一一对应，
+不新增第二套身份体系。
+
+| 场景 | 本项目接口 | 外部接口 | 说明 |
+| --- | --- | --- | --- |
+| 发送验证码 | `POST /api/users/email/send-code` | `POST /send-code` | 同一邮箱 60 秒一次；本项目另加 10 次 / 15 分钟按 IP 限流 |
+| 验证码注册 | `POST /api/users/register/email` | `POST /auth/register` | 用户名 + 邮箱 + 密码 + 6 位验证码；成功后建本地镜像 |
+| 验证码登录 | `POST /api/users/login/email` | `POST /verify-code` | 首次验证码登录会自动建本地镜像（密码列为随机哈希） |
+| 密码登录 | `POST /api/users/login` | `POST /auth/login` | 外部优先；外部不可用或历史账号未进外部时回退本地 bcrypt |
+| 忘记密码 | `POST /api/users/password/reset` | `POST /auth/password/reset` | 重置外部密码并吊销其会话；本地同步新哈希并 `token_version + 1` |
+| 已登录改密 | `PUT /api/users/password` | `POST /auth/password/change` | 本地改密成功后尽力同步外部；同步失败只记日志，不回滚本地 |
+
+配置只放环境变量（`.env` 已被 gitignore）：
+
+```env
+EMAIL_VERIFY_BASE_URL=https://email.esdkaiyuan.online/api/v1
+EMAIL_VERIFY_API_KEY=sk-...        # 只授予 auth、verify 权限，不要提交
+EMAIL_VERIFY_TIMEOUT_MS=10000
+```
+
+密钥纪律：管理令牌只用于一次性创建外部 Key，**不落盘、不进代码**；外部 Key 只在
+`backend/.env` 中，异常与日志都不会打印它。未配置 Key 时，验证码 / 注册 / 找回密码接口
+返回 `503`，原账号密码登录不受影响。
+
+本地镜像的密码哈希在注册、重置、已登录改密时与外部同步；如果用户**在其他接入方**
+直接改了密码，本地缓存可能滞后一次 —— 走一次验证码登录或找回密码即可重新对齐。
+
+错误映射：验证码错误 / 过期 → `400`；发送或尝试过频 → `429`（带 `retry_after` 秒数）；
+外部 Key 失效或服务 5xx → `503`（不把服务端细节甩给用户）。
+
+本地可执行断言（不依赖真实邮箱）：
+
+```bash
+python scripts/verify_email_auth.py
+```
+
 ## 安全事件（被拒的尝试）
 
 审计日志只覆盖**做成了什么**。可攻击者留下的痕迹恰恰全在**没做成**的那一侧：撞库、账号枚举、
@@ -553,13 +598,13 @@ python scripts/audit_backend_api.py
 
 ## 验证套件与 CI
 
-40 个脚本不用一个个手敲：`scripts/run_verify_suite.py` 顺序跑全量（39 个 `verify_*.py` + `audit_frontend_ui.py`）并汇总，
+41 个脚本不用一个个手敲：`scripts/run_verify_suite.py` 顺序跑全量（40 个 `verify_*.py` + `audit_frontend_ui.py`）并汇总，
 任一失败 exit 1。脚本间自动重启后端清限流（仅当后端由套件自己拉起；复用本机
 现役服务时不动它）。解释器注意：脚本继承**启动套件的 python**，它必须装有
 playwright（本地用带 playwright 的完整路径解释器启动，或设 `VERIFY_PYTHON`）。
 
 ```bash
-python scripts/run_verify_suite.py --list              # 40 个脚本清单
+python scripts/run_verify_suite.py --list              # 41 个脚本清单
 python scripts/run_verify_suite.py --only verify_tags  # 定向跑（.py 可省）
 python scripts/run_verify_suite.py                     # 全量 + 汇总
 ```
@@ -621,6 +666,7 @@ MySQL 8.4 service → 建库种子 → `run_verify_suite.py` 全量 → 失败�
 - Sequelize
 - JWT
 - bcryptjs
+- 统一身份认证服务（邮箱验证码 / 密码登录 / 密码重置）
 - multer（封面图片上传，含文件魔数校验）
 
 ## 项目结构

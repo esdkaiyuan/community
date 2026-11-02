@@ -47,6 +47,9 @@ def main():
         page.goto(f"{FRONT}/register", wait_until="networkidle")
         page.fill("#username", "提示验证")
         page.fill("#email", email)
+        # 注册页现在要求邮箱验证码；这里只验证「本地已存在邮箱」的 409 文案，
+        # 后端会在调用外部服务前先查重，所以填一个格式合法的假验证码即可。
+        page.fill("#code", "123456")
         page.fill("#password", PASSWORD)
         page.fill("#confirm", PASSWORD)
         page.click("button[type=submit]")
@@ -86,7 +89,7 @@ def main():
 
         # ---------- B. 文案分工：5xx 与断网 ----------
         page.route(
-            "**/api/users/register",
+            "**/api/users/register/email",
             lambda r: r.fulfill(
                 status=500,
                 content_type="application/json",
@@ -98,18 +101,18 @@ def main():
         text = page.locator("[data-test='toast-error']").first.inner_text()
         check("5xx 换成用户能懂的文案", "服务暂时不可用" in text)
         check("5xx 不把后端原始 message 甩给用户", "Internal Server Error" not in text)
-        page.unroute("**/api/users/register")
+        page.unroute("**/api/users/register/email")
 
         # 关闭后再测断网，避免同文案去重干扰
         page.locator("[aria-label='关闭提示']").first.click()
         page.wait_for_selector("[data-test='toast-error']", state="detached", timeout=3000)
 
-        page.route("**/api/users/register", lambda r: r.abort())
+        page.route("**/api/users/register/email", lambda r: r.abort())
         page.click("button[type=submit]")
         page.wait_for_selector("[data-test='toast-error']", timeout=6000)
         text = page.locator("[data-test='toast-error']").first.inner_text()
         check("断网给出「检查网络」而不是「服务器错误」", "网络连接失败" in text)
-        page.unroute("**/api/users/register")
+        page.unroute("**/api/users/register/email")
 
         # ---------- B2. 长文案：换行而不是竖排 ----------
         long_msg = (
@@ -117,7 +120,7 @@ def main():
             "如果忘记密码，请先用另一个邮箱注册，或联系共创社区的管理员帮你找回。"
         )
         page.route(
-            "**/api/users/register",
+            "**/api/users/register/email",
             lambda r: r.fulfill(
                 status=400,
                 content_type="application/json",
@@ -130,7 +133,7 @@ def main():
         lbox = page.locator("[data-test='toast-error']").first.bounding_box()
         check(f"长文案换行而不是竖排（宽 {lbox['width']:.0f} 高 {lbox['height']:.0f}）", lbox["width"] > lbox["height"])
         check("长文案仍不超出视口", lbox["x"] + lbox["width"] <= 1360)
-        page.unroute("**/api/users/register")
+        page.unroute("**/api/users/register/email")
         page.locator("[aria-label='关闭提示']").first.click()
         page.wait_for_timeout(500)
 

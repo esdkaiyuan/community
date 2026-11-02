@@ -2,11 +2,18 @@ const express = require('express')
 const router = express.Router()
 const userController = require('../controllers/user.controller')
 const { auth } = require('../middleware/auth')
-const { authLimiter, passwordLimiter } = require('../middleware/rateLimiter')
+const { authLimiter, passwordLimiter, emailCodeLimiter } = require('../middleware/rateLimiter')
 
 // 公开路由（注册/登录有更严格的限流）
 router.post('/register', authLimiter, userController.register)
 router.post('/login', authLimiter, userController.login)
+
+// 统一身份认证服务：邮箱验证码发送 / 验证码注册 / 验证码登录 / 忘记密码
+// 这四个入口都不需要登录态；验证码发送单独限流，避免被脚本刷外部邮件额度。
+router.post('/email/send-code', emailCodeLimiter, userController.sendEmailCode)
+router.post('/register/email', authLimiter, userController.registerWithEmailCode)
+router.post('/login/email', authLimiter, userController.loginWithEmailCode)
+router.post('/password/reset', passwordLimiter, userController.resetPasswordWithEmailCode)
 
 // 需要认证的路由
 router.get('/me', auth, userController.getProfile)

@@ -105,6 +105,7 @@ def main():
             ("/", "首页", False, "audit-home-light.png"),
             ("/login", "登录页", False, None),
             ("/register", "注册页", False, None),
+            ("/forgot-password", "找回密码页", False, None),
             (f"/project/{pid}", "项目详情", False, "audit-detail-light.png"),
             ("/project/99999999", "不存在的项目", True, None),
             (f"/user/{owner['uid']}", "共创者主页", False, "audit-user-light.png"),

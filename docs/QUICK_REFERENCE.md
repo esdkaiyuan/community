@@ -19,6 +19,9 @@ DB_HOST=localhost
 DB_USER=co_creation_esdk
 DB_PASSWORD=<见 backend/.env，切勿写入仓库>
 DB_NAME=co_creation_esdk
+JWT_SECRET=<见 backend/.env，切勿写入仓库>
+EMAIL_VERIFY_BASE_URL=https://email.esdkaiyuan.online/api/v1
+EMAIL_VERIFY_API_KEY=<见 backend/.env，切勿写入仓库>
 ```
 
 ### 前端

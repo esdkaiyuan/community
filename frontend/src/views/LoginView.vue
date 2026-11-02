@@ -22,7 +22,16 @@
           <router-link to="/register" class="font-medium text-pine hover:underline">立即注册</router-link>
         </p>
 
-        <form class="mt-8 space-y-5" @submit.prevent="handleSubmit">
+        <!-- 密码登录 / 邮箱验证码登录：两个平级入口，用分段控件切换 -->
+        <AppSegmented
+          :model-value="mode"
+          :options="MODES"
+          aria-label="选择登录方式"
+          class="mt-6"
+          @update:model-value="switchMode"
+        />
+
+        <form class="mt-5 space-y-5" @submit.prevent="handleSubmit">
           <div>
             <label class="form-label" for="email">邮箱</label>
             <input
@@ -36,8 +45,13 @@
             <p v-if="errors.email" class="form-error">{{ errors.email }}</p>
           </div>
 
-          <div>
-            <label class="form-label" for="password">密码</label>
+          <div v-if="mode === 'password'">
+            <div class="flex items-center justify-between">
+              <label class="form-label" for="password">密码</label>
+              <router-link to="/forgot-password" class="text-caption1 text-pine hover:underline">
+                忘记密码？
+              </router-link>
+            </div>
             <div class="relative">
               <input
                 id="password"
@@ -67,12 +81,38 @@
             <p v-if="errors.password" class="form-error">{{ errors.password }}</p>
           </div>
 
-          <button type="submit" class="btn-primary w-full !py-3" :disabled="submitting">
+          <div v-else>
+            <label class="form-label" for="code">邮箱验证码</label>
+            <div class="flex gap-2">
+              <input
+                id="code"
+                v-model.trim="form.code"
+                type="text"
+                class="input"
+                placeholder="6 位数字验证码"
+                inputmode="numeric"
+                maxlength="6"
+                autocomplete="one-time-code"
+              />
+              <button
+                type="button"
+                class="btn-secondary shrink-0 whitespace-nowrap !px-3 !py-2.5 text-footnote"
+                :disabled="!canSend"
+                @click="handleSendCode"
+              >
+                {{ buttonLabel }}
+              </button>
+            </div>
+            <p v-if="errors.code" class="form-error">{{ errors.code }}</p>
+            <p v-else class="mt-1.5 text-caption1 text-ink-dim">验证码 5 分钟内有效；未收到请检查垃圾箱。</p>
+          </div>
+
+          <button type="submit" class="btn-primary w-full !py-3" :disabled="submitting || sending">
             <svg v-if="submitting" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" class="opacity-25" />
               <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
             </svg>
-            {{ submitting ? '登录中…' : '登 录' }}
+            {{ submitting ? '登录中…' : mode === 'password' ? '登 录' : '验证码登录' }}
           </button>
         </form>
       </div>
@@ -85,38 +125,71 @@ import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { toast } from '@/composables/useToast'
+import { useEmailCode } from '@/composables/useEmailCode'
+import { isValidEmail } from '@/utils/email'
 import { PASSWORD_MIN_LENGTH } from '@/utils/password'
+import AppSegmented from '@/components/AppSegmented.vue'
+
+const MODES = [
+  { label: '密码登录', value: 'password' },
+  { label: '验证码登录', value: 'code' }
+]
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const form = reactive({ email: '', password: '' })
-const errors = reactive({ email: '', password: '' })
+const mode = ref('password')
+const form = reactive({ email: '', password: '', code: '' })
+const errors = reactive({ email: '', password: '', code: '' })
 const submitting = ref(false)
 const showPassword = ref(false)
+const { sending, canSend, buttonLabel, send } = useEmailCode()
+
+const switchMode = (value) => {
+  mode.value = value
+  errors.password = ''
+  errors.code = ''
+}
 
 const validate = () => {
-  errors.email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? '' : '请输入有效的邮箱地址'
-  // 下界来自 utils/password.js：与注册页 / 改密页同一个数，别再硬编码一个 6
-  errors.password = form.password.length >= PASSWORD_MIN_LENGTH ? '' : `密码至少 ${PASSWORD_MIN_LENGTH} 位`
-  return !errors.email && !errors.password
+  errors.email = isValidEmail(form.email) ? '' : '请输入有效的邮箱地址'
+  if (mode.value === 'password') {
+    errors.password = form.password.length >= PASSWORD_MIN_LENGTH ? '' : `密码至少 ${PASSWORD_MIN_LENGTH} 位`
+  } else {
+    errors.code = /^\d{6}$/.test(form.code) ? '' : '请输入 6 位邮箱验证码'
+  }
+  return !errors.email && !errors.password && !errors.code
+}
+
+const handleSendCode = async () => {
+  errors.email = ''
+  try {
+    await send(form.email)
+  } catch (error) {
+    errors.email = error.response?.data?.message || error.message || '验证码发送失败，请稍后重试'
+  }
 }
 
 const handleSubmit = async () => {
-  if (!validate() || submitting.value) return
+  if (!validate() || submitting.value || sending.value) return
   submitting.value = true
   try {
-    await userStore.login({ email: form.email, password: form.password })
+    if (mode.value === 'password') {
+      await userStore.login({ email: form.email, password: form.password })
+    } else {
+      await userStore.loginWithEmailCode({ email: form.email, code: form.code })
+    }
     toast(`欢迎回来，${userStore.username}！`)
     router.push(route.query.redirect || '/')
-  } catch (e) {
+  } catch (error) {
     // 登录失败就该就地红字（拦截器对「没带 token 的 401」不弹全局提示），
     // 否则点了登录页面毫无反应，用户只会以为是按钮坏了
-    errors.password = e.response?.data?.message || '登录失败，请稍后重试'
+    const message = error.response?.data?.message || '登录失败，请稍后重试'
+    if (mode.value === 'password') errors.password = message
+    else errors.code = message
   } finally {
     submitting.value = false
   }
 }
 </script>
-

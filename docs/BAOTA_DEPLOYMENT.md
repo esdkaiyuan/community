@@ -89,6 +89,9 @@ cd community
    DB_NAME=co_creation_esdk
    JWT_SECRET=<随机字符串，见 backend/.env，切勿写入仓库>
    JWT_EXPIRES_IN=7d
+   EMAIL_VERIFY_BASE_URL=https://email.esdkaiyuan.online/api/v1
+   EMAIL_VERIFY_API_KEY=<见 backend/.env，切勿写入仓库>
+   EMAIL_VERIFY_TIMEOUT_MS=10000
    ```
 
 3. **使用 PM2 启动后端服务**

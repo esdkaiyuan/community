@@ -34,6 +34,28 @@ export const useUserStore = defineStore('user', {
       return res
     },
 
+    // 邮箱验证码注册：外部身份中心是权威来源，后端验证成功后会同时建本地镜像
+    async registerWithEmailCode(payload) {
+      const res = await userApi.registerWithEmailCode(payload)
+      this.setSession(res.data)
+      return res
+    },
+
+    // 邮箱验证码登录
+    async loginWithEmailCode(payload) {
+      const res = await userApi.loginWithEmailCode(payload)
+      this.setSession(res.data)
+      return res
+    },
+
+    sendEmailCode(payload) {
+      return userApi.sendEmailCode(payload)
+    },
+
+    resetPasswordWithEmailCode(payload) {
+      return userApi.resetPasswordWithEmailCode(payload)
+    },
+
     // 刷新用户信息（打开站点时校验 token 是否仍有效）
     async fetchMe() {
       const res = await userApi.getMe()

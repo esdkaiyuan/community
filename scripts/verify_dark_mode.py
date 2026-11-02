@@ -113,6 +113,7 @@ def main():
             ("/", "首页"),
             ("/login", "登录页"),
             ("/register", "注册页"),
+            ("/forgot-password", "找回密码页"),
             (f"/project/{pid}", "项目详情"),
             ("/profile", "个人中心"),
             ("/notifications", "通知"),
