@@ -1,316 +1,176 @@
 # 共创社区平台 - 项目总结
 
+> 成稿于 2026-01-03，**2026-11-02 按当前代码库整体校准**。
+> 早期设计稿与实施计划保留在 `docs/superpowers/`，仅作历史存档，不代表当前实现。
+
 ## 项目概述
 
-共创社区是一个面向项目协作的 Web 平台，用户可以在平台发布项目、浏览他人项目、参与协作。平台采用现代化的设计风格，以卡片形式展示项目，提供清晰的分类导航和便捷的搜索功能。
+共创社区是一个面向项目协作的 Web 平台：用户可以发布项目、浏览与搜索他人项目、点赞 / 收藏 / 参与协作，并在项目下评论、回复与 @ 提及。平台采用前后端分离架构，前端以卡片流展示项目，后端提供 REST API。
 
 ## 技术架构
 
-### 前端技术栈
-- **框架**: Vue 3 (Composition API)
-- **UI 组件库**: Element Plus
-- **构建工具**: Vite
-- **状态管理**: Pinia
-- **路由**: Vue Router 4
-- **HTTP 客户端**: Axios
-- **样式**: SCSS
+### 前端
 
-### 后端技术栈
-- **运行环境**: Node.js
-- **Web 框架**: Express
-- **数据库**: MySQL
-- **ORM**: Sequelize
-- **认证**: JWT (JSON Web Token)
-- **密码加密**: bcryptjs
+- Vue 3（Composition API + `<script setup>`）
+- Vite 5
+- Tailwind CSS 3.4 + CSS 变量设计令牌（Apple HIG 风格，支持深浅色）
+- Pinia
+- Vue Router 4
+- Axios
 
-## 已完成的功能模块
+### 后端
 
-### ✅ 1. 前端核心功能
+- Node.js
+- Express 4
+- MySQL 8
+- Sequelize 6
+- JWT（`jsonwebtoken`）
+- bcryptjs
+- multer（封面上传，含文件魔数校验）
+- helmet、express-rate-limit
 
-#### 1.1 首页（HomeView）
-- [x] 顶部导航栏（Header 组件）
-  - Logo 点击返回首页
-  - 搜索框支持关键词搜索
-  - 登录/注册按钮（未登录时）
-  - 用户下拉菜单（已登录时）
-    - 发布项目
-    - 退出登录
-- [x] 左侧边栏（Sidebar 组件）
-  - 分类列表展示
-  - 分类筛选功能
-  - 分类项目数量显示
-- [x] 项目网格布局（ProjectGrid 组件）
-  - 响应式网格布局
-  - 分页功能
-  - 加载状态
-  - 空状态提示
-- [x] 项目卡片（ProjectCard 组件）
-  - 项目封面图片
-  - 项目标题和描述
-  - 分类标签
-  - 参与人数统计
-  - 点赞数统计
-  - 创建者信息
-  - 相对时间显示
+### 运行端口
 
-#### 1.2 用户认证页面
-- [x] 登录页面（LoginView）
-  - 邮箱和密码验证
-  - 表单验证规则
-  - 登录状态管理
-  - 跳转到注册页面
-- [x] 注册页面（RegisterView）
-  - 用户名、邮箱、密码输入
-  - 密码确认验证
-  - 表单验证规则
-  - 跳转到登录页面
+- 后端：`http://localhost:5000`
+- 前端：`http://localhost:3001`（Vite 把 `/api` 与 `/uploads` 代理到后端）
 
-#### 1.3 项目管理页面
-- [x] 发布项目页面（PublishProjectView）
-  - 项目名称输入
-  - 项目描述输入
-  - 分类选择
-  - 表单验证
-  - 发布成功跳转
-- [x] 项目详情页（ProjectDetailView）
-  - 项目基本信息展示
-  - 加载状态
-  - 空状态处理
+## 当前功能
 
-### ✅ 2. 后端核心功能
+### 前端
 
-#### 2.1 用户模块
-- [x] 用户注册 API
-  - POST `/api/users/register`
-  - 用户名唯一性检查
-  - 邮箱唯一性检查
-  - 密码加密存储
-- [x] 用户登录 API
-  - POST `/api/users/login`
-  - 邮箱密码验证
-  - JWT Token 生成
-- [x] 获取当前用户信息
-  - GET `/api/users/me`
-  - JWT 中间件保护
+- **首页**：项目卡片流、分类筛选、关键词搜索、热门标签、编辑推荐筛选
+- **排序**：最新 / 最热 / 参与最多 / 本周热门
+- **项目卡片**：封面、标题、摘要、标签、参与数、点赞数、就地收藏
+- **发布 / 编辑项目**：封面点击或拖拽上传、本机压缩、可拖动构图、标签、仓库地址、截止日期
+- **项目详情**：浏览量、发布日期、点赞 / 收藏 / 参与、共创者名单、相关推荐
+- **评论**：评论与回复树、评论点赞、深链定位、@ 提及高亮与补全
+- **评论富文本**：仅支持粗体、行内代码、围栏代码块，纯插值渲染（零 `v-html`）
+- **用户认证**：登录 / 注册、登录态持久化
+- **个人中心**：我的发布、我的参与、我的收藏、我的评论、资料编辑、改密
+- **他人主页**：TA 发布的 / TA 参与的，可下钻到广场筛选视图
+- **通知中心**：类型筛选、已读筛选、单条 / 批量标记已读、评论深链
+- **账号安全页**：针对我的失败尝试、我的操作记录、修改登录密码
+- **全局体验**：统一错误提示、表单内联校验、自定义确认框、深色模式、响应式与 44px 触控热区
 
-#### 2.2 项目模块
-- [x] 获取项目列表
-  - GET `/api/projects`
-  - 支持分页
-  - 支持分类筛选
-  - 支持关键词搜索
-- [x] 获取项目详情
-  - GET `/api/projects/:id`
-- [x] 创建项目
-  - POST `/api/projects`
-  - JWT 认证保护
-- [x] 更新项目
-  - PUT `/api/projects/:id`
-  - JWT 认证保护
-- [x] 删除项目
-  - DELETE `/api/projects/:id`
-  - JWT 认证保护
-- [x] 点赞项目
-  - POST `/api/projects/:id/like`
-  - JWT 认证保护
-- [x] 取消点赞
-  - DELETE `/api/projects/:id/like`
-  - JWT 认证保护
-- [x] 参与项目
-  - POST `/api/projects/:id/participate`
-  - JWT 认证保护
-- [x] 取消参与
-  - DELETE `/api/projects/:id/participate`
-  - JWT 认证保护
+### 后端
 
-#### 2.3 分类模块
-- [x] 获取所有分类
-  - GET `/api/categories`
-  - 按排序字段排序
-- [x] 根据 ID 获取分类
-  - GET `/api/categories/:id`
+- **认证**：JWT；`token_version` 支持改密后旧令牌全部作废
+- **用户**：注册 / 登录 / 资料 / 改密 / 我的评论 / 我的统计 / 我的收藏 / 公开主页
+- **项目**：列表、详情、创建、编辑、软删除；分类、标签、搜索、排序、热门标签、相关推荐
+- **互动**：点赞、收藏、参与（含创建者退出保护）
+- **评论**：发表 / 删除、回复、评论点赞、深链定位
+- **通知**：参与 / 评论 / 回复 / 提及四类实际触发点
+- **上传**：封面类型 / 体积 / 魔数三重校验，静态直出，孤儿文件定时清扫
+- **审计**：操作日志（发布 / 编辑 / 删除 / 评论 / 注册 / 改资料 / 改密）
+- **安全**：安全事件（登录失败 / 注册被拒 / 令牌无效）脱敏并按来源聚合
+- **健壮性**：统一响应 `{code, message, data?}`、分页与排序参数收口、全局限流与敏感接口独立限流
+- **运维**：健康检查、优雅停机、PM2 定时任务（上传清扫 / 日志留存清理）
 
-### ✅ 3. 数据模型
+## 数据模型
 
-#### 3.1 User（用户表）
-- id, username, email, password, avatar, created_at, updated_at
+建库脚本唯一来源：`backend/database/schema.sql`，共 12 张表：
 
-#### 3.2 Category（分类表）
-- id, name, description, icon, sort_order, created_at, updated_at
+| 表 | 用途 |
+| --- | --- |
+| `users` | 用户（bcrypt 哈希、`token_version` 会话版本） |
+| `categories` | 分类（8 条种子由 `seed.js` 幂等写入） |
+| `projects` | 项目（软删除，标签存 `tags` JSON 数组） |
+| `project_comments` | 评论与回复（`parent_id` 自引用） |
+| `comment_likes` | 评论点赞 |
+| `notifications` | 站内通知 |
+| `project_favorites` | 项目收藏 |
+| `project_likes` | 项目点赞 |
+| `project_participants` | 项目参与者 |
+| `project_views` | 登录用户浏览去重 |
+| `activity_logs` | 操作日志（刻意不挂外键） |
+| `security_events` | 安全事件（按指纹聚合） |
 
-#### 3.3 Project（项目表）
-- id, title, description, cover_image, category_id, creator_id, like_count, participant_count, status, created_at, updated_at
+标签没有独立表，唯一真源是 `projects.tags`。
 
-#### 3.4 Tag（标签表）
-- id, name, created_at, updated_at
+## 前端状态管理与路由
 
-#### 3.5 ProjectTag（项目标签关联表）
-- project_id, tag_id
+### 状态管理
 
-#### 3.6 ProjectParticipant（项目参与者表）
-- project_id, user_id, joined_at
+当前只有 `store/user.js` 一个 Pinia store，负责 token、用户信息、登录 / 注册 / 刷新 / 登出 / 换发令牌。项目列表、分类、通知等数据由各页面直接通过 `api/` 层获取，没有额外的全局 store。
 
-### ✅ 4. 状态管理（Pinia）
+### 路由
 
-#### 4.1 useUserStore
-- token, userInfo, isLoggedIn
-- login(), register(), fetchUserInfo(), logout()
+| 路径 | 页面 | 说明 |
+| --- | --- | --- |
+| `/` | HomeView | 首页 / 广场 |
+| `/login` | LoginView | 登录 |
+| `/register` | RegisterView | 注册 |
+| `/project/:id` | ProjectDetailView | 项目详情 |
+| `/publish` | PublishView | 发布项目（需登录） |
+| `/project/:id/edit` | ProjectEditView | 编辑项目（需登录） |
+| `/user/:id` | UserProfileView | 共创者主页 |
+| `/profile` | ProfileView | 个人中心（需登录） |
+| `/notifications` | NotificationsView | 通知中心（需登录） |
+| `/security` | SecurityView | 账号安全（需登录） |
+| `/:pathMatch(.*)*` | NotFoundView | 404 |
 
-#### 4.2 useProjectStore
-- projects, currentProject, loading, total
-- fetchProjects(), fetchProjectById(), createNewProject()
-- likeProjectAction(), unlikeProjectAction()
-- participateProjectAction(), cancelParticipateAction()
+## 项目结构
 
-#### 4.3 useCategoryStore
-- categories, loading
-- fetchCategories()
+```
+community/
+├── frontend/          # Vue 3 前端（:3001）
+│   ├── src/api/       # 接口封装
+│   ├── src/components/# 公共组件
+│   ├── src/views/     # 页面视图
+│   ├── src/composables/ # useToast / useConfirm 等
+│   ├── src/router/    # 路由
+│   ├── src/store/     # Pinia（仅 user）
+│   ├── src/utils/     # 压缩、裁剪、富文本、时间等
+│   └── src/style.css  # 设计令牌与全局样式
+├── backend/           # Express 后端（:5000）
+│   ├── src/config/    # 环境变量、数据库连接
+│   ├── src/controllers/ # 控制器
+│   ├── src/services/  # 业务逻辑与 SQL
+│   ├── src/models/    # Sequelize 模型
+│   ├── src/routes/    # 路由
+│   ├── src/middleware/# 鉴权 / 限流 / 上传
+│   ├── src/utils/     # 工具函数
+│   ├── database/      # schema.sql + seed.js
+│   ├── scripts/       # 运维脚本
+│   └── tests/unit/    # node:test 单元测试
+├── scripts/           # 端到端验证与巡检脚本
+└── docs/              # 部署、审计、设计文档
+```
 
-### ✅ 5. 路由配置
+## 质量保障
 
-- `/` - 首页
-- `/login` - 登录页
-- `/register` - 注册页
-- `/project/:id` - 项目详情页
-- `/publish` - 发布项目页（需要认证）
-
-### ✅ 6. 响应式设计
-
-- [x] 桌面端（> 768px）
-  - 左右分栏布局
-  - 多列网格展示
-- [x] 平板端（≤ 768px）
-  - 上下布局
-  - 减少网格列数
-- [x] 移动端（≤ 480px）
-  - 单列布局
-  - 简化分页显示
-
-### ✅ 7. 错误处理和加载状态
-
-- [x] Axios 请求/响应拦截器
-- [x] 统一错误提示（ElMessage）
-- [x] 401 自动跳转登录
-- [x] 骨架屏加载状态
-- [x] 空状态提示
-
-## 项目亮点
-
-1. **完整的前后端分离架构**
-   - 清晰的代码组织
-   - RESTful API 设计
-   - JWT 认证机制
-
-2. **现代化的 UI 设计**
-   - Element Plus 组件库
-   - 卡片式布局
-   - 流畅的交互体验
-
-3. **完善的响应式适配**
-   - 支持桌面、平板、移动端
-   - CSS Grid 自适应布局
-
-4. **良好的用户体验**
-   - 加载状态反馈
-   - 错误提示友好
-   - 表单验证完善
-
-5. **可扩展的代码结构**
-   - 组件化开发
-   - 状态管理规范
-   - API 接口封装
-
-## 待完善功能
-
-### 短期优化
-1. 数据库初始化脚本自动化执行
-2. 图片上传功能（使用 Multer + 本地存储或云存储）
-3. 项目详情页完整实现（评论、成员列表等）
-4. 搜索功能优化（模糊搜索、高级筛选）
-
-### 中期扩展
-1. 实时通知系统（WebSocket）
-2. 消息私信功能
-3. 项目进度跟踪
-4. 团队协作工具
-
-### 长期规划
-1. 移动端 App（React Native / Flutter）
-2. 项目管理看板
-3. 代码仓库集成（GitHub/GitLab）
-4. 在线协作编辑
+- **后端单元测试**：`backend/tests/unit/`，5 个文件 / 55 项，`npm test` 运行
+- **端到端验证**：39 个 `scripts/verify_*.py` + `audit_frontend_ui.py`，由 `scripts/run_verify_suite.py` 顺序执行
+- **接口巡检**：`scripts/audit_backend_api.py` 用坏输入矩阵检查全端点不产生 5xx
+- **结构一致性**：`scripts/verify_schema_consistency.py` 校验 `schema.sql` ↔ 线上库 ↔ Sequelize 模型
+- **CI**：`.github/workflows/verify.yml` 在全新 MySQL 8.4 环境建库、跑单测与全量验证套件
 
 ## 部署建议
 
 ### 开发环境
-```bash
-# 启动后端
-cd backend && npm run dev
 
-# 启动前端
-cd frontend && npm run dev
+```bash
+cd backend && npm run dev     # :5000
+cd frontend && npm run dev    # :3001
 ```
 
 ### 生产环境
-1. **前端打包**
-   ```bash
-   cd frontend && npm run build
-   ```
-   将 `dist` 目录部署到 Nginx 或 CDN
 
-2. **后端部署**
-   - 使用 PM2 管理进程
-   - 配置 Nginx 反向代理
-   - 设置 HTTPS 证书
+1. 前端 `npm run build`，`dist/` 交给 Nginx 或 CDN
+2. 后端用 PM2 托管（`backend/ecosystem.config.js`），配置 Nginx 反向代理
+3. MySQL 定期备份；上传目录纳入备份
+4. 生产环境必须显式配置 `JWT_SECRET`，凭据只放环境变量或 `backend/.env`
 
-3. **数据库**
-   - 定期备份
-   - 主从复制
-   - 性能监控
+## 已知遗留项（产品决策，未擅自启用或删除）
 
-## 性能优化建议
+- `users.status` / `users.is_admin`、`categories.project_count` / `categories.status`、`projects.status` / `access_type` / `access_password` 等线上遗留列：代码零读写
+- `projects.repository_url` / `end_date` 已接成真实功能
+- `notifications.type` 中的 `like` 取值：枚举存在但无触发点，点赞项目不会通知作者
+- 更完整的逐列结论见 `docs/遗留列处置决策清单.md` 与 `docs/功能与数据设计审计报告.md`
 
-1. **前端优化**
-   - 路由懒加载（已实现）
-   - 图片懒加载
-   - 虚拟滚动（大数据量时）
-   - 缓存策略
+## 相关文档
 
-2. **后端优化**
-   - 数据库索引优化
-   - Redis 缓存
-   - API 限流
-   - 日志记录
-
-3. **网络优化**
-   - Gzip 压缩
-   - CDN 加速
-   - HTTP/2
-
-## 安全考虑
-
-1. **认证安全**
-   - JWT Token 过期时间设置
-   - Refresh Token 机制
-   - 密码强度要求
-
-2. **数据安全**
-   - SQL 注入防护（Sequelize ORM）
-   - XSS 防护
-   - CSRF 防护
-
-3. **API 安全**
-   - 请求频率限制
-   - 输入验证
-   - 错误信息脱敏
-
-## 总结
-
-本项目成功实现了一个功能完整的共创社区平台，包含用户认证、项目管理、分类筛选、点赞参与等核心功能。采用现代化的技术栈，代码结构清晰，易于维护和扩展。
-
-项目已经具备了上线运行的基础条件，后续可以根据实际需求继续完善和优化。
-
----
-
-**开发完成时间**: 2026-01-03  
-**版本**: v1.0.0
+- 启动与功能说明：`README.md`
+- 本地 MySQL：`docs/MYSQL_SETUP.md`
+- 宝塔部署：`docs/BAOTA_DEPLOYMENT.md` / `docs/DEPLOYMENT_CHECKLIST.md`
+- 前端审计：`docs/FRONTEND_AUDIT.md`

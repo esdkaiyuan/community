@@ -1,127 +1,72 @@
 # 本地快速开发配置
 
-## 🎯 最快的解决方案：使用 SQLite（无需安装 MySQL）
+> 2026-11-02 校准：本文旧版曾建议改用 SQLite 并修改 `database.js`，但当前
+> `backend/src/config/database.js` 只支持 MySQL 方言，`sequelize.sync()` 也与
+> 线上表结构存在漂移。本地开发请直接使用 MySQL 8 + `schema.sql`。
 
-### 方案 1：改用 SQLite（推荐，5分钟搞定）
+## 前置要求
 
-SQLite 是文件型数据库，无需安装任何服务，适合本地开发。
+- Node.js 16+
+- MySQL 8（安装方式见 `docs/MYSQL_SETUP.md`）
 
-**步骤：**
-
-1. 安装 SQLite 依赖：
-```bash
-cd backend
-npm install sqlite3 better-sqlite3
-```
-
-2. 修改 `backend/src/config/database.js`：
-```javascript
-const { Sequelize } = require('sequelize')
-require('dotenv').config()
-
-// 开发环境使用 SQLite
-const sequelize = process.env.NODE_ENV === 'development'
-  ? new Sequelize({
-      dialect: 'sqlite',
-      storage: './database.sqlite',
-      logging: false
-    })
-  : new Sequelize(
-      process.env.DB_NAME,
-      process.env.DB_USER,
-      process.env.DB_PASSWORD,
-      {
-        host: process.env.DB_HOST,
-        port: process.env.DB_PORT,
-        dialect: 'mysql',
-        logging: false,
-        pool: {
-          max: 5,
-          min: 0,
-          acquire: 30000,
-          idle: 10000
-        }
-      }
-    )
-
-module.exports = sequelize
-```
-
-3. 运行同步：
-```bash
-npm run db:sync
-```
-
-4. 重启服务即可！
-
----
-
-## 📦 方案 2：安装 MySQL（传统方式）
-
-### 快速安装 MySQL
-
-**方法 A：使用 XAMPP（最简单）**
-
-1. 下载 XAMPP：https://www.apachefriends.org/
-2. 安装时只选择 MySQL
-3. 启动 XAMPP Control Panel
-4. 点击 MySQL 的 Start 按钮
-5. 访问 http://localhost/phpmyadmin 创建数据库
-
-**方法 B：使用 MySQL Installer**
-
-1. 下载：https://dev.mysql.com/downloads/installer/
-2. 选择 "Developer Default"
-3. 设置 root 密码（记住！）
-4. 完成安装
-
-### 创建数据库
+## 1. 创建数据库
 
 ```sql
--- 访问 phpMyAdmin 或命令行
-CREATE DATABASE co_creation_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'dev_user'@'localhost' IDENTIFIED BY 'dev_password';
-GRANT ALL PRIVILEGES ON co_creation_dev.* TO 'dev_user'@'localhost';
-FLUSH PRIVILEGES;
+CREATE DATABASE community_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 更新配置
+## 2. 配置 `backend/.env`
 
-修改 `backend/.env`：
 ```env
-DB_HOST=localhost
+PORT=5000
+NODE_ENV=development
+DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_USER=dev_user
-DB_PASSWORD=dev_password
-DB_NAME=co_creation_dev
+DB_USER=root
+DB_PASSWORD=你的MySQL密码
+DB_NAME=community_platform
+JWT_SECRET=本地开发用随机字符串
+JWT_EXPIRES_IN=7d
 ```
 
-### 初始化数据库
+`.env` 已被 `.gitignore` 忽略，不要提交。
+
+## 3. 建表并写入种子
+
+在仓库根目录执行：
 
 ```bash
-cd backend
-mysql -u dev_user -p co_creation_dev < backend/database/schema.sql
-npm run db:sync
+mysql -u root -p community_platform < backend/database/schema.sql
+node backend/database/seed.js   # 写入 8 条分类种子，可幂等重跑
 ```
 
----
+项目没有 `db:sync` 脚本；`schema.sql` 是唯一建库脚本。
 
-## 🚀 方案 3：临时方案（仅测试 UI）
+## 4. 安装依赖并启动
 
-如果只想测试前端 UI，不需要真实数据库：
+```bash
+# 后端（:5000）
+cd backend && npm install && npm run dev
 
-**修改后端 API 返回模拟数据：**
+# 前端（:3001）
+cd frontend && npm install && npm run dev
+```
 
-在 `backend/src/controllers/categoryController.js` 和 `projectController.js` 中返回硬编码数据。
+访问 `http://localhost:3001`。Vite 会把 `/api` 与 `/uploads` 代理到 `http://localhost:5000`。
 
----
+## 5. 验证
 
-## 💡 推荐
+```bash
+# 数据库连接
+cd backend
+node -e "require('./src/config/database').authenticate().then(()=>console.log('OK')).catch(e=>console.error(e.message))"
 
-**对于快速本地开发，我强烈推荐方案 1（SQLite）**，因为：
-- ✅ 无需安装任何软件
-- ✅ 5分钟配置完成
-- ✅ 数据保存在本地文件
-- ✅ 随时可以切换到 MySQL
+# 后端健康检查
+curl http://localhost:5000/api/health
+```
 
-你想使用哪个方案？我可以帮你快速配置！
+## 常见问题
+
+- **端口占用**：前端固定 3001（`vite.config.js` 的 `strictPort` 未开启，但验证脚本默认连 3001），后端固定 5000。
+- **前端用 127.0.0.1 连不上**：Vite 默认监听 `localhost`，请用 `http://localhost:3001`。
+- **建表失败**：确认 MySQL 为 8.x，并先创建目标数据库；`schema.sql` 不含 `CREATE DATABASE`。

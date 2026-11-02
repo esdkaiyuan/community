@@ -6,7 +6,7 @@
 - 操作系统：CentOS 7+ / Ubuntu 18.04+ / Debian 9+
 - 宝塔面板版本：7.x 或更高
 - Node.js 版本：16.x 或更高
-- MySQL 版本：5.7 或 8.0
+- MySQL 版本：8.0+（热门标签使用 `JSON_TABLE`，5.7 不支持）
 - Nginx 版本：1.18 或更高
 
 ### 2. 已配置的信息
@@ -14,7 +14,7 @@
 - **数据库用户**: `co_creation_esdk`
 - **数据库密码**: `<见 backend/.env，切勿写入仓库>`
 - **后端端口**: `5000`
-- **前端端口**: `3000`（开发）/ `80`（生产）
+- **前端端口**: `3001`（开发）/ `80`（生产）
 
 ---
 
@@ -25,7 +25,7 @@
 1. 登录宝塔面板
 2. 安装以下软件：
    - ✅ Nginx 1.20+
-   - ✅ MySQL 5.7 或 8.0
+   - ✅ MySQL 8.0+
    - ✅ Node.js 16.x（通过 PM2 管理器安装）
    - ✅ PM2 管理器
 
@@ -58,15 +58,15 @@ cd community
    ```bash
    # 进入项目目录
    cd /www/wwwroot/community/backend
-   
-   # 使用 Sequelize 同步数据库结构
-   npm run db:sync
-   ```
-   
-   或者手动执行 SQL 文件（如果有）：
-   ```bash
+
+   # 建表（唯一建库脚本）
    mysql -u co_creation_esdk -p co_creation_esdk < database/schema.sql
+
+   # 写入 8 条分类种子（可幂等重跑）
+   node database/seed.js
    ```
+
+   项目没有 `db:sync` 脚本，也不要用 `sequelize.sync()` 代替建库脚本。
 
 ### 第四步：配置后端服务
 
@@ -87,7 +87,7 @@ cd community
    DB_USER=co_creation_esdk
    DB_PASSWORD=<见 backend/.env，切勿写入仓库>
    DB_NAME=co_creation_esdk
-   JWT_SECRET=co_creation_community_secret_key_2024_change_in_production
+   JWT_SECRET=<随机字符串，见 backend/.env，切勿写入仓库>
    JWT_EXPIRES_IN=7d
    ```
 
@@ -117,13 +117,10 @@ cd community
    npm install
    ```
 
-2. **配置 API 地址**
-   
-   创建或修改 `frontend/.env.production`：
-   ```env
-   VITE_API_BASE_URL=http://your-domain.com/api
-   # 或使用 IP：VITE_API_BASE_URL=http://your-server-ip:5000/api
-   ```
+2. **API 地址**
+
+   前端固定请求同源 `/api`（`frontend/src/api/request.js` 的 `baseURL`），
+   不需要配置 `VITE_API_BASE_URL`；由下方 Nginx 把 `/api/` 反向代理到后端。
 
 3. **构建生产版本**
    ```bash

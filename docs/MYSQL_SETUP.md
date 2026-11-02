@@ -12,7 +12,7 @@
 > DB_NAME=co_creation_esdk
 > ```
 >
-> 库内 7 张表：`users`、`categories`、`projects`、`project_participants`、`project_likes`、`project_favorites`、`project_comments`，含真实数据（8 个分类、项目与用户若干；`projects.deleted_at` 非空的行为已软删除的历史数据）。
+> 当前 `backend/database/schema.sql` 共 12 张表：`users`、`categories`、`projects`、`project_comments`、`comment_likes`、`notifications`、`project_favorites`、`project_likes`、`project_participants`、`project_views`、`activity_logs`、`security_events`。库内含真实数据（8 个分类、项目与用户若干；`projects.deleted_at` 非空的行为已软删除的历史数据）；若本机是旧库，请按 `schema.sql` 补齐缺表。
 >
 > **注意实际表结构与本文下方示例 SQL 不同**：计数列为 `like_count` / `comment_count` / `participant_count`（单数），用户密码列为 `password`（bcrypt 哈希）。后端 Sequelize 模型已与实际表结构对齐，不要按下文示例重建表。
 >
@@ -23,7 +23,7 @@
 > ```
 >
 > 启动后端（`npm run dev` 或 `node server.js`，监听 5000），前端 Vite 代理 `/api` → `localhost:5000`，页面即读写本地库。
-> 另：下文提到的 `npm run db:sync` 脚本并不存在（backend/package.json 只有 `start`/`dev`），请忽略。
+> 建库只执行 `backend/database/schema.sql`，种子只跑 `backend/database/seed.js`；项目没有 `db:sync` 脚本。
 
 ---
 
@@ -145,18 +145,7 @@ DB_NAME=co_creation_dev
 
 ## 🗄️ 初始化数据库表
 
-### 方法1：使用 Sequelize 自动同步（推荐）
-
-```powershell
-cd backend
-npm run db:sync
-```
-
-这会根据模型自动创建所有表。
-
-### 方法2：手动执行 SQL 脚本
-
-仓库里已有权威的建库脚本 `backend/database/schema.sql`，直接执行它即可：
+仓库里已有权威的建库脚本 `backend/database/schema.sql`，直接执行它即可（项目没有 `db:sync` 脚本，也不要用 `sequelize.sync()` 代替，否则会与线上结构漂移）：
 
 ```powershell
 mysql -u dev_user -p co_creation_dev < backend/database/schema.sql
@@ -209,7 +198,7 @@ npm run dev
 - [ ] 数据库 `co_creation_dev` 已创建
 - [ ] 用户 `dev_user` 已创建并授权
 - [ ] `.env` 文件已更新
-- [ ] 数据库表已创建（使用 `db:sync` 或 SQL 脚本）
+- [ ] 数据库表已创建（执行 `backend/database/schema.sql`）
 - [ ] 后端服务已重启
 - [ ] 前端页面可以正常加载数据
 
@@ -255,4 +244,4 @@ ALTER DATABASE co_creation_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 docker run -d --name mysql-community -e MYSQL_ROOT_PASSWORD=root123 -e MYSQL_DATABASE=co_creation_dev -e MYSQL_USER=dev_user -e MYSQL_PASSWORD=dev_password -p 3306:3306 mysql:8.0
 ```
 
-然后修改 `.env` 文件，运行 `npm run db:sync` 即可！
+然后修改 `.env` 文件，执行 `backend/database/schema.sql` 建表并运行 `backend/database/seed.js` 写入种子即可。

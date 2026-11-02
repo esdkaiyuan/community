@@ -1,5 +1,9 @@
 # 🚀 共创社区平台 - 宝塔面板部署指南
 
+> **历史部署记录（2026-05-03）**：文中引用的 `frontend-deploy-*.zip` /
+> `backend-deploy-*.zip` 是当时生成的部署包，现已不在仓库中。当前部署步骤请以
+> `docs/BAOTA_DEPLOYMENT.md` 与 `docs/DEPLOYMENT_CHECKLIST.md` 为准。
+
 ## 📦 已生成的部署包
 
 ### 前端部署包

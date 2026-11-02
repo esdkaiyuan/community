@@ -26,14 +26,14 @@ DB_PASSWORD=你的MySQL密码
 
 ### 2. 初始化数据库
 
-在 MySQL 中执行数据库脚本：
+在 MySQL 中执行建库脚本，再跑种子脚本：
 
 ```bash
 mysql -u root -p community_platform < backend/database/schema.sql
-mysql -u root -p community_platform < backend/database/seed.sql
+node backend/database/seed.js   # 写入 8 条分类种子（读取 backend/.env 的 DB_* 配置）
 ```
 
-或者手动执行 SQL 文件中的内容。
+或者在 MySQL 客户端里手动执行 `backend/database/schema.sql` 的内容。
 
 ### 3. 安装依赖
 
@@ -106,7 +106,7 @@ npm run dev
 ### 待完善的功能
 
 ⏳ **需要进一步完善**
-- [x] ~~单元测试~~ 已落地：`backend/tests/unit/`（node:test 49 项），`npm test` 跑、`npm run test:coverage` 看覆盖率，CI 在安装依赖后最先执行
+- [x] ~~单元测试~~ 已落地：`backend/tests/unit/`（node:test 55 项），`npm test` 跑、`npm run test:coverage` 看覆盖率，CI 在安装依赖后最先执行
 
 ## 上传文件的清理策略
 
@@ -553,13 +553,13 @@ python scripts/audit_backend_api.py
 
 ## 验证套件与 CI
 
-38 个验证脚本不用一个个手敲：`scripts/run_verify_suite.py` 顺序跑全量并汇总，
+40 个脚本不用一个个手敲：`scripts/run_verify_suite.py` 顺序跑全量（39 个 `verify_*.py` + `audit_frontend_ui.py`）并汇总，
 任一失败 exit 1。脚本间自动重启后端清限流（仅当后端由套件自己拉起；复用本机
 现役服务时不动它）。解释器注意：脚本继承**启动套件的 python**，它必须装有
 playwright（本地用带 playwright 的完整路径解释器启动，或设 `VERIFY_PYTHON`）。
 
 ```bash
-python scripts/run_verify_suite.py --list              # 38 个脚本清单
+python scripts/run_verify_suite.py --list              # 40 个脚本清单
 python scripts/run_verify_suite.py --only verify_tags  # 定向跑（.py 可省）
 python scripts/run_verify_suite.py                     # 全量 + 汇总
 ```
@@ -609,7 +609,7 @@ MySQL 8.4 service → 建库种子 → `run_verify_suite.py` 全量 → 失败�
 ### 前端
 - Vue 3 (Composition API + `<script setup>`)
 - Vite
-- Tailwind CSS 4（设计令牌走 CSS 变量，深浅色自动翻转）
+- Tailwind CSS 3.4（设计令牌走 CSS 变量，深浅色自动翻转）
 - Pinia
 - Vue Router 4
 - Axios
@@ -633,27 +633,31 @@ community/
 │   │   ├── components/   # 公共组件
 │   │   ├── views/        # 页面视图
 │   │   ├── composables/  # 组合式函数
+│   │   ├── directives/   # 自定义指令（滚动浮现）
 │   │   ├── router/       # 路由配置
-│   │   ├── store/        # Pinia 状态管理
+│   │   ├── store/        # Pinia 状态管理（当前只有 user store）
 │   │   ├── utils/        # 工具函数
 │   │   └── style.css     # 全局样式 + 设计令牌
+│   ├── tailwind.config.js
 │   └── vite.config.js
 ├── backend/               # Node.js 后端（:5000）
 │   ├── src/
-│   │   ├── config/       # 配置文件
+│   │   ├── config/       # 环境变量与数据库连接
 │   │   ├── controllers/  # 控制器（薄，只做参数搬运）
 │   │   ├── services/     # 业务逻辑与 SQL
-│   │   ├── models/       # 数据模型
+│   │   ├── models/       # Sequelize 模型
 │   │   ├── routes/       # 路由
 │   │   ├── utils/        # 工具函数（含上传文件的安全路径校验）
 │   │   └── middleware/   # 中间件（鉴权 / 限流 / 上传）
+│   ├── database/         # 数据库脚本
+│   │   ├── schema.sql    # 表结构（唯一建库脚本）
+│   │   └── seed.js       # 种子数据（8 条分类，可幂等重跑）
 │   ├── scripts/          # 运维脚本（封面清扫 / 日志留存清理 / 净化规则自检）
+│   ├── tests/unit/       # node:test 单元测试
 │   ├── uploads/          # 用户上传的封面（运行时数据，不进仓库）
 │   └── server.js
 ├── scripts/               # Playwright + urllib 端到端验证脚本
-└── database/              # 数据库脚本
-    ├── schema.sql        # 表结构
-    └── seed.sql          # 种子数据
+└── docs/                  # 部署、审计与设计文档
 ```
 
 ## 设计系统（Apple HIG）

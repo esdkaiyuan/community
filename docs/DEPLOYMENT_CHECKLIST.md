@@ -5,7 +5,7 @@
 ### 服务器环境
 - [ ] 已安装宝塔面板（7.x+）
 - [ ] 已安装 Nginx 1.20+
-- [ ] 已安装 MySQL 5.7/8.0
+- [ ] 已安装 MySQL 8.0+
 - [ ] 已安装 Node.js 16.x+（通过 PM2 管理器）
 - [ ] 已安装 PM2 管理器
 
@@ -14,7 +14,7 @@
 - [ ] 数据库用户：`co_creation_esdk`
 - [ ] 数据库密码：`<见 backend/.env，切勿写入仓库>`
 - [ ] 访问权限：本地服务器
-- [ ] 已导入数据库结构（执行 `npm run db:sync` 或 SQL 文件）
+- [ ] 已导入数据库结构（`mysql ... < backend/database/schema.sql`，再执行 `node backend/database/seed.js`）
 
 ---
 
@@ -50,9 +50,7 @@ pm2 startup
 ```bash
 cd /www/wwwroot/community/frontend
 
-# 修改 API 地址
-vim .env.production
-# 设置 VITE_API_BASE_URL=http://your-domain.com/api
+# 无需配置 API 地址：前端固定请求同源 /api，由 Nginx 反向代理到后端
 
 # 安装依赖
 npm install
@@ -123,7 +121,7 @@ http://your-server-ip
 
 ### 功能测试
 - [ ] 首页可以正常访问
-- [ ] 注册页面显示验证码
+- [ ] 注册页面表单校验正常（用户名 / 邮箱 / 密码）
 - [ ] 可以成功注册用户
 - [ ] 可以登录
 - [ ] 可以浏览项目列表

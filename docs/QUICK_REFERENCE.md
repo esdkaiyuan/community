@@ -21,10 +21,8 @@ DB_PASSWORD=<见 backend/.env，切勿写入仓库>
 DB_NAME=co_creation_esdk
 ```
 
-### 前端 (.env.production)
-```env
-VITE_API_BASE_URL=http://your-domain.com/api
-```
+### 前端
+无需配置 API 地址：前端固定请求同源 `/api`，由 Nginx 反向代理到 `http://127.0.0.1:5000`。
 
 ## 📂 项目路径
 ```

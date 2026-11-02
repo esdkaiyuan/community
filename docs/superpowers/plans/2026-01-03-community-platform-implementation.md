@@ -1,5 +1,9 @@
 # 共创社区平台实施计划
 
+> **历史存档（2026-01-03）**：本文是最初的实施计划，其中 Element Plus / SCSS、
+> Sidebar / ProjectGrid 组件、3000 端口等内容均已被后续实现取代。当前架构与功能
+> 请以 `README.md` 与 `docs/PROJECT_SUMMARY.md` 为准。
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 创建一个全栈共创社区平台，用户可以在平台发布项目、浏览项目、参与协作，前端使用 Vue3 + Element Plus，后端使用 Node.js + Express，数据库使用 MySQL。
