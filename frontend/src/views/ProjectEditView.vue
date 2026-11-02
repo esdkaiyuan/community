@@ -1,7 +1,8 @@
 <template>
   <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
     <div class="mb-8">
-      <h1 class="font-display text-title1 font-semibold tracking-tight text-ink sm:text-largetitle">编辑项目</h1>
+      <p class="eyebrow">Edit</p>
+      <h1 class="mt-3 font-brand text-[clamp(2rem,3vw,2.8rem)] font-bold tracking-normal text-ink">编辑项目</h1>
       <p class="mt-2 text-footnote text-ink-mid">改完立即生效，新加的标签会同步进广场的「热门标签」。</p>
     </div>
 

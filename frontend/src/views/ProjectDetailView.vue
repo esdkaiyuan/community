@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+  <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
     <!-- 骨架 -->
     <div v-if="loading" class="space-y-6">
       <div class="skeleton h-5 w-40"></div>
@@ -24,7 +24,7 @@
       <transition name="bar">
         <div
           v-if="scrolled"
-          class="fixed inset-x-0 top-11 z-40 border-b border-[color:var(--glass-border)] bg-[color:var(--glass-nav)] backdrop-blur-xl backdrop-saturate-150"
+          class="fixed inset-x-0 top-14 z-40 border-b border-[color:var(--glass-border)] bg-[color:var(--glass-nav)] backdrop-blur-xl backdrop-saturate-150"
         >
           <div class="mx-auto flex h-12 max-w-5xl items-center gap-3 px-4 sm:px-6">
             <span class="min-w-0 flex-1 truncate text-footnote font-semibold text-ink">{{ project.title }}</span>
@@ -100,15 +100,16 @@
           </span>
         </div>
         <div class="absolute left-4 top-4 flex gap-2">
-          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-1 text-caption1 font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="star" class="h-3 w-3 text-amber-warm" />编辑推荐</span>
-          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-1 text-caption1 font-medium text-ink shadow-sm backdrop-blur-md"><AppIcon name="flame" class="h-3 w-3 text-clay" />热门</span>
+          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-caption1 font-medium text-white shadow-sm backdrop-blur-md"><AppIcon name="star" class="h-3 w-3 text-amber-warm" />编辑推荐</span>
+          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-caption1 font-medium text-white shadow-sm backdrop-blur-md"><AppIcon name="flame" class="h-3 w-3 text-clay" />热门</span>
         </div>
       </div>
 
       <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_300px]">
         <!-- 主内容 -->
         <div class="min-w-0">
-          <h1 class="text-title2 font-bold leading-tight tracking-tight text-ink sm:text-title1">{{ project.title }}</h1>
+          <p class="eyebrow">Project</p>
+          <h1 class="mt-3 font-brand text-[clamp(2rem,3.4vw,3.2rem)] font-bold leading-[1.08] tracking-normal text-ink">{{ project.title }}</h1>
 
           <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-footnote text-ink-dim" data-test="detail-meta">
             <span v-if="project.categoryName" class="chip">{{ project.categoryName }}</span>

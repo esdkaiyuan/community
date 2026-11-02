@@ -1,23 +1,18 @@
 <template>
-  <div class="mx-auto flex max-w-5xl items-center px-4 py-12 sm:px-6 sm:py-16">
-    <div class="card grid w-full overflow-hidden md:grid-cols-2">
-      <!-- 品牌面板 -->
-      <div class="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-b from-pine to-pine-deep p-10 text-white md:flex">
-        <div class="relative">
-          <span class="text-caption1 tracking-[0.3em] opacity-70">CO-CREATION COMMUNITY</span>
-          <h2 class="mt-4 font-display text-title1 font-semibold leading-snug tracking-tight">
-            忘记密码？<br />用邮箱验证码安全找回
-          </h2>
-        </div>
-        <p class="relative text-footnote leading-relaxed opacity-80">
-          验证码会发送到你的注册邮箱。<br />重置成功后，其他设备上的登录会立即失效。
-        </p>
-      </div>
+  <div class="w-full px-4 py-8 sm:px-6 sm:py-10">
+    <div class="auth-card mx-auto grid w-full max-w-5xl overflow-hidden md:grid-cols-[1.02fr_0.98fr]">
+      <!-- 左：手绘共创面板（创意 → 互助 → 合作） -->
+      <AuthBrandPanel
+        title="找回入口，"
+        accent="回到共创现场。"
+        quote="验证码会发到你的注册邮箱。重置成功后，其他设备上的登录会立即失效。"
+      />
 
-      <!-- 表单 -->
-      <div class="p-8 sm:p-10">
-        <h1 class="font-display text-title1 font-semibold tracking-tight text-ink">找回密码</h1>
-        <p class="mt-1.5 text-footnote text-ink-mid">
+      <!-- 右：表单；移动端顶部自带品牌带，无需页头页脚 -->
+      <div class="flex flex-col justify-center p-6 sm:p-9 lg:px-11">
+        <p class="eyebrow">Account</p>
+        <h1 class="mt-3 font-brand text-[clamp(1.9rem,2.4vw,2.4rem)] font-bold tracking-normal text-ink">找回密码</h1>
+        <p class="mt-2 text-footnote text-ink-mid">
           想起来了？
           <router-link to="/login" class="font-medium text-pine hover:underline">返回登录</router-link>
         </p>
@@ -73,16 +68,19 @@
               autocomplete="new-password"
               :maxlength="PASSWORD_MAX_LENGTH"
             />
-            <div v-if="form.password" class="mt-2 flex items-center gap-2">
-              <div class="flex flex-1 gap-1">
-                <span
-                  v-for="i in 3"
-                  :key="i"
-                  class="h-1 flex-1 rounded-full transition-colors"
-                  :class="i <= strength.level ? strength.color : 'bg-sand'"
-                ></span>
+            <!-- 强度条位置常驻，输入第一个字符时表单不跳动 -->
+            <div class="mt-2 min-h-[16px]">
+              <div v-if="form.password" class="flex items-center gap-2">
+                <div class="flex flex-1 gap-1">
+                  <span
+                    v-for="i in 3"
+                    :key="i"
+                    class="h-1 flex-1 rounded-full transition-colors"
+                    :class="i <= strength.level ? strength.color : 'bg-sand'"
+                  ></span>
+                </div>
+                <span class="text-caption1" :class="strength.textColor">{{ strength.label }}</span>
               </div>
-              <span class="text-caption1" :class="strength.textColor">{{ strength.label }}</span>
             </div>
             <p v-if="errors.password" class="form-error">{{ errors.password }}</p>
           </div>
@@ -124,6 +122,7 @@ import { toast } from '@/composables/useToast'
 import { useEmailCode } from '@/composables/useEmailCode'
 import { isValidEmail } from '@/utils/email'
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordStrength } from '@/utils/password'
+import AuthBrandPanel from '@/components/AuthBrandPanel.vue'
 
 const router = useRouter()
 const userStore = useUserStore()

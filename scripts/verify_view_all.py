@@ -106,7 +106,7 @@ def main():
         page.locator("[data-test='view-all-created']").click()
         page.wait_for_timeout(1600)
         check("跳到广场并带上 creatorId", f"creatorId={owner['uid']}" in page.url)
-        check("人物筛选时 Hero 让位（不再展示首页大标题）", page.get_by_text("让好创意落地生根").count() == 0)
+        check("人物筛选时 Hero 让位（不再展示首页大标题）", page.locator("[data-test='home-hero']").count() == 0)
         check("广场出现人物筛选 banner", page.locator("[data-test='person-banner']").count() == 1)
         title = page.locator("[data-test='person-title']").inner_text().strip()
         check("banner 说清在看谁的作品", owner["username"] in title and "发布的项目" in title)
@@ -131,7 +131,7 @@ def main():
         page.wait_for_timeout(1200)
         check("清除筛选后 banner 消失", page.locator("[data-test='person-banner']").count() == 0)
         check("清除筛选后 URL 不再带 creatorId", "creatorId=" not in page.url)
-        check("清除筛选后 Hero 回来", page.get_by_text("让好创意落地生根").count() == 1)
+        check("清除筛选后 Hero 回来", page.locator("[data-test='home-hero']").count() == 1)
 
         # participantId 视图：文案要说明口径，且不含自己发起的项目
         page.goto(f"{FRONT}/?participantId={owner['uid']}", wait_until="networkidle")

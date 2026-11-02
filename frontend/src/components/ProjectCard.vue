@@ -6,14 +6,14 @@
          内容层 pointer-events-none 让点击穿透到链接，交互元素各自 z-10 抬起 -->
     <router-link
       :to="`/project/${project.id}`"
-      class="absolute inset-0 z-0 rounded-xl2"
+      class="absolute inset-0 z-0 rounded-[inherit]"
       :aria-label="`查看项目：${project.title}`"
       data-test="card-link"
     ></router-link>
 
     <div class="pointer-events-none relative">
       <!-- 封面 -->
-      <div class="relative aspect-[16/9] overflow-hidden rounded-t-xl2">
+      <div class="relative aspect-[16/9] overflow-hidden rounded-t-[inherit]">
         <img
           v-if="project.coverImage && !imgFailed"
           :src="project.coverImage"
@@ -33,19 +33,19 @@
           </span>
         </div>
 
-        <!-- 徽标（苹果式白玻璃轻徽章） -->
+        <!-- 徽标（深色玻璃 + 电光青细边，压在封面上） -->
         <div class="absolute left-3 top-3 flex gap-1.5">
-          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-caption2 font-medium text-ink shadow-sm backdrop-blur-md">
+          <span v-if="project.isRecommend" class="inline-flex items-center gap-1 rounded-full border border-[#5BE0EB]/25 bg-[#0A0C10]/75 px-2.5 py-0.5 text-caption2 font-medium text-white shadow-sm backdrop-blur-md">
             <AppIcon name="star" class="h-3 w-3 text-amber-warm" />推荐
           </span>
-          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-caption2 font-medium text-ink shadow-sm backdrop-blur-md">
+          <span v-if="project.isHot" class="inline-flex items-center gap-1 rounded-full border border-[#5BE0EB]/25 bg-[#0A0C10]/75 px-2.5 py-0.5 text-caption2 font-medium text-white shadow-sm backdrop-blur-md">
             <AppIcon name="flame" class="h-3 w-3 text-clay" />热门
           </span>
           <!-- 本周活跃度：只在按「本周热门」排序时出现，用来解释「为什么它排在前面」 -->
           <span
             v-if="trend > 0"
             data-test="card-trend"
-            class="inline-flex items-center gap-1 rounded-full bg-[color:var(--glass-badge)] px-2.5 py-0.5 text-caption2 font-medium text-ink shadow-sm backdrop-blur-md"
+            class="inline-flex items-center gap-1 rounded-full border border-[#5BE0EB]/25 bg-[#0A0C10]/75 px-2.5 py-0.5 text-caption2 font-medium text-white shadow-sm backdrop-blur-md"
             :title="`近 7 天 ${trend} 次互动（点赞 / 评论 / 参与）`"
           >
             <AppIcon name="trendingUp" class="h-3 w-3 text-pine" />本周 {{ trend }}
@@ -53,7 +53,7 @@
         </div>
         <span
           v-if="project.categoryName"
-          class="absolute bottom-3 left-3 rounded-full bg-black/40 px-2.5 py-0.5 text-caption1 text-white backdrop-blur-md"
+          class="absolute bottom-3 left-3 rounded-full border border-[#5BE0EB]/25 bg-[#0A0C10]/75 px-2.5 py-0.5 font-mono text-caption1 text-white backdrop-blur-md"
         >
           {{ project.categoryName }}
         </span>
@@ -61,7 +61,7 @@
 
       <!-- 内容 -->
       <div class="p-5">
-        <h3 class="truncate text-headline font-semibold text-ink transition-colors group-hover:text-pine">
+        <h3 class="line-clamp-2 font-brand text-title3 font-semibold leading-snug tracking-normal text-ink transition-colors group-hover:text-pine">
           {{ project.title }}
         </h3>
         <p class="mt-1.5 line-clamp-2 min-h-[2.5rem] text-subhead leading-relaxed text-ink-mid">

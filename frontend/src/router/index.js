@@ -11,19 +11,19 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: () => import('@/views/LoginView.vue'),
-    meta: { title: '登录' }
+    meta: { title: '登录', authLayout: true }
   },
   {
     path: '/register',
     name: 'Register',
     component: () => import('@/views/RegisterView.vue'),
-    meta: { title: '注册' }
+    meta: { title: '注册', authLayout: true }
   },
   {
     path: '/forgot-password',
     name: 'ForgotPassword',
     component: () => import('@/views/ForgotPasswordView.vue'),
-    meta: { title: '找回密码' }
+    meta: { title: '找回密码', authLayout: true }
   },
   {
     path: '/project/:id',

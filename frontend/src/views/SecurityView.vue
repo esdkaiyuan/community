@@ -1,8 +1,9 @@
 <template>
   <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-    <!-- 页头：苹果式大标题 -->
+    <!-- 页头：手绘大标题 -->
     <div>
-      <h1 class="font-display text-title1 font-semibold tracking-tight text-ink sm:text-largetitle">账号安全</h1>
+      <p class="eyebrow">Security</p>
+      <h1 class="mt-3 font-brand text-[clamp(2rem,3vw,2.8rem)] font-bold tracking-normal text-ink">账号安全</h1>
       <p data-test="security-subtitle" class="mt-2 text-footnote text-ink-mid">{{ subtitle }}</p>
     </div>
 

@@ -1,5 +1,10 @@
 <template>
   <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <div class="mb-6">
+      <p class="eyebrow">Co-Creator</p>
+      <h1 class="mt-3 font-brand text-[clamp(1.9rem,2.8vw,2.6rem)] font-bold tracking-normal text-ink">共创者主页</h1>
+    </div>
+
     <!-- 加载 -->
     <div v-if="loading" class="space-y-6">
       <div class="skeleton h-40 w-full !rounded-xl2"></div>
@@ -44,7 +49,7 @@
           </router-link>
         </div>
 
-        <!-- 数据概览：苹果参数式发丝线规格条 -->
+        <!-- 数据概览：参数式发丝线规格条 -->
         <AppStatGrid :items="statItems" :cols="4" class="relative mt-8" test-id="user-stats" />
       </div>
 

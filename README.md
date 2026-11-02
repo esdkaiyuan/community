@@ -706,10 +706,16 @@ community/
 └── docs/                  # 部署、审计与设计文档
 ```
 
-## 设计系统（Apple HIG）
+## 设计系统（赛博简约手绘 × Apple HIG）
 
-前端按 Apple Human Interface Guidelines 重构过一轮。核心不是「把颜色换成苹果蓝」——
-令牌本来就是 `#0071E3` / `#F5F5F7` 那一套——而是把**散在各页面的临时拼装**收成一套有名字的规则。
+结构层遵守 Apple HIG：56px 页头、44pt 触控热区、HIG 字号阶与 8pt 栅格、AA 对比度、
+`focus-visible` 焦点环、`prefers-reduced-motion`、深浅色跟随系统。
+
+表层是手绘：暖纸面 `#F4F1E9`、纸卡面 `#FDFCF8`、1.5px 墨线描边、8 值不对称圆角、
+硬边错位投影、纸纹噪点，标题用霞鹜文楷（LXGW WenKai，离线退回系统楷体）。
+
+赛博只做点缀：电光青 `#0B7285`（深色 `#5BE0EB`）强调、等宽终端标签（`//`、`/ 01`）、
+极淡工程网格、扫描线与星图面板；不大面积使用霓虹，不影响正文可读性。
 
 ### 两层令牌
 
@@ -717,19 +723,22 @@ community/
 
 | 层 | 名字 | 谁在用 |
 | --- | --- | --- |
-| 材质层 | `paper` / `ink` / `pine` / `clay` / `green` / `sand` / `cream` | 存量代码 + **31 个验证脚本** |
-| 语义层 | `label` / `label-2` / `separator` / `sys-fill` / `system-blue` / `system-red` … | 新代码一律写这一层 |
+| 材质层 | `paper` / `ink` / `pine` / `clay` / `green` / `sand` / `cream` | 存量代码 + **40 个 `verify_*.py`** |
+| 语义层 | `label` / `label-2` / `separator` / `sys-fill` / `system-blue` / `system-red` … | 早期 HIG 命名的兼容别名 |
 
 材质层指向的 CSS 变量（`--c-clay` 等）被 `verify_dark_mode.py` **逐值比对**手写常量，
 改名或调值会一次撞红几十条断言。所以语义层只是指向同一批变量的别名，不动取值。
 
-### 排版：HIG 文本样式表
+强调色 `--c-pine` 是电光青：浅色 `#0B7285`、深色 `#5BE0EB`；
+`--c-paper` 的深色值仍是纯黑，脚本按值钉死。
+
+### 排版：文本样式表
 
 取代了原先散落的 `text-[17px]` / `text-[13px]` / `text-[11px]` 硬编码：
 
 | 类 | 字号/行高 | 用途 |
 | --- | --- | --- |
-| `text-largetitle` | 34/40 | 一屏唯一的大标题（首页 Hero、页头） |
+| `text-largetitle` | 34/40 | 一屏唯一的大标题（页头、分区标题） |
 | `text-title1` | 28/34 | 页面主标题 |
 | `text-title2` | 22/28 | 分区主标题 |
 | `text-title3` | 20/24 | 卡片 / 区块标题 |
@@ -738,11 +747,29 @@ community/
 | `text-callout` | 16/22 | 次要正文 |
 | `text-subhead` | 15/21 | 说明文字 |
 | `text-footnote` | 13/18 | 标签、次要信息 |
-| `text-caption1` | 12/16 | 计数、时间戳 |
+| `text-caption1` | 12/16 | 计数、时间戳、眉题 |
 | `text-caption2` | 11/14 | 徽标内文字 |
 
 字重**不**内置在字号里，一律用 `font-*` 显式声明——否则 `text-title1` 自带的 bold
 会和 `font-medium` 抢优先级，改样式时会出现改不动的怪事。
+
+首页与分区主标题另用 `text-[clamp(…)]`（`.section-heading` 为 `clamp(1.9rem,2.8vw,3rem)`），
+排版骨架走手写大字标题，而不是固定字号阶。
+
+### 手绘 + 赛博版式层
+
+| 类 | 解决什么 |
+| --- | --- |
+| `.site-shell` | 宽幅容器：`min(100% - 2.5rem, 1600px)`，页头 / 页脚 / 首页共用同一条外边距 |
+| `.eyebrow` | 电光青等宽小眉题 + 手绘小方块（Account / Create / Edit / Inbox / Security…） |
+| `.section-heading` | 手写体分区大标题：霞鹜文楷、一屏只出现一次 |
+| `.cyber-grid` / `.cyber-grid-fade` | 极淡工程网格；`*-fade` 用遮罩渐隐，避免网格压过正文 |
+| `.marker-sketch` | 标记笔高亮：38% 高度的斜向色带，只给标题重点词 |
+| `.sketch-mark` / `.sketch-rule` / `.sketch-panel` | 品牌方块 / 导航下划线 / 深色大面板的手绘框与错位影 |
+| `.cosmic-panel` | 赛博星图面板（轨道环 + 光斑 + 扫描线 + 星点，28s 漂移），首页 Hero 与认证页品牌面板共用 |
+| `.card` | 纸卡面 + 1.5px 墨线 + 不对称圆角 + 错位硬影 |
+| `.btn-primary` / `.btn-secondary` | 墨色手绘主按钮（青色错位影）/ 细描边次按钮 |
+| `.btn-inverse` / `.btn-inverse-outline` | 深色索引带与 CTA 里的反色按钮（深色下固定深墨字，避免白底白字） |
 
 ### 组件层
 
@@ -750,17 +777,17 @@ community/
 | --- | --- |
 | `AppSegmented` | 分段控件：2~5 个平级选项的「多选一」（排序、视图切换）。选项多于此用 chip |
 | `AppSectionHeader` | 分区标题。此前 ProfileView 把同一段装饰抄了三遍，改一次要改三处 |
-| `AppStatGrid` | 苹果官网参数式发丝线规格条（1px 间隙露出底色当分隔线） |
+| `AppStatGrid` | 参数式发丝线规格条（1px 间隙露出底色当分隔线） |
 | `AppListRow` | 分组列表行：leading 图标 — 主/副标题 — trailing 值或 chevron，最小行高 44pt |
 | `AppSheet` | 模态表单。窄屏底部升起带 grabber，桌面居中卡片 |
 | `AppConfirmHost` | 警告框，替代 `window.confirm`（见下） |
 
 ### 两个刻意的例外
 
-**导航栏 44pt，代价是铃铛与账号菜单要缩小。** HIG 的导航栏标准高度是 44pt，
-但 36px 的控件在里面居中后上边缘只剩 4px，而 `::after` 热区要往上探 6px——
-探针点会落到视口外（y = -1），`verify_mobile_touch` 的「盒上方 5px 命中」直接失败。
-所以铃铛收到 32px、账号菜单内边距收到 `py-1`：44pt 的导航栏与 44pt 的热区这才同时成立。
+**页头 56px，热区仍是 44px。** 页头按主站取 `h-14`，但铃铛视觉盒保持 32px、
+`::after` 外扩 6px 把命中区撑到 44×44；账号菜单用 `py-1` 控制高度。
+56px 里 32px 控件上下各余 12px，热区外扩后仍在视口内，`verify_mobile_touch`
+的「盒上方 5px 命中」探针才取得到元素。
 
 **破坏性确认不用 `window.confirm`。** 原生对话框不跟主题、不跟字体，
 而且在 Playwright 里属于原生对话框会被自动 dismiss —— 等于「点了删除会发生什么」根本没被测到。

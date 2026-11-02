@@ -1,9 +1,9 @@
 <template>
   <Teleport to="body">
-    <!-- 位置：右上角（macOS/iOS 通知位）。刻意避开 sticky 导航栏（h-49px），
+    <!-- 位置：右上角（macOS/iOS 通知位）。刻意避开 sticky 导航栏（56px），
          否则提示会压在搜索框上；小屏改为顶部通栏，留出同样的间隔 -->
     <div
-      class="pointer-events-none fixed inset-x-3 top-[60px] z-[120] flex flex-col gap-2.5 sm:inset-x-auto sm:right-4 sm:top-[68px] sm:w-[380px]"
+      class="pointer-events-none fixed inset-x-3 top-[116px] z-[120] flex flex-col gap-2.5 sm:inset-x-auto sm:right-4 sm:top-[72px] sm:w-[380px]"
       role="region"
       aria-label="提示消息"
     >

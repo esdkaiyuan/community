@@ -1,5 +1,10 @@
 <template>
   <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <div class="mb-6">
+      <p class="eyebrow">Profile</p>
+      <h1 class="mt-3 font-brand text-[clamp(1.9rem,2.8vw,2.6rem)] font-bold tracking-normal text-ink">个人中心</h1>
+    </div>
+
     <!-- 个人信息卡 -->
     <div class="card relative overflow-hidden p-6 sm:p-8">
       <div class="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-pine-soft blur-2xl" aria-hidden="true"></div>
@@ -21,7 +26,7 @@
         <button class="btn-secondary shrink-0" @click="openEdit">编辑资料</button>
       </div>
 
-      <!-- 数据概览：苹果参数式发丝线规格条 -->
+      <!-- 数据概览：参数式发丝线规格条 -->
       <AppStatGrid :items="statItems" :cols="4" class="relative mt-8" />
     </div>
 

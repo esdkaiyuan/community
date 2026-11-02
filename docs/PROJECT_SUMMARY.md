@@ -13,7 +13,7 @@
 
 - Vue 3（Composition API + `<script setup>`）
 - Vite 5
-- Tailwind CSS 3.4 + CSS 变量设计令牌（Apple HIG 风格，支持深浅色）
+- Tailwind CSS 3.4 + CSS 变量设计令牌（赛博简约手绘 × Apple HIG：暖纸面、墨线手绘框、电光青强调，支持深浅色）
 - Pinia
 - Vue Router 4
 - Axios

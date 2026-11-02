@@ -1,15 +1,19 @@
 /** @type {import('tailwindcss').Config} */
-// Apple HIG 设计系统
+// 赛博简约手绘 × Apple HIG 设计系统
+//
+// 视觉语言：暖纸面 + 墨线手绘框 + 电光青强调 + 等宽终端小标签。
+// 结构层遵守 HIG（字号阶、8pt 栅格、44pt 触控、焦点环、减弱动态）；
+// 表层用手写体标题、不对称圆角、错位墨线阴影表达「手绘」。
 //
 // 两层令牌，职责分开：
 //   1) 材质层（paper/ink/pine…）：直接取 CSS 变量，取值被 scripts/ 下的验证脚本钉死
-//      （verify_dark_mode.py 逐值比对手写常量），**改名或改值都会撞红 31 个脚本**，
-//      因此本轮只增不删。
-//   2) 语义层（label/separator/system-blue…）：HIG 的标准叫法，指向同一批变量。
-//      新代码一律写语义层，材质层留给存量代码与断言。
+//      （verify_dark_mode.py 逐值比对手写常量），**改名或改值会撞红大量断言**，
+//      因此这一层只增不删；新页面与主站对齐时直接使用它。
+//   2) 语义层（label/separator/system-blue…）：兼容早期 HIG 命名的别名，
+//      指向同一批变量，已有代码继续可用，不强制迁移。
 //
-// 排版走 HIG 文本样式表（34/28/22/20/17/16/15/13/12/11），取代散落各处的
-// text-[17px] / text-[13px] / text-[11px] 硬编码。
+// 排版沿用文本样式表（34/28/22/20/17/16/15/13/12/11），避免散落硬编码；
+// 首页与分区主标题另用 `clamp()` 做手绘大字号。
 export default {
   content: ['./index.html', './src/**/*.{vue,js}'],
   theme: {
@@ -39,7 +43,7 @@ export default {
         line: 'rgb(var(--c-line) / <alpha-value>)',
         'line-strong': 'rgb(var(--c-line-strong) / <alpha-value>)',
 
-        // ---- 语义层（HIG 叫法，新代码用这一层）----
+        // ---- 语义层（早期 HIG 命名的兼容别名）----
         // 文本色：label > secondary > tertiary > quaternary
         label: 'rgb(var(--c-ink) / <alpha-value>)',
         'label-2': 'rgb(var(--c-ink-mid) / <alpha-value>)',
@@ -88,14 +92,17 @@ export default {
         30: '7.5rem' // 120
       },
 
-      // ---- HIG 连续圆角 ----
-      // iOS 的圆角随容器尺寸增长：小控件 4 / 中 10 / 卡片 14 / 大卡 18 / 表单 22
+      // ---- 圆角：卡片 20 / 小卡 16 / 大面板 28；手绘层再叠加不对称值 ----
       borderRadius: {
-        xl2: '1.125rem',
+        xl2: '1.25rem',
         10: '0.625rem',
-        14: '0.875rem',
-        18: '1.125rem',
-        22: '1.375rem'
+        14: '1rem',
+        18: '1.25rem',
+        22: '1.75rem'
+      },
+
+      maxWidth: {
+        site: '1600px'
       },
 
       fontFamily: {
@@ -106,30 +113,42 @@ export default {
           '"Helvetica Neue"',
           '"PingFang SC"',
           '"Hiragino Sans GB"',
+          '"Noto Sans SC"',
           '"Microsoft YaHei"',
           'sans-serif'
         ],
-        // Apple 不使用衬线展示字体，display 统一走系统栈
+        // 品牌 / 标题字：霞鹜文楷（手写楷体骨架），离线时退回系统楷体
+        brand: [
+          '"LXGW WenKai"',
+          '"Kaiti SC"',
+          '"STKaiti"',
+          'KaiTi',
+          '"Songti SC"',
+          'serif'
+        ],
+        // 展示标题仍走系统无衬线，靠字重与紧字距撑住大字号
         display: [
           '"SF Pro Display"',
           '-apple-system',
           'BlinkMacSystemFont',
           '"PingFang SC"',
+          '"Noto Sans SC"',
           '"Microsoft YaHei"',
           'sans-serif'
         ]
       },
 
       boxShadow: {
-        card: '0 2px 8px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06)',
-        'card-hover': '0 4px 12px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.12)',
-        toast: '0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 32px -6px rgba(0, 0, 0, 0.16)',
-        pop: '0 12px 40px rgba(0, 0, 0, 0.18)',
-        // HIG 悬浮层：菜单 / 分段控件的浅阴影，比 pop 更贴边更淡
-        hig: '0 0 0 0.5px rgba(0, 0, 0, 0.05), 0 10px 30px -8px rgba(0, 0, 0, 0.16)'
+        // 手绘错位投影：硬边、微微偏右下，像纸稿叠了一层墨线
+        card: '2px 3px 0 rgb(var(--c-ink) / 0.05)',
+        'card-hover': '4px 6px 0 rgb(var(--c-ink) / 0.09)',
+        toast: '0 1px 2px rgba(0, 0, 0, 0.06), 0 14px 38px -8px rgba(0, 0, 0, 0.18)',
+        pop: '5px 7px 0 rgb(var(--c-ink) / 0.1)',
+        // 悬浮层：菜单 / 分段控件的浅阴影，比 pop 更贴边更淡
+        hig: '0 0 0 0.5px rgba(0, 0, 0, 0.04), 0 10px 30px -8px rgba(0, 0, 0, 0.14)'
       },
 
-      // ---- Apple 动效曲线 ----
+      // ---- 动效曲线（沿用原 HIG 命名，出场快起慢收）----
       transitionTimingFunction: {
         'hig-out': 'cubic-bezier(0.22, 1, 0.36, 1)', // 出场：快起慢收
         'hig-in-out': 'cubic-bezier(0.4, 0, 0.2, 1)', // 进出场：系统默认

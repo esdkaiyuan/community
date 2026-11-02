@@ -1,4 +1,4 @@
-// v-reveal — 苹果官网式滚动渐入
+// v-reveal — 滚动渐入
 // 用法: v-reveal 或 v-reveal="延迟毫秒数"（用于列表交错入场）
 // 元素进入视口时淡入并上浮，一次性触发后停止观察
 let observer = null

@@ -1,31 +1,48 @@
 <template>
   <!--
-    Apple HIG 导航栏（Navigation Bar）
+    赛博手绘式页头（HIG 结构：56px 高度 / 44px 热区 / 毛玻璃材质）
 
-    高度 44pt（HIG 规定的导航栏标准高度，也是最小可点区域的来源值），
-    毛玻璃材质 + 发丝线底边：内容滚过它时透出模糊底色，层级不用投影也能立住。
+    手写体字标 + 墨线手绘方块、平级导航 + 电光青手绘下划线、
+    暖纸面胶囊搜索。发丝线底边 + 毛玻璃，内容滚过时透出模糊底色。
 
     ⚠️ 三处被端到端脚本按值钉死，改动即撞红：
-      · button[aria-label='通知']   视觉高 ≤36px，热区上探 5px（::after -inset-1.5）
-      · button[aria-label='账号菜单'] 热区上探 3px（::after -inset-1）
+      · button[aria-label='通知']   视觉 32×32，热区靠 ::after -inset-1.5 撑到 44×44
+      · button[aria-label='账号菜单'] 热区上探 3px（::after -inset-0.5 等效）
       · [data-test='unread-badge']  背景必须是 clay（深色 #FF453A / 浅色 #D70015）
   -->
-  <header class="sticky top-0 z-50 border-b border-line bg-[color:var(--glass-nav)] backdrop-blur-xl backdrop-saturate-150">
-    <div class="mx-auto flex h-11 max-w-7xl items-center gap-4 px-4 sm:px-6">
-      <!-- Logo -->
-      <router-link to="/" class="flex shrink-0 items-center gap-2" aria-label="共创社区首页">
-        <span class="flex h-7 w-7 items-center justify-center rounded-[8px] bg-pine">
-          <svg viewBox="0 0 64 64" class="h-4 w-4" aria-hidden="true">
-            <path d="M32 46c0-9 0-14 0-19" stroke="white" stroke-width="4" stroke-linecap="round" fill="none" />
-            <path d="M32 30c0-7 5-11.5 11.5-11.5C43.5 25.5 38.5 30 32 30z" fill="rgba(255,255,255,0.7)" />
-            <path d="M32 36c0-5.6-4.2-9.5-9.5-9.5 0 5.6 4.2 9.5 9.5 9.5z" fill="white" />
+  <header class="sticky top-0 z-50 border-b border-line/70 bg-[color:var(--glass-nav)] backdrop-blur-xl backdrop-saturate-150">
+    <div class="site-shell flex h-14 items-center gap-3">
+      <!-- 品牌：手写体字标 + 墨线手绘方块（电光青错位影） -->
+      <router-link to="/" class="flex shrink-0 items-center gap-2.5" aria-label="共创社区首页">
+        <span class="sketch-mark flex h-8 w-8 items-center justify-center">
+          <svg viewBox="0 0 64 64" class="h-[18px] w-[18px]" aria-hidden="true">
+            <path d="M32 46c0-9 0-14 0-19" stroke="rgb(var(--c-ink))" stroke-width="4" stroke-linecap="round" fill="none" />
+            <path d="M32 30c0-7 5-11.5 11.5-11.5C43.5 25.5 38.5 30 32 30z" fill="rgb(var(--c-pine) / 0.55)" />
+            <path d="M32 36c0-5.6-4.2-9.5-9.5-9.5 0 5.6 4.2 9.5 9.5 9.5z" fill="rgb(var(--c-pine))" />
           </svg>
         </span>
-        <span class="text-headline font-semibold tracking-tight text-ink">共创社区</span>
+        <span class="flex flex-col leading-none">
+          <span class="font-brand text-[17px] font-semibold tracking-tight text-ink">共创社区</span>
+          <span class="mt-1 hidden font-mono text-[9px] font-medium uppercase tracking-[0.2em] text-ink-dim sm:block">Co-Creation</span>
+        </span>
       </router-link>
 
-      <!-- 搜索框：HIG 搜索字段是胶囊形、灰底无边框，聚焦时才显形 -->
-      <form class="mx-auto hidden max-w-md flex-1 md:block" @submit.prevent="handleSearch">
+      <!-- 主导航：细线 + 电光青手绘下划线，桌面端才出现 -->
+      <nav class="ml-3 hidden items-center gap-5 lg:flex" aria-label="主导航">
+        <router-link
+          v-for="item in visibleNav"
+          :key="item.to"
+          :to="item.to"
+          class="relative py-4 text-footnote font-medium transition-colors"
+          :class="isActive(item) ? 'text-ink' : 'text-ink-mid hover:text-ink'"
+        >
+          {{ item.label }}
+          <span v-if="isActive(item)" class="sketch-rule absolute inset-x-0 bottom-0 text-pine"></span>
+        </router-link>
+      </nav>
+
+      <!-- 搜索框：暖灰胶囊，聚焦时恢复纸面与电光青边框 -->
+      <form class="mx-auto hidden max-w-sm flex-1 md:block" @submit.prevent="handleSearch">
         <div class="relative">
           <svg
             class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-dim"
@@ -38,7 +55,7 @@
             v-model="keyword"
             type="search"
             placeholder="搜索感兴趣的项目…"
-            class="input rounded-full border-transparent bg-sand py-1.5 text-footnote focus:border-pine focus:bg-cream"
+            class="input rounded-full border-transparent bg-sand/70 py-2 pl-9 text-footnote focus:border-line-strong focus:bg-cream"
             aria-label="搜索项目"
           />
         </div>
@@ -55,11 +72,9 @@
         </router-link>
 
         <!-- 通知铃铛（已登录）
-             视觉 32×32，靠 ::after -inset-1.5 把命中区撑到 44×44（HIG 最小可点区域）。
-             ⚠️ 视觉盒为什么是 32 而不是 36：导航栏按 HIG 取 44pt 高，36px 的控件居中后
-             上边缘只剩 4px，而 ::after 往上探 6px 会越过视口顶边——探针点在 y=-1 处取不到
-             元素，端到端断言（盒上方 5px 命中）会失败。收到 32px 上边缘回到 6px，
-             44pt 的导航栏与 44pt 的热区两者才同时成立。 -->
+             视觉 32×32，靠 ::after -inset-1.5 把命中区撑到 44×44（最小可点区域）。
+             56px 页头里 32px 控件居中后上下各余 12px，热区外扩 6px 仍在视口内，
+             端到端脚本「盒上方 5px 真实命中」的探针才取得到元素。 -->
         <div v-if="userStore.isLoggedIn" ref="notifRef" class="relative shrink-0">
           <button
             class="relative flex h-8 w-8 items-center justify-center rounded-full text-ink transition-colors after:absolute after:-inset-1.5 after:rounded-full after:content-[''] hover:bg-sand"
@@ -139,8 +154,8 @@
         </div>
 
         <!-- 已登录：用户菜单（窄屏只留头像，用户名 / 箭头从 sm 起显示）
-             内边距 py-1 而非 py-1.5：44pt 导航栏里 py-1.5 会让这颗 42px 高的控件上边缘
-             只剩 1px，::after 热区顶到视口外，与铃铛是同一个几何约束。 -->
+             内边距 py-1：控件整体约 44px，在 56px 页头里居中后热区不会顶到视口外，
+             与铃铛是同一个几何约束。 -->
         <div v-if="userStore.isLoggedIn" ref="menuRef" class="relative shrink-0">
           <button
             class="relative flex items-center gap-2 rounded-full border border-line bg-cream py-1 pl-1.5 pr-1.5 transition-colors after:absolute after:-inset-1 after:rounded-full after:content-[''] hover:border-pine sm:pr-3"
@@ -204,7 +219,7 @@
 
     <!-- 移动端搜索：导航栏放不下时下移一行，而不是把图标挤没 -->
     <form class="border-t border-line px-4 py-2 md:hidden" @submit.prevent="handleSearch">
-      <input v-model="keyword" type="search" placeholder="搜索感兴趣的项目…" class="input rounded-full py-2" aria-label="搜索项目" />
+      <input v-model="keyword" type="search" placeholder="搜索感兴趣的项目…" class="input rounded-full border-transparent bg-sand/70 py-2" aria-label="搜索项目" />
     </form>
   </header>
 </template>
@@ -236,6 +251,21 @@ let pollTimer = null
 
 const avatar = computed(() => userStore.userInfo?.avatar || '')
 const initial = computed(() => (userStore.username || '友').slice(0, 1).toUpperCase())
+
+// 主导航：与主站一样只放平级入口；账号安全收进账号菜单，避免导航过密
+const NAV = [
+  { to: '/', label: '广场', match: (path) => path === '/' },
+  { to: '/publish', label: '发布', match: (path) => path === '/publish' || path.endsWith('/edit'), auth: true },
+  { to: '/notifications', label: '通知', match: (path) => path === '/notifications', auth: true },
+  {
+    to: '/profile',
+    label: '个人中心',
+    match: (path) => path === '/profile' || path.startsWith('/user/'),
+    auth: true
+  }
+]
+const visibleNav = computed(() => NAV.filter((item) => !item.auth || userStore.isLoggedIn))
+const isActive = (item) => item.match(route.path)
 
 const fetchUnread = async () => {
   if (!userStore.isLoggedIn) return

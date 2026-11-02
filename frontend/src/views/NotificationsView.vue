@@ -1,9 +1,10 @@
 <template>
   <div class="mx-auto max-w-3xl px-4 py-10 pb-32 sm:px-6">
-    <!-- 页头：苹果式大标题 -->
+    <!-- 页头：手绘大标题 -->
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="font-display text-title1 font-semibold tracking-tight text-ink sm:text-largetitle">通知</h1>
+        <p class="eyebrow">Inbox</p>
+        <h1 class="mt-3 font-brand text-[clamp(2rem,3vw,2.8rem)] font-bold tracking-normal text-ink">通知</h1>
         <p class="mt-2 text-footnote text-ink-mid">
           <template v-if="unread > 0">有 {{ unread }} 条未读，共 {{ total }} 条</template>
           <template v-else>全部已读，共 {{ total }} 条</template>
